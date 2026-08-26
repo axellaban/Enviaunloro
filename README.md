@@ -261,13 +261,25 @@ hacer.
 
 1. En tu proyecto de Supabase, **SQL Editor → New query**, pegá el contenido de
    [`supabase.sql`](supabase.sql) y dale Run. Crea dos tablas y les prende RLS.
-   Es idempotente: correrlo dos veces no rompe nada.
-2. En Vercel cargá dos variables:
+   Es idempotente: correrlo dos veces no rompe nada. **Este paso no lo hace
+   ninguna integración**: sin las tablas, la app no guarda nada.
+2. Las variables. Si levantaste Supabase desde **Vercel → Storage**, ya están
+   cargadas y no tenés que hacer nada. Si lo hiciste a mano:
 
    | Variable | De dónde sale |
    |---|---|
    | `SUPABASE_URL` | Project Settings → Data API (`https://xxxx.supabase.co`) |
-   | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API Keys → **service_role** |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API Keys → **service_role** (en proyectos nuevos figura como **secret key**) |
+
+   Para la clave también se aceptan `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_KEY`
+   y `SUPABASE_KEY`, y para la URL `NEXT_PUBLIC_SUPABASE_URL`. Son los nombres
+   que usan las distintas integraciones: da igual cuál te haya tocado.
+
+3. **Redeployá.** Las variables nuevas no entran en un deploy ya hecho.
+
+Para saber si quedó andando, abrí `https://tu-app.vercel.app/api/estado`. El
+campo `almacenamiento` dice `"supabase"`, `"upstash"` o `"archivo"`; si dice
+`archivo`, no está tomando las variables.
 
 **La `service_role` va sin `NEXT_PUBLIC_` y marcada como secreta.** Esa clave
 saltea todas las reglas de la base; con el prefijo público, Next la mete adentro

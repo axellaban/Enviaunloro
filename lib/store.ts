@@ -106,10 +106,21 @@ function backendUpstash(c: { url: string; token: string }): Backend {
 // ---------- Supabase (PostgREST) ----------
 
 function credencialesSupabase(): { url: string; key: string } | null {
-  // La URL del proyecto no es secreta, así que se acepta también con el prefijo
-  // público (es como la deja la integración de Supabase en Vercel).
+  // Varios nombres a propósito: la integración de Supabase en Vercel inyecta un
+  // juego, la consola de Supabase muestra otro, y desde el cambio de claves de
+  // Supabase (anon/service_role → publishable/secret) hay proyectos nuevos que
+  // no tienen ninguna "service_role" a la vista. Aceptarlos todos evita el peor
+  // final posible: que esté todo bien cargado, no se reconozca, y la app se
+  // caiga en silencio al modo memoria.
+  //
+  // La URL del proyecto no es secreta, así que también se acepta con prefijo
+  // público, que es como la deja esa integración.
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_KEY;
 
   // La service_role saltea RLS: es acceso total a la base. Con prefijo público
   // queda adentro del JavaScript que baja cualquier visitante, así que si
