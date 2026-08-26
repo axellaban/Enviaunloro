@@ -325,3 +325,36 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   0%, 100% { opacity: 0; }
   35%, 55% { opacity: 0.85; }
 }
+
+/* ---------- portada ---------- */
+
+.portada {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 20px 72px;
+}
+
+.hero {
+  display: grid;
+  gap: 44px;
+  align-items: center;
+  justify-items: center;
+  padding: 40px 0 24px;
+  text-align: center;
+  /* La portada es una sola pantalla: si el hero no la llena, queda un vacío
+     abajo que parece que la página se cortó. */
+  min-height: calc(100dvh - 64px);
+}
+
+/* Recién con espacio de sobra el teléfono se va al costado. Antes de eso va
+   abajo y centrado: partido en dos columnas angostas no se lee ninguna. */
+@media (min-width: 940px) {
+  .hero {
+    grid-template-columns: 1fr 330px;
+    gap: 64px;
+    padding: 76px 0 48px;
+    text-align: left;
+    justify-items: stretch;
+  }
+  .hero-texto .pastilla { margin-left: 0; }
+}

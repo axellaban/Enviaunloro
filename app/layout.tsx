@@ -5,23 +5,23 @@ const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITIO),
-  title: "Loros — Envía Loros, no mensajes",
+  title: "Loros — Envía Loritos, no mensajes",
   description:
-    "La app de mensajería donde tu loro viaja en tiempo real según la distancia. Elegí tu ave, escribí, y esperá a que aterrice.",
+    "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",
   applicationName: "Loros",
   openGraph: {
     type: "website",
     locale: "es_AR",
     siteName: "Loros",
-    title: "Envía Loros, no mensajes 🦜",
+    title: "Envía Loritos, no mensajes 🦜",
     description:
-      "Tu mensaje vuela de verdad: sale desde tu ubicación y tarda lo que tarda. Perico, cotorra, loro o guacamayo — cada uno vuela distinto.",
+      "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Envía Loros, no mensajes 🦜",
+    title: "Envía Loritos, no mensajes 🦜",
     description:
-      "Mensajería donde el mensaje vuela en tiempo real según la distancia real entre ustedes.",
+      "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",
   },
 };
 
