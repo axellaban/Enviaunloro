@@ -195,7 +195,21 @@ export default function Nido() {
           📍 Mi nido
         </button>
 
-        {est.error && <div className="error-flotante">{est.error}</div>}
+        {est.error && (
+          <div className="error-flotante">
+            {est.error}
+            {/* El motivo exacto lo sabe el servidor. Un toque y lo ves, en vez
+                de tener que ir a buscar los logs de una función serverless. */}
+            <a
+              href="/api/salud"
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: "block", marginTop: 6, textDecoration: "underline" }}
+            >
+              Ver el diagnóstico →
+            </a>
+          </div>
+        )}
       </div>
 
       <div className="app-panel">

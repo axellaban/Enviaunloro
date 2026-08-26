@@ -339,7 +339,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   gap: 44px;
   align-items: center;
   justify-items: center;
-  padding: 40px 0 24px;
+  padding: 76px 0 32px;
   text-align: center;
   /* La portada es una sola pantalla: si el hero no la llena, queda un vacío
      abajo que parece que la página se cortó. */
@@ -352,7 +352,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   .hero {
     grid-template-columns: 1fr 330px;
     gap: 64px;
-    padding: 76px 0 48px;
+    padding: 112px 0 56px;
     text-align: left;
     justify-items: stretch;
   }

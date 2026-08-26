@@ -53,10 +53,10 @@ export async function pedir<T = any>(
  */
 function motivoNidoPerdido(almacenamiento: string): string {
   if (almacenamiento === "archivo") {
-    return "El servidor no encuentra tu nido. Está guardando en memoria, así que cada instancia arranca vacía: falta configurar la base (Upstash o Supabase) y volver a deployar.";
+    return "El servidor no encuentra tu nido: no hay base configurada y cada instancia arranca vacía.";
   }
   if (almacenamiento === "supabase") {
-    return "El servidor no encuentra tu nido. Si Supabase es nuevo, revisá que hayas corrido supabase.sql en el SQL Editor: sin esas tablas no se guarda nada.";
+    return "El servidor no encuentra tu nido. La base está configurada pero no guarda.";
   }
   return "El servidor no encuentra tu nido. Puede ser que se haya borrado la cookie de este navegador.";
 }

@@ -15,10 +15,6 @@ export default function Portada() {
     <main className="portada">
       <section className="hero">
         <div className="hero-texto">
-          <p className="pastilla" style={{ marginBottom: 26 }}>
-            🦜 Mensajería con distancia real
-          </p>
-
           <h1
             style={{
               fontSize: "clamp(38px, 7vw, 68px)",

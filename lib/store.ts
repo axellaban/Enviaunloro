@@ -25,6 +25,23 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+/**
+ * El último error del almacenamiento, para que /api/salud pueda decir QUÉ pasó.
+ *
+ * Sin esto, un Supabase mal configurado y una cookie borrada se ven exactamente
+ * igual desde el teléfono: "no encuentro tu nido". El motivo real —que falta
+ * correr el SQL, o que la clave es la pública— queda enterrado en los logs de
+ * una función serverless, que es justo donde nadie mira.
+ */
+let ultimoError = "";
+export function errorDeStore(): string {
+  return ultimoError;
+}
+function anotarError(mensaje: string): void {
+  ultimoError = mensaje;
+  console.error(`[store] ${mensaje}`);
+}
+
 export interface Backend {
   leer(clave: string): Promise<string | null>;
   escribir(clave: string, valor: string): Promise<void>;
@@ -105,6 +122,31 @@ function backendUpstash(c: { url: string; token: string }): Backend {
 
 // ---------- Supabase (PostgREST) ----------
 
+/**
+ * Qué rol trae la clave, sin llamar a ningún lado.
+ *
+ * Importa porque con la clave `anon` —la pública— y RLS prendido, PostgREST
+ * contesta 200 con lista vacía en las lecturas y rechaza las escrituras. O sea:
+ * la app parece andar y no guarda nada. Distinguirlo acá evita horas de buscar
+ * en el lugar equivocado.
+ *
+ * Las claves nuevas de Supabase se reconocen por el prefijo; las viejas son
+ * JWT y llevan el rol en el payload, que no es secreto (viaja en la propia
+ * clave y no se valida acá: solo se lee para avisar).
+ */
+export function rolDeClaveSupabase(key: string): string {
+  if (key.startsWith("sb_secret_")) return "service_role";
+  if (key.startsWith("sb_publishable_")) return "anon";
+  const partes = key.split(".");
+  if (partes.length !== 3) return "desconocido";
+  try {
+    const payload = JSON.parse(Buffer.from(partes[1], "base64url").toString("utf8"));
+    return String(payload?.role || "desconocido");
+  } catch {
+    return "desconocido";
+  }
+}
+
 function credencialesSupabase(): { url: string; key: string } | null {
   // Varios nombres a propósito: la integración de Supabase en Vercel inyecta un
   // juego, la consola de Supabase muestra otro, y desde el cambio de claves de
@@ -131,6 +173,13 @@ function credencialesSupabase(): { url: string; key: string } | null {
     );
   }
   if (!url || !key) return null;
+
+  const rol = rolDeClaveSupabase(key);
+  if (rol === "anon") {
+    anotarError(
+      "La clave de Supabase configurada es la PÚBLICA (anon / publishable). Con RLS prendido no puede escribir nada, así que la app no va a guardar. Usá la service_role (en proyectos nuevos figura como secret key) en SUPABASE_SERVICE_ROLE_KEY."
+    );
+  }
   return { url: url.replace(/\/+$/, ""), key };
 }
 
@@ -158,14 +207,14 @@ function backendSupabase(c: { url: string; key: string }): Backend {
       });
       if (!r.ok) {
         const detalle = await r.text().catch(() => "");
-        console.error(`[store] supabase ${ruta} devolvió ${r.status}: ${detalle.slice(0, 300)}`);
+        anotarError(`supabase ${ruta.split("?")[0]} devolvió ${r.status}: ${detalle.slice(0, 300)}`);
         return undefined;
       }
       // DELETE y POST sin `Prefer: return=representation` vuelven vacíos.
       const texto = await r.text();
       return texto ? JSON.parse(texto) : [];
     } catch (err: any) {
-      console.error(`[store] supabase ${ruta} falló:`, err?.message || err);
+      anotarError(`supabase ${ruta.split("?")[0]} falló: ${err?.message || err}`);
       return undefined;
     } finally {
       clearTimeout(t);
@@ -375,6 +424,65 @@ export function store(): Backend {
     elegido = up ? backendUpstash(up) : sb ? backendSupabase(sb) : backendArchivo();
   }
   return elegido;
+}
+
+export type Diagnostico = {
+  almacenamiento: string;
+  /** La ida y vuelta funcionó. */
+  ok: boolean;
+  /** Los datos sobreviven a otra instancia. El archivo local NO. */
+  persistente: boolean;
+  detalle: string;
+  sugerencia: string;
+};
+
+/**
+ * Escribe, lee y borra una clave de prueba. Es la única forma honesta de
+ * responder "¿la base anda?": preguntarle a la base.
+ */
+export async function diagnosticar(): Promise<Diagnostico> {
+  const b = store();
+  const clave = `salud:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+  ultimoError = "";
+
+  let ok = false;
+  try {
+    await b.escribir(clave, "ping");
+    ok = (await b.leer(clave)) === "ping";
+    await b.borrar(clave);
+  } catch (err: any) {
+    anotarError(`la prueba falló: ${err?.message || err}`);
+  }
+
+  const detalle = ok ? "" : errorDeStore() || "se escribió y al leer no estaba.";
+  // El backend de archivo pasa la prueba aunque no sirva: escribir y leer
+  // dentro del MISMO proceso siempre funciona, incluso cuando cayó al modo
+  // memoria. Lo que ahí falla es lo que esta prueba no puede ver — la instancia
+  // siguiente. Por eso se informa aparte.
+  const persistente = b.nombre !== "archivo";
+  return {
+    almacenamiento: b.nombre,
+    ok,
+    persistente,
+    detalle,
+    sugerencia: ok && persistente ? "" : sugerir(b.nombre, detalle),
+  };
+}
+
+function sugerir(backend: string, detalle: string): string {
+  if (backend === "archivo") {
+    return "No hay base configurada: se está guardando en memoria y cada instancia arranca vacía. Cargá Upstash o Supabase y volvé a deployar (las variables nuevas no entran en un deploy ya hecho).";
+  }
+  if (backend === "supabase") {
+    if (/does not exist|PGRST205|schema cache/i.test(detalle)) {
+      return "Faltan las tablas: corré supabase.sql en el SQL Editor de tu proyecto de Supabase. Es lo único que ninguna integración hace por vos.";
+    }
+    if (/permission denied|JWT|401|403|RLS/i.test(detalle)) {
+      return "La clave no tiene permiso. Tiene que ser la service_role (en proyectos nuevos, la secret key), no la anon/publishable: con RLS prendido esa no puede escribir nada.";
+    }
+    return "Revisá SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY, y que hayas corrido supabase.sql.";
+  }
+  return "Revisá las credenciales de la base y volvé a deployar.";
 }
 
 /** Helpers de documentos JSON, que es como se guarda todo lo de la app. */
