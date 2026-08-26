@@ -475,7 +475,7 @@ function sugerir(backend: string, detalle: string): string {
   }
   if (backend === "supabase") {
     if (/does not exist|PGRST205|schema cache/i.test(detalle)) {
-      return "Faltan las tablas: corré supabase.sql en el SQL Editor de tu proyecto de Supabase. Es lo único que ninguna integración hace por vos.";
+      return "Faltan las tablas. Lo más rápido: abrí /api/instalar?confirmar=si en este mismo sitio y las crea solas. Si preferís a mano, corré supabase.sql en el SQL Editor de Supabase.";
     }
     if (/permission denied|JWT|401|403|RLS/i.test(detalle)) {
       return "La clave no tiene permiso. Tiene que ser la service_role (en proyectos nuevos, la secret key), no la anon/publishable: con RLS prendido esa no puede escribir nada.";

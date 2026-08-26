@@ -1,14 +1,11 @@
--- Esquema de Loros para Supabase.
---
--- GENERADO desde lib/esquema.ts — si tocás uno, tocá el otro (la prueba
--- verifica que sigan iguales).
---
--- Hay dos formas de aplicarlo y sirven las dos:
---   a mano       Supabase → SQL Editor → New query → pegar esto → Run
---   automático   abrir  https://tu-app.vercel.app/api/instalar?confirmar=si
---
--- Es idempotente: si lo corrés dos veces no rompe nada.
+// El esquema, una sola vez y en un solo lugar.
+//
+// Vive acá y no solo en supabase.sql porque lo necesitan los dos caminos: el
+// manual (pegarlo en el SQL Editor) y el automático (/api/instalar). Tener el
+// mismo DDL escrito dos veces es la forma más rápida de que se despeguen, así
+// que supabase.sql se genera de acá y la prueba verifica que sigan iguales.
 
+export const ESQUEMA = `
 -- Documentos: clave → valor. Nidos, amistades, loros, caché de lugares.
 create table if not exists public.loros_doc (
   clave       text primary key,
@@ -39,3 +36,4 @@ create index if not exists loros_lista_clave on public.loros_lista (clave, id de
 -- Si algún día alguien la filtra, no se lleva los mensajes de nadie.
 alter table public.loros_doc   enable row level security;
 alter table public.loros_lista enable row level security;
+`.trim();

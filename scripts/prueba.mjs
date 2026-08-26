@@ -61,6 +61,19 @@ const ok = (c, m) => console.log(`${c ? "✓" : "✗"} ${m}`);
 let fallos = 0;
 const chequear = (c, m) => { if (!c) fallos++; ok(c, m); };
 
+// --- el SQL de la mano y el del código son el mismo ---
+{
+  const { readFileSync } = await import("node:fs");
+  const ts = readFileSync(new URL("../lib/esquema.ts", import.meta.url), "utf8");
+  const ddl = ts.split("export const ESQUEMA = `")[1].split("`.trim();")[0].trim();
+  const archivo = readFileSync(new URL("../supabase.sql", import.meta.url), "utf8");
+  // supabase.sql lleva encabezado propio; lo que tiene que coincidir es el DDL.
+  chequear(
+    archivo.includes(ddl),
+    "supabase.sql sigue igual a lib/esquema.ts (si no, el camino manual y el automático crean cosas distintas)"
+  );
+}
+
 // --- alta de las dos puntas ---
 const ana = cliente("Ana");
 const beto = cliente("Beto");
