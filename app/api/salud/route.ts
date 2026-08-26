@@ -32,8 +32,21 @@ export async function GET(req: Request) {
     process.env.SUPABASE_KEY ||
     "";
 
+  // Avisos que no son sobre la base pero rompen igual, y que en una lista de
+  // booleanos pasan de largo.
+  const avisos: string[] = [];
+  if (!process.env.LOROS_SECRET) {
+    avisos.push(
+      "FALTA LOROS_SECRET. Sin esa variable las cookies de sesión se firman con el secreto de desarrollo, que está escrito en el código: cualquiera que lo lea puede firmarse una cookie y entrar al nido de otra persona. Generá uno con `openssl rand -base64 32`, cargalo y redeployá. Cambiarlo más adelante deja afuera a todos los nidos que ya existan, así que conviene antes de que la use alguien."
+    );
+  }
+  if (!d.ok && d.almacenamiento === "supabase") {
+    avisos.push("La base está configurada pero no responde: mirá `sugerencia`.");
+  }
+
   return ok({
     ...d,
+    avisos,
     variables: {
       SUPABASE_URL: Boolean(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL),
       claveSupabase: claveSupabase ? rolDeClaveSupabase(claveSupabase) : "falta",
