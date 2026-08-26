@@ -7,6 +7,12 @@
 //                  el mismo estado. Se usa la API REST y no el cliente oficial
 //                  porque es un `fetch` contra una URL — cero dependencias.
 //
+//   Supabase       si están SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY. Mismo
+//                  papel que Upstash, para quien ya tiene Postgres ahí. Habla
+//                  PostgREST por HTTP, que en serverless es lo correcto: sin
+//                  conexiones que mantener ni pool que se agote. Necesita correr
+//                  una vez el SQL de supabase.sql.
+//
 //   Archivo        si no. Todo vive en memoria del proceso y se vuelca a
 //                  .data/loros.json cada tanto, para que `npm run dev` no
 //                  pierda los nidos al reiniciar. Es el modo "clonás el repo y
@@ -93,6 +99,146 @@ function backendUpstash(c: { url: string; token: string }): Backend {
     async leerLista(clave) {
       const r = await cmd(["LRANGE", clave, 0, -1]);
       return Array.isArray(r) ? r.map(String) : [];
+    },
+  };
+}
+
+// ---------- Supabase (PostgREST) ----------
+
+function credencialesSupabase(): { url: string; key: string } | null {
+  // La URL del proyecto no es secreta, así que se acepta también con el prefijo
+  // público (es como la deja la integración de Supabase en Vercel).
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+
+  // La service_role saltea RLS: es acceso total a la base. Con prefijo público
+  // queda adentro del JavaScript que baja cualquier visitante, así que si
+  // aparece así no se usa y se grita.
+  if (process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
+    console.error(
+      "[store] NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY está cargada. Esa clave da acceso TOTAL a la base y con el prefijo NEXT_PUBLIC_ viaja al navegador de cualquiera. Borrala, rotá la clave en Supabase y cargala como SUPABASE_SERVICE_ROLE_KEY, sin prefijo."
+    );
+  }
+  if (!url || !key) return null;
+  return { url: url.replace(/\/+$/, ""), key };
+}
+
+function backendSupabase(c: { url: string; key: string }): Backend {
+  const base = `${c.url}/rest/v1`;
+  const cabeceras = {
+    apikey: c.key,
+    Authorization: `Bearer ${c.key}`,
+    "Content-Type": "application/json",
+  };
+
+  async function pedir(
+    ruta: string,
+    opciones: { metodo?: string; cuerpo?: unknown; extra?: Record<string, string> } = {}
+  ): Promise<any> {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const r = await fetch(`${base}/${ruta}`, {
+        method: opciones.metodo || "GET",
+        headers: { ...cabeceras, ...(opciones.extra || {}) },
+        body: opciones.cuerpo ? JSON.stringify(opciones.cuerpo) : undefined,
+        cache: "no-store",
+        signal: ctrl.signal,
+      });
+      if (!r.ok) {
+        const detalle = await r.text().catch(() => "");
+        console.error(`[store] supabase ${ruta} devolvió ${r.status}: ${detalle.slice(0, 300)}`);
+        return undefined;
+      }
+      // DELETE y POST sin `Prefer: return=representation` vuelven vacíos.
+      const texto = await r.text();
+      return texto ? JSON.parse(texto) : [];
+    } catch (err: any) {
+      console.error(`[store] supabase ${ruta} falló:`, err?.message || err);
+      return undefined;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  /** Filtro `in.(...)`: las claves llevan comas (lugar:-34.6,-58.4) y sin las
+   *  comillas PostgREST las partiría en dos valores. */
+  function listaIn(claves: string[]): string {
+    const entre = claves.map((k) => `"${k.replace(/["\\]/g, (m) => "\\" + m)}"`).join(",");
+    return `in.(${entre})`;
+  }
+
+  function consulta(params: Record<string, string>): string {
+    return new URLSearchParams(params).toString();
+  }
+
+  /**
+   * Recorta lo viejo de una lista, de vez en cuando.
+   *
+   * Acá agregar es un INSERT, así que nada borra solo y el buzón crecería para
+   * siempre. Hacerlo en cada envío serían dos pedidos extra siempre; una de
+   * cada veinticinco veces alcanza para que la tabla no se dispare.
+   */
+  async function recortar(clave: string, max: number): Promise<void> {
+    if (Math.random() > 0.04) return;
+    const borde = await pedir(
+      `loros_lista?${consulta({
+        select: "id",
+        clave: `eq.${clave}`,
+        order: "id.desc",
+        offset: String(max),
+        limit: "1",
+      })}`
+    );
+    const id = Array.isArray(borde) && borde[0]?.id;
+    if (!id) return;
+    await pedir(`loros_lista?${consulta({ clave: `eq.${clave}`, id: `lte.${id}` })}`, {
+      metodo: "DELETE",
+    });
+  }
+
+  return {
+    nombre: "supabase",
+    async leer(clave) {
+      const r = await pedir(`loros_doc?${consulta({ select: "valor", clave: `eq.${clave}` })}`);
+      const v = Array.isArray(r) ? r[0]?.valor : undefined;
+      return typeof v === "string" ? v : null;
+    },
+    async leerVarios(claves) {
+      if (claves.length === 0) return [];
+      const r = await pedir(
+        `loros_doc?${consulta({ select: "clave,valor", clave: listaIn(claves) })}`
+      );
+      if (!Array.isArray(r)) return claves.map(() => null);
+      const porClave = new Map<string, string>();
+      for (const fila of r) porClave.set(String(fila.clave), String(fila.valor));
+      return claves.map((k) => porClave.get(k) ?? null);
+    },
+    async escribir(clave, valor) {
+      // merge-duplicates = upsert sobre la clave primaria.
+      await pedir("loros_doc", {
+        metodo: "POST",
+        cuerpo: [{ clave, valor }],
+        extra: { Prefer: "resolution=merge-duplicates" },
+      });
+    },
+    async borrar(clave) {
+      await pedir(`loros_doc?${consulta({ clave: `eq.${clave}` })}`, { metodo: "DELETE" });
+    },
+    async agregarALista(clave, valor, max) {
+      await pedir("loros_lista", { metodo: "POST", cuerpo: [{ clave, valor }] });
+      await recortar(clave, max);
+    },
+    async leerLista(clave) {
+      const r = await pedir(
+        `loros_lista?${consulta({
+          select: "valor",
+          clave: `eq.${clave}`,
+          order: "id.desc",
+          limit: "200",
+        })}`
+      );
+      return Array.isArray(r) ? r.map((f) => String(f.valor)) : [];
     },
   };
 }
@@ -213,8 +359,9 @@ let elegido: Backend | null = null;
 
 export function store(): Backend {
   if (!elegido) {
-    const c = credencialesUpstash();
-    elegido = c ? backendUpstash(c) : backendArchivo();
+    const up = credencialesUpstash();
+    const sb = credencialesSupabase();
+    elegido = up ? backendUpstash(up) : sb ? backendSupabase(sb) : backendArchivo();
   }
   return elegido;
 }

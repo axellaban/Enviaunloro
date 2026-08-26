@@ -46,6 +46,21 @@ export async function pedir<T = any>(
   return j as T;
 }
 
+/**
+ * Por qué el servidor dejó de ver un nido que existía. Desde el navegador las
+ * tres causas se ven idénticas, así que la única forma de decir algo útil es
+ * mirar dónde está guardando.
+ */
+function motivoNidoPerdido(almacenamiento: string): string {
+  if (almacenamiento === "archivo") {
+    return "El servidor no encuentra tu nido. Está guardando en memoria, así que cada instancia arranca vacía: falta configurar la base (Upstash o Supabase) y volver a deployar.";
+  }
+  if (almacenamiento === "supabase") {
+    return "El servidor no encuentra tu nido. Si Supabase es nuevo, revisá que hayas corrido supabase.sql en el SQL Editor: sin esas tablas no se guarda nada.";
+  }
+  return "El servidor no encuentra tu nido. Puede ser que se haya borrado la cookie de este navegador.";
+}
+
 export function useEstado() {
   const [estado, setEstado] = useState<Estado>(VACIO);
   const [cargando, setCargando] = useState(true);
@@ -85,11 +100,7 @@ export function useEstado() {
         // la persona de vuelta al onboarding —donde crearía otro nido y
         // perdería su código y su bandada— se conserva lo que hay y se dice
         // qué pasa. La causa casi siempre es la misma y la nombramos.
-        setError(
-          j.almacenamiento === "archivo"
-            ? "El servidor no encuentra tu nido. Está guardando en memoria, así que cada instancia arranca vacía: falta configurar Upstash (KV_REST_API_URL y KV_REST_API_TOKEN) y volver a deployar."
-            : "El servidor no encuentra tu nido. Puede ser que se haya borrado la cookie de este navegador."
-        );
+        setError(motivoNidoPerdido(String(j.almacenamiento || "")));
         return;
       }
 

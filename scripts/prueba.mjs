@@ -73,7 +73,7 @@ await beto.llamar("/api/nido", { nombre: "Beto", ave: "cotorra", lat: -34.9011, 
 
 const estAna = await ana.llamar("/api/estado");
 chequear(
-  ["upstash", "archivo"].includes(estAna.almacenamiento),
+  ["upstash", "supabase", "archivo"].includes(estAna.almacenamiento),
   `el estado dice dónde guarda (${estAna.almacenamiento})`
 );
 const estBeto = await beto.llamar("/api/estado");

@@ -171,7 +171,8 @@ lib/vuelo.ts      la fórmula del vuelo. Pura, y la usan servidor Y navegador:
                   y cumpliría otro.
 lib/geo.ts        haversine, ruta de círculo máximo, rumbo, formatos.
 lib/datos.ts      nidos, amistades, loros, Doña Cotorra.
-lib/store.ts      persistencia: Upstash si hay credenciales, si no un archivo.
+lib/store.ts      persistencia: Upstash, Supabase o un archivo, según lo que
+                  esté configurado.
 lib/vista.ts      qué ve el navegador. Acá se decide qué NO viaja: ni el texto
                   de un loro en vuelo, ni las coordenadas exactas de nadie.
 lib/privacidad.ts el desvío fijo que convierte un punto en una zona.
@@ -241,17 +242,54 @@ instancia:
 | Variable | ¿Hace falta? | Para qué |
 |---|---|---|
 | `LOROS_SECRET` | **Sí** | Firma las cookies de sesión. Sin esto se firma con un secreto que está escrito en el código, o sea público: cualquiera podría entrar a un nido ajeno. Generalo con `openssl rand -base64 32`. |
-| `KV_REST_API_URL` | **Sí** | Base Upstash Redis. La forma más rápida: en el proyecto de Vercel, pestaña **Storage → Create Database → Upstash Redis**; se cargan solas. |
-| `KV_REST_API_TOKEN` | **Sí** | Ídem. |
+| Base de datos | **Sí** | Upstash **o** Supabase — ver abajo. |
 | `NEXT_PUBLIC_SITE_URL` | Recomendada | Tu dominio, para las previews al compartir. Es `NEXT_PUBLIC_*`: cambiarla necesita redeploy. |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | No | Solo si querés mosaicos de Mapbox en vez de los de OpenStreetMap. También necesita redeploy. |
 | `LOROS_PROB_EXTRAVIO` | No | Pisa el 0,2% de loros perdidos. Dejala sin cargar salvo que quieras probar. |
 | `LOROS_ESCALA_TIEMPO` | No | Acelera TODOS los vuelos. No la cargues en producción. |
 
-Sin `KV_REST_API_*` la app igual arranca, pero cada instancia serverless
-arranca con la memoria vacía: los nidos aparecen y desaparecen según qué
-lambda te toque. Es el primer síntoma si algo se comporta raro después de
-deployar.
+### La base: Upstash o Supabase
+
+Cargá **una** de las dos. Si están las dos, gana Upstash.
+
+**Opción A — Upstash Redis (2 clics).** En el proyecto de Vercel, pestaña
+**Storage → Create Database → Upstash Redis**. Las variables
+`KV_REST_API_URL` y `KV_REST_API_TOKEN` se cargan solas. No hay nada más que
+hacer.
+
+**Opción B — Supabase**, si ya lo tenés:
+
+1. En tu proyecto de Supabase, **SQL Editor → New query**, pegá el contenido de
+   [`supabase.sql`](supabase.sql) y dale Run. Crea dos tablas y les prende RLS.
+   Es idempotente: correrlo dos veces no rompe nada.
+2. En Vercel cargá dos variables:
+
+   | Variable | De dónde sale |
+   |---|---|
+   | `SUPABASE_URL` | Project Settings → Data API (`https://xxxx.supabase.co`) |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API Keys → **service_role** |
+
+**La `service_role` va sin `NEXT_PUBLIC_` y marcada como secreta.** Esa clave
+saltea todas las reglas de la base; con el prefijo público, Next la mete adentro
+del JavaScript que baja cualquier visitante y con eso te leen y te borran todo.
+Los ejemplos de Supabase usan `NEXT_PUBLIC_` porque llaman desde el navegador —
+esta app llama desde el servidor, así que no hace falta. Si la app detecta una
+`NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` cargada, la ignora y lo grita por
+consola.
+
+La clave `anon` (la pública) no sirve acá a propósito: `supabase.sql` deja RLS
+prendido **sin políticas**, así que esa clave no puede tocar nada de estas
+tablas. Si algún día se filtra, no se lleva los mensajes de nadie.
+
+Se habla PostgREST por HTTP y no por conexión directa a Postgres: en serverless
+no hay conexiones que mantener ni pool que se agote, y no suma dependencias.
+
+### Si no cargás ninguna
+
+La app igual arranca, pero cada instancia serverless arranca con la memoria
+vacía: los nidos aparecen y desaparecen según qué lambda te toque. El síntoma
+típico es quedarse clavado en "Armando el nido…". La app lo detecta y te lo
+dice con esas palabras, en vez de colgarse.
 
 También corre en cualquier otro lado que ejecute Next.js: ahí, sin Upstash,
 el backend de archivo (`.data/loros.json`) alcanza mientras sea un solo
