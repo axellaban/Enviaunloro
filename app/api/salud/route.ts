@@ -35,7 +35,17 @@ export async function GET(req: Request) {
   // Avisos que no son sobre la base pero rompen igual, y que en una lista de
   // booleanos pasan de largo.
   const avisos: string[] = [];
-  if (!process.env.LOROS_SECRET) {
+  const secreto = process.env.LOROS_SECRET || "";
+  // Un secreto corto se rompe por fuerza bruta sin conexión: alcanza con la
+  // propia cookie de quien ataca —un par (id, firma) válido— para probar
+  // millones de candidatos por segundo contra su propia máquina. 24 no es una
+  // cifra mágica; es el piso por debajo del cual seguro está mal.
+  if (secreto && secreto.length < 24) {
+    avisos.push(
+      `LOROS_SECRET es demasiado corto (${secreto.length} caracteres) y una palabra corta se adivina sin conexión, probando contra la cookie propia. Generá uno con \`openssl rand -base64 32\` (44 caracteres) y reemplazalo. Ojo: al cambiarlo, los nidos que ya existan quedan afuera.`
+    );
+  }
+  if (!secreto) {
     avisos.push(
       "FALTA LOROS_SECRET. Sin esa variable las cookies de sesión se firman con el secreto de desarrollo, que está escrito en el código: cualquiera que lo lea puede firmarse una cookie y entrar al nido de otra persona. Generá uno con `openssl rand -base64 32`, cargalo y redeployá. Cambiarlo más adelante deja afuera a todos los nidos que ya existan, así que conviene antes de que la use alguien."
     );
