@@ -195,11 +195,7 @@ export default function Nido() {
           📍 Mi nido
         </button>
 
-        {est.error && (
-          <div className="flotante" style={{ bottom: 12, left: 12, color: "#fca5a5" }}>
-            {est.error}
-          </div>
-        )}
+        {est.error && <div className="error-flotante">{est.error}</div>}
       </div>
 
       <div className="app-panel">

@@ -257,6 +257,26 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 
 /* El aviso vive DENTRO del mapa, no fijo a la ventana: centrado en la ventana
    se le montaba encima al panel y tapaba el nombre y el código. */
+/* El error de la app no puede ir en la misma pastilla que las chapas del mapa:
+   son frases largas —"revisá que hayas corrido supabase.sql"— y en una píldora
+   de borde redondo, a una línea, se cortan justo cuando más se necesitan. */
+.error-flotante {
+  position: absolute;
+  z-index: 600;
+  left: 12px;
+  bottom: 12px;
+  max-width: min(360px, calc(100% - 24px));
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: rgba(10, 21, 20, 0.95);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  backdrop-filter: blur(10px);
+  color: #fca5a5;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .aviso {
   position: absolute;
   /* Centrado con márgenes automáticos y no con translateX: la animación de
