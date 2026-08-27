@@ -105,8 +105,11 @@ la que le diste tu código, es el canje razonable.
 
 1. **Armá tu nido**: nombre, ubicación y ave preferida. No hay registro ni
    contraseña — un id firmado en una cookie y listo.
-2. **Sumá gente**: cada nido tiene un código de 6 (`Compartir` lo manda por
-   WhatsApp). El otro lo pega en *Bandada → Agregar por código*.
+2. **Sumá gente**: tocá `Compartir` y mandá el link por WhatsApp. Lleva tu
+   código adentro (`/?n=XXXXXX`), así que quien lo abre ve de quién viene la
+   invitación y queda conectado apenas arma su nido — sin copiar ni pegar nada.
+   El código también está a la vista para quien prefiera tipearlo en
+   *Bandada → Agregar por código*.
 3. **Soltá un loro**: elegís destinatario y ave. Antes de mandar ya ves cuánto
    tarda cada una hasta esa persona en particular.
 4. **Seguí el vuelo**: el ave cruza el mapa en vivo, con lo recorrido, lo que

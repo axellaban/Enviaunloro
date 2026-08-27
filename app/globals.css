@@ -358,3 +358,23 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   }
   .hero-texto .pastilla { margin-left: 0; }
 }
+
+/* La invitación: arriba del título, para que lo primero que se lea al abrir un
+   link compartido sea de quién viene. */
+.invitacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 10px 16px 10px 12px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  text-align: left;
+}
+.invitacion p {
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--suave);
+}
+.invitacion strong { color: var(--texto); }

@@ -9,12 +9,45 @@
 import Link from "next/link";
 import { Ave } from "../components/Ave";
 import { TelefonoHero } from "../components/TelefonoHero";
+import { nidoPorCodigo } from "../lib/datos";
 
-export default function Portada() {
+/**
+ * La portada, y también la pantalla de invitación.
+ *
+ * Cuando alguien comparte su nido, el link lleva el código adentro (`/?n=XXXXXX`)
+ * en vez de pedirle a la otra persona que copie seis caracteres a mano y
+ * después adivine dónde pegarlos. Acá se resuelve a quién pertenece ese código
+ * y se lo saluda por su nombre: quien abre el link ve de quién es la invitación
+ * antes de decidir nada.
+ *
+ * El nombre se expone solo a quien ya tiene el código, que es algo que se
+ * comparte a propósito. Recorrer los 32^6 códigos posibles para juntar apodos
+ * no lleva a ningún lado: no dan acceso a nada por sí solos, hay que aceptar
+ * la amistad igual, y el envío exige que el otro esté en tu bandada.
+ */
+export default async function Portada({
+  searchParams,
+}: {
+  searchParams: Promise<{ n?: string }>;
+}) {
+  const { n } = await searchParams;
+  const codigo = String(n || "").trim().toUpperCase();
+  const invita = /^[A-Z0-9]{6}$/.test(codigo) ? await nidoPorCodigo(codigo) : null;
+
   return (
     <main className="portada">
       <section className="hero">
         <div className="hero-texto">
+          {invita && (
+            <div className="invitacion">
+              <Ave especie={invita.ave} size={44} aletea />
+              <p>
+                <strong>{invita.nombre}</strong> te quiere mandar un loro
+                {invita.lugar ? ` desde ${invita.lugar}` : ""}.
+              </p>
+            </div>
+          )}
+
           <h1
             style={{
               fontSize: "clamp(38px, 7vw, 68px)",
@@ -52,8 +85,12 @@ export default function Portada() {
           </p>
 
           <div style={{ marginTop: 34 }}>
-            <Link href="/nido" className="boton" style={{ padding: "15px 28px", fontSize: 16 }}>
-              Soltar mi primer loro
+            <Link
+              href={invita ? `/nido?n=${codigo}` : "/nido"}
+              className="boton"
+              style={{ padding: "15px 28px", fontSize: 16 }}
+            >
+              {invita ? `Armar mi nido y sumar a ${invita.nombre}` : "Soltar mi primer loro"}
             </Link>
           </div>
 

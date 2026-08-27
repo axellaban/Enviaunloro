@@ -50,6 +50,9 @@ export default function Nido() {
   const [foco, setFoco] = useState<string | null>(null);
   const enfocar = useCallback((id: string) => setFoco(`${id}#${Date.now()}`), []);
   const [aviso, setAviso] = useState("");
+  /** Código que venía en el link compartido, esperando a que haya nido. */
+  const invitacion = useRef<string | null>(null);
+  const sumado = useRef(false);
   /** id del loro → en qué estado lo vimos la última vez. */
   const conocidos = useRef<Map<string, EstadoLoro> | null>(null);
 
@@ -113,6 +116,43 @@ export default function Nido() {
       }
     }
   }, [est.loros, mostrarAviso, ahoraServidor]);
+
+  // Sumar a quien compartió el link.
+  //
+  // Corre cuando aparece el nido, no al montar, y eso resuelve los dos casos
+  // con el mismo código: si ya tenías nido pasa en el acto, y si venís de
+  // afuera pasa apenas terminás el onboarding. Antes, el código había que
+  // copiarlo a mano de un mensaje de WhatsApp y adivinar dónde pegarlo.
+  useEffect(() => {
+    if (invitacion.current === null) {
+      const n = new URLSearchParams(window.location.search).get("n") || "";
+      invitacion.current = /^[a-zA-Z0-9]{6}$/.test(n) ? n.toUpperCase() : "";
+      if (invitacion.current) {
+        // Fuera de la URL: si no, recargar la página lo reintenta para siempre.
+        window.history.replaceState({}, "", "/nido");
+      }
+    }
+    const codigo = invitacion.current;
+    if (!codigo || !est.yo || sumado.current) return;
+    sumado.current = true;
+
+    (async () => {
+      try {
+        const r = await pedir<{ amigo: { nombre: string; id: string } }>("/api/amigos", {
+          datos: { codigo },
+        });
+        mostrarAviso(`🪺 ${r.amigo.nombre} entró a tu bandada. Ya se pueden mandar loros.`);
+        est.refrescar();
+        enfocar(r.amigo.id);
+      } catch (e: any) {
+        // El caso más común es haber abierto el propio link; no es un error
+        // que valga la pena mostrar.
+        if (!String(e?.message || "").includes("tu propio")) {
+          mostrarAviso(`No se pudo sumar ese nido: ${e?.message || "código inválido"}`);
+        }
+      }
+    })();
+  }, [est.yo, est, mostrarAviso, enfocar]);
 
   // El nido sigue al dispositivo: si te moviste más de 300 m, el próximo vuelo
   // sale desde donde estás ahora y no desde donde estabas cuando te registraste.

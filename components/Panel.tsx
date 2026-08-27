@@ -156,13 +156,17 @@ function Cabecera({ yo, codigo }: { yo: NidoVista; codigo: string }) {
   const [pidiendoLlave, setPidiendoLlave] = useState(false);
 
   async function compartir() {
-    const texto = `Mandame un loro 🦜 Mi código de nido es ${codigo}`;
-    const url = typeof window !== "undefined" ? window.location.origin : "";
+    // El código va DENTRO del link, no suelto al lado. Pedirle a alguien que
+    // copie seis caracteres de un mensaje de WhatsApp y después adivine dónde
+    // pegarlos es donde se caía la invitación: ahora toca el link, ve de quién
+    // viene, y al armar su nido queda conectado solo.
+    const url = typeof window !== "undefined" ? `${window.location.origin}/?n=${codigo}` : "";
+    const texto = "Mandame un loro 🦜 Tocá el link y quedamos conectados:";
     try {
       if (navigator.share) {
         await navigator.share({ title: "Loros", text: texto, url });
       } else {
-        await navigator.clipboard.writeText(`${texto} — ${url}`);
+        await navigator.clipboard.writeText(`${texto} ${url}`);
       }
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
