@@ -388,6 +388,22 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 }
 .invitacion strong { color: var(--texto); }
 
+/* El ave del arco: deriva lenta de un lado al otro, más alta en el medio para
+   acompañar la curva. */
+.hero-ave {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  margin-left: -27px;
+  animation: derivar 11s ease-in-out infinite;
+}
+@keyframes derivar {
+  0%, 100% { transform: translate(-72px, 3px); }
+  25% { transform: translate(0, -2px); }
+  50% { transform: translate(72px, 3px); }
+  75% { transform: translate(0, -2px); }
+}
+
 /* ---------- halo de los CTA ---------- */
 
 .cta {

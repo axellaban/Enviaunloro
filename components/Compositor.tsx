@@ -206,6 +206,27 @@ export function Compositor({
               })}
             </div>
 
+            {/* El perico entrega el mensaje mordido. Avisarlo DESPUÉS de mandar
+                sería una trampa: va acá, pegado a la elección. */}
+            {ave === "perico" && (
+              <p
+                style={{
+                  margin: "-6px 0 14px",
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  background: `${AVES.perico.color}14`,
+                  border: `1px dashed ${AVES.perico.color}55`,
+                  fontSize: 12.5,
+                  lineHeight: 1.5,
+                  color: "var(--suave)",
+                }}
+              >
+                Ojo: el perico llega antes que nadie, pero{" "}
+                <strong style={{ color: AVES.perico.color }}>se olvida la mitad</strong>. El
+                mensaje llega con palabras perdidas, repetidas o mezcladas.
+              </p>
+            )}
+
             <textarea
               className="campo"
               rows={4}
@@ -247,6 +268,20 @@ export function Compositor({
                 Vuelo de prueba
               </label>
             </div>
+
+            <p
+              style={{
+                fontSize: 11.5,
+                lineHeight: 1.55,
+                color: "var(--tenue)",
+                margin: "-6px 0 14px",
+              }}
+            >
+              <strong style={{ color: "var(--suave)" }}>Vuelo de prueba:</strong> comprime el
+              viaje a unos minutos para mostrar la app sin esperar de verdad; las cuatro aves
+              mantienen la proporción entre sí. · 2 de cada 1000 loros se pierden en el camino y
+              no llegan nunca.
+            </p>
 
             {error && (
               <p style={{ color: "#fca5a5", fontSize: 13.5, marginBottom: 12 }}>{error}</p>

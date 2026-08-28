@@ -69,11 +69,14 @@ export function Panel(p: Props) {
               onClick={() => setPestaña(t.id)}
               style={{
                 flex: 1,
-                padding: "9px 6px",
+                padding: "9px 4px",
                 borderRadius: 10,
                 cursor: "pointer",
-                fontSize: 13.5,
+                // Con cuatro pestañas en 390 px, "En vuelo" más su contador se
+                // partía en dos renglones y descuadraba la fila entera.
+                fontSize: 12.5,
                 fontWeight: 700,
+                whiteSpace: "nowrap",
                 background: activa ? "var(--panel-alto)" : "transparent",
                 border: `1px solid ${activa ? "var(--borde-alto)" : "transparent"}`,
                 color: activa ? "var(--texto)" : "var(--suave)",
@@ -83,8 +86,8 @@ export function Panel(p: Props) {
               {t.contador > 0 && (
                 <span
                   style={{
-                    marginLeft: 6,
-                    padding: "1px 7px",
+                    marginLeft: 5,
+                    padding: "1px 6px",
                     borderRadius: 99,
                     fontSize: 11,
                     background: "var(--esmeralda)",
@@ -338,19 +341,57 @@ function TarjetaBuzon({
           {abriendo ? "Abriendo…" : `Aterrizó ${a.articulo} ${a.nombre.toLowerCase()} — abrir`}
         </button>
       ) : (
-        <p
-          className="entra"
-          style={{
-            marginTop: 10,
-            fontSize: 14.5,
-            lineHeight: 1.6,
-            color: enviado ? "var(--suave)" : "var(--texto)",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-          }}
-        >
-          {loro.texto}
-        </p>
+        <div className="entra">
+          <p
+            style={{
+              marginTop: 10,
+              fontSize: 14.5,
+              lineHeight: 1.6,
+              color: enviado ? "var(--suave)" : "var(--texto)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {loro.texto}
+          </p>
+
+          {/* Que el mensaje llegue mordido tiene que leerse como el perico y no
+              como un error de la app, así que se dice con todas las letras. A
+              quien lo mandó se le muestra además cómo llegó: ahí está el chiste. */}
+          {loro.olvido && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: "9px 11px",
+                borderRadius: 10,
+                background: `${AVES.perico.color}14`,
+                border: `1px dashed ${AVES.perico.color}55`,
+              }}
+            >
+              <p style={{ fontSize: 12, color: AVES.perico.color, fontWeight: 700 }}>
+                {enviado ? "Así llegó del otro lado" : "El perico se olvidó parte del camino"}
+              </p>
+              {enviado ? (
+                <p
+                  style={{
+                    marginTop: 6,
+                    fontSize: 13.5,
+                    lineHeight: 1.55,
+                    color: "var(--texto)",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {loro.entregado}
+                </p>
+              ) : (
+                <p style={{ marginTop: 4, fontSize: 12, color: "var(--tenue)", lineHeight: 1.5 }}>
+                  Llega antes que nadie, pero no se acuerda de todo.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -563,6 +604,12 @@ function Bandada({
                   {formatearDistancia(km)}
                   {f.lugar ? ` · ${f.lugar}` : ""}
                 </p>
+                {f.bot && (
+                  <p style={{ color: "var(--tenue)", fontSize: 11.5, marginTop: 2 }}>
+                    Vecina de práctica: te contesta sola, para probar la app sin
+                    esperar a nadie.
+                  </p>
+                )}
               </button>
               <button className="boton chico" onClick={() => alEscribir(f.id)}>
                 Escribirle
@@ -816,6 +863,46 @@ function MiNido({
           </p>
         )}
       </div>
+
+      {/* --- las reglas --- */}
+      <details className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+        <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
+          Cómo funciona
+        </summary>
+        <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+          {[
+            [
+              "Cuánto tarda",
+              "Lo ves antes de mandar: al elegir a quién le escribís, cada ave muestra su tiempo hasta esa persona. Después, la pestaña En vuelo lleva la cuenta regresiva y los kilómetros que faltan.",
+            ],
+            [
+              "Las cuatro aves",
+              "Cuanto más rápido vuela, menos le entra en la cabeza: perico 90 km/h y 120 caracteres, cotorra 60 y 400, loro 40 y 1000, guacamayo 25 y 2000. Y el perico se olvida la mitad por el camino.",
+            ],
+            [
+              "Vuelo de prueba",
+              "Comprime el viaje a unos minutos para poder mostrar la app sin esperar de verdad. Las cuatro aves mantienen la proporción entre sí.",
+            ],
+            [
+              "El 0,2%",
+              "2 de cada 1000 loros se pierden y no llegan nunca. Es poco, no es cero. Quien lo esperaba no sabe qué decía; vos recuperás tu texto y podés volver a mandarlo.",
+            ],
+            [
+              "Doña Cotorra",
+              "Una vecina automática que aparece sola a 2,2 km cuando armás tu nido, para que tengas a quién escribirle desde el primer minuto. Te contesta con la misma ave que le mandaste.",
+            ],
+            [
+              "Tu ubicación",
+              "Nadie ve dónde vivís: de cada nido ajeno se dibuja una zona de 3 km, nunca un punto. La distancia y el tiempo de vuelo sí son exactos.",
+            ],
+          ].map(([titulo, texto]) => (
+            <div key={titulo}>
+              <p style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>{titulo}</p>
+              <p style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--suave)" }}>{texto}</p>
+            </div>
+          ))}
+        </div>
+      </details>
 
       {nota && (
         <p style={{ fontSize: 13, color: "var(--esmeralda-alto)", padding: "0 2px 8px" }}>{nota}</p>

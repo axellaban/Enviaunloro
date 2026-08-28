@@ -150,7 +150,7 @@ try {
 // --- el vuelo ---
 const idBeto = anaAhora.amigos.find((a) => a.nombre === "Beto").id;
 const SECRETO = "Esto no lo puede leer Beto hasta que aterrice el ave.";
-const envio = await ana.llamar("/api/loros", { para: idBeto, ave: "perico", texto: SECRETO, turbo: true });
+const envio = await ana.llamar("/api/loros", { para: idBeto, ave: "loro", texto: SECRETO, turbo: true });
 const vuelo = envio.loro;
 const segundos = Math.round((vuelo.llegada - vuelo.salida) / 1000);
 console.log(`  vuelo de ${Math.round(vuelo.distanciaKm)} km · ${segundos} s (vuelo de prueba)`);
@@ -212,6 +212,38 @@ if (MODO_EXTRAVIO) {
 // --- Carla no ve nada de esto ---
 const deCarla = await carla.llamar("/api/estado");
 chequear(!deCarla.loros.some((l) => l.id === vuelo.id), "un tercero no ve el loro ajeno");
+
+// --- el perico se olvida la mitad ---
+const CARTA = "Che acordate de traer el cargador que me lo dejé en tu casa el finde pasado";
+const conPerico = (
+  await ana.llamar("/api/loros", { para: idBeto, ave: "perico", texto: CARTA, turbo: true })
+).loro;
+const esperaPerico = Math.round((conPerico.llegada - conPerico.salida) / 1000) + 4;
+console.log(`  perico en el aire, ${esperaPerico} s…`);
+
+const volando = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
+chequear(volando.olvido === false, "mientras vuela no se adelanta que va a llegar mordido");
+
+await new Promise((r) => setTimeout(r, esperaPerico * 1000));
+const mordido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
+chequear(mordido.llego === true, "el perico aterrizó");
+chequear(mordido.olvido === true, "avisa que se olvidó cosas");
+chequear(mordido.texto !== CARTA, `a Beto le llega cambiado: "${mordido.texto}"`);
+
+// Cambiado, no destruido: tiene que seguir entendiéndose.
+const comunes = CARTA.split(" ").filter((w) => mordido.texto.includes(w)).length;
+chequear(comunes / CARTA.split(" ").length > 0.7, "pero se entiende igual: quedan casi todas las palabras");
+chequear(
+  mordido.texto.split(" ")[0] === "Che" && mordido.texto.endsWith("pasado"),
+  "no toca ni la primera ni la última palabra"
+);
+
+const delLadoDeAna = (await ana.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
+chequear(delLadoDeAna.texto === CARTA, "Ana sigue viendo lo que escribió");
+chequear(delLadoDeAna.entregado === mordido.texto, "y ve cómo llegó del otro lado");
+
+const otraVezMordido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
+chequear(otraVezMordido.texto === mordido.texto, "el olvido es el mismo en cada consulta");
 
 // --- la llave: el mismo nido en otro dispositivo ---
 const { llave } = await ana.llamar("/api/sesion");

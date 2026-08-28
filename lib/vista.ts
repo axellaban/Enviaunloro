@@ -57,6 +57,10 @@ export type LoroVista = {
   motivo: string;
   /** null mientras vuela y es para vos: todavía no existe de este lado. */
   texto: string | null;
+  /** El perico perdió cosas por el camino. Solo se sabe una vez que aterrizó. */
+  olvido: boolean;
+  /** Cómo llegó del otro lado. Solo para quien lo mandó, y recién al aterrizar. */
+  entregado: string | null;
   leido: number | null;
 };
 
@@ -100,6 +104,11 @@ export function verLoro(
   const perdido = extravio !== null && ahora >= extravio;
   const llego = !perdido && ahora >= l.llegada;
 
+  // Los loros de antes de que existiera el perico olvidadizo no tienen el
+  // campo; para ellos lo entregado es lo escrito.
+  const entregado = l.textoEntregado ?? l.texto;
+  const olvido = entregado !== l.texto;
+
   // La punta del otro se corre; la propia queda exacta. Las dos personas ven
   // líneas apenas distintas y el mismo avance: el tiempo es lo que importa.
   const origen = enviado ? l.origen : zonaDe(l.origen, l.de);
@@ -127,7 +136,15 @@ export function verLoro(
     motivo: perdido ? l.motivo || "" : "",
     // Un loro perdido nunca llega, así que su texto tampoco: quien lo esperaba
     // no va a saber nunca qué decía. Quien lo escribió lo sigue viendo.
-    texto: enviado || llego ? l.texto : null,
+    //
+    // Y lo que llega no siempre es lo que se escribió: el perico se come
+    // palabras por el camino. Quien lo mandó ve su texto tal cual; quien lo
+    // recibe, lo que efectivamente llegó.
+    texto: enviado ? l.texto : llego ? entregado : null,
+    // El olvido se cuenta recién al aterrizar, para las dos puntas: saber de
+    // antemano que va a llegar mordido le saca la gracia.
+    olvido: llego && olvido,
+    entregado: enviado && llego && olvido ? entregado : null,
     leido: l.leido,
   };
 }

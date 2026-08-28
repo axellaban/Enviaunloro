@@ -16,6 +16,7 @@ import {
 import { lugarDe } from "./geocode";
 import { escribirDoc, leerDoc, store } from "./store";
 import { duracionVuelo, probabilidadExtravio } from "./vuelo";
+import { loQueRecuerdaElPerico } from "./perico";
 import { nuevoId } from "./sesion";
 
 export type Nido = {
@@ -40,7 +41,15 @@ export type Loro = {
   de: string;
   para: string;
   ave: AveId;
+  /** Lo que se escribió. Quien lo mandó ve siempre esto. */
   texto: string;
+  /**
+   * Lo que llega del otro lado. Igual al original salvo con el perico, que se
+   * olvida y mezcla palabras por el camino (lib/perico.ts). Se calcula al
+   * despegar y queda escrito: si se calculara al leer, cada consulta entregaría
+   * un mensaje distinto.
+   */
+  textoEntregado: string;
   origen: Punto;
   destino: Punto;
   distanciaKm: number;
@@ -256,8 +265,9 @@ export async function enviarLoro(datos: {
   const seExtravia = Math.random() < probabilidadExtravio();
   const dondeSePierde = 0.15 + Math.random() * 0.7;
 
+  const id = nuevoId();
   const loro: Loro = {
-    id: nuevoId(),
+    id,
     de: datos.de.id,
     para: datos.para.id,
     ave: datos.ave,
@@ -266,6 +276,10 @@ export async function enviarLoro(datos: {
     destino,
     distanciaKm: km,
     salida,
+    // El perico vuela más rápido y llega con la mitad al revés. Es la contra
+    // de su velocidad, y la pantalla de escribir lo avisa antes de mandar.
+    textoEntregado:
+      datos.ave === "perico" ? loQueRecuerdaElPerico(texto, id) : texto,
     llegada: salida + duracion,
     turbo: datos.turbo,
     extravio: seExtravia ? salida + Math.round(duracion * dondeSePierde) : null,

@@ -131,16 +131,12 @@ function Trayectoria() {
           el suyo
         </text>
       </svg>
-      <div
-        style={{
-          position: "absolute",
-          left: "48%",
-          top: 8,
-          transform: "translateX(-50%)",
-          animation: "aletear 0.7s ease-in-out infinite",
-        }}
-      >
-        <Ave especie="loro" size={52} />
+      {/* Va y viene despacio sobre el arco. Sin rotarlo: el ave mira siempre a
+          la derecha, y girarla en la vuelta la dejaría volando de cola. A esta
+          velocidad y con este recorrido corto, la deriva se lee como aletear en
+          el lugar. */}
+      <div className="hero-ave">
+        <Ave especie="perico" size={54} aletea />
       </div>
     </div>
   );
