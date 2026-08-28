@@ -20,8 +20,10 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { AVES } from "../lib/aves";
+import { AVES, type AveId } from "../lib/aves";
 import { desplazar, puntoEnRuta, rumbo, ruta, type Punto } from "../lib/geo";
+import { avanceVuelo } from "../lib/vuelo";
+import { tramosEnElAire, type Tramo } from "../lib/tramos";
 import { aveHtml } from "./Ave";
 import type { LoroVista, NidoVista } from "../lib/vista";
 
@@ -73,20 +75,74 @@ function iconoNido(n: NidoVista, esMio: boolean): L.DivIcon {
   });
 }
 
-function iconoAve(especie: keyof typeof AVES, grados: number): L.DivIcon {
+function iconoAve(especie: AveId, grados: number): L.DivIcon {
+  // La paloma no viaja sola: lleva el corazón de chocolate colgando. Va PEGADO
+  // al ave y fuera del div que rota, o giraría de cabeza a mitad de vuelo.
+  const carga =
+    especie === "paloma"
+      ? `<span style="position:absolute;left:50%;top:19px;transform:translateX(-50%);font-size:13px;filter:drop-shadow(0 1px 3px #000)">🍫</span>`
+      : "";
   return L.divIcon({
     className: "marcador-ave",
     iconSize: [34, 28],
     iconAnchor: [17, 14],
     // El rotado va en un div interno: el externo lo posiciona Leaflet con su
     // propio transform y pisarlo rompe el mapa.
-    html: `<div style="width:34px;height:28px;display:grid;place-items:center">
+    html: `<div style="position:relative;width:34px;height:28px;display:grid;place-items:center">
       <div data-rot style="transform:rotate(${grados}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,.8))">${aveHtml(
         especie,
         34
-      )}</div>
+      )}</div>${carga}
     </div>`,
   });
+}
+
+/** La perica: el mismo perico, de rosa, con un corazón encima. */
+function iconoPerica(): L.DivIcon {
+  return L.divIcon({
+    className: "marcador-ave",
+    iconSize: [30, 26],
+    iconAnchor: [15, 13],
+    html: `<div style="position:relative;width:30px;height:26px;display:grid;place-items:center">
+      <div style="filter:drop-shadow(0 2px 6px rgba(0,0,0,.8)) hue-rotate(-95deg) saturate(1.5)">${aveHtml(
+        "perico",
+        30
+      )}</div>
+      <span style="position:absolute;left:50%;top:-12px;transform:translateX(-50%);font-size:14px">💗</span>
+    </div>`,
+  });
+}
+
+/** Cuántas flores deja la paloma por el camino. */
+const FLORES = 7;
+
+/**
+ * El radio de las vueltas que da el perico distraído, en km.
+ *
+ * Proporcional al viaje —para que se vea igual de grande en un vuelo de 2 km
+ * que en uno de 10.000— pero acotado: sin el piso, en un vuelo corto el bucle
+ * sería un punto; sin el techo, en uno intercontinental taparía un país.
+ */
+function radioGiro(km: number): number {
+  return Math.min(60, Math.max(0.22, km * 0.035));
+}
+
+/** Una vuelta completa cada seis segundos. */
+const GIRO_MS = 6000;
+
+/**
+ * Cómo se para el ave para ir hacia `grados`.
+ *
+ * Los dibujos miran a la derecha, así que rotar y listo alcanza para ir al
+ * este. Al oeste no: rotar media vuelta deja al bicho volando panza arriba.
+ * Entonces, en vez de seguir rotando, se lo espeja sobre su propio eje largo —
+ * la nariz apunta igual y la panza vuelve abajo, que es como vuelan los pájaros.
+ */
+function orientar(grados: number): string {
+  const giro = grados - 90;
+  const normal = ((giro % 360) + 360) % 360;
+  const cabezaAbajo = normal > 90 && normal < 270;
+  return cabezaAbajo ? `rotate(${giro}deg) scaleY(-1)` : `rotate(${giro}deg)`;
 }
 
 function escapar(s: string): string {
@@ -100,6 +156,14 @@ type CapaVuelo = {
   recorrida: L.Polyline;
   ave: L.Marker;
   puntos: Punto[];
+  /** Cuándo deja de existir este tramo. La poda la hace la animación: el
+   *  tramo no termina por un cambio de datos sino por el paso del tiempo. */
+  llegada: number;
+  /** Solo la paloma: las flores que va soltando. Se crean apagadas y se
+   *  encienden al pasar por encima. */
+  flores: L.Marker[];
+  /** Solo el perico enamorado, y recién cuando efectivamente se distrae. */
+  giro: { circulo: L.Circle; perica: L.Marker } | null;
 };
 
 export default function Mapa({
@@ -253,7 +317,7 @@ export default function Mapa({
         m.setView([todos[0].lat, todos[0].lng], 13);
       } else {
         // El encuadre tiene que abarcar las ZONAS, no los puntos: si se calcula
-        // sobre los centros, un círculo de 3 km termina ocupando toda la
+        // sobre los centros, la zona de un vecino termina ocupando toda la
         // pantalla y no se entiende nada.
         const limites = L.latLngBounds([]);
         for (const n of todos) {
@@ -271,33 +335,102 @@ export default function Mapa({
     }
   }, [yo, amigos]);
 
-  // ---- vuelos: crear y sacar capas ----
+  /** Saca del mapa todo lo que dibuja un tramo. */
+  function borrarCapa(clave: string) {
+    const capa = capas.current.get(clave);
+    if (!capa) return;
+    capa.completa.remove();
+    capa.recorrida.remove();
+    capa.ave.remove();
+    for (const f of capa.flores) f.remove();
+    capa.giro?.circulo.remove();
+    capa.giro?.perica.remove();
+    capas.current.delete(clave);
+  }
+
+  // ---- vuelos: crear capas ----
+  //
+  // Solo CREA. Sacarlas es cosa de la animación: un tramo no termina porque
+  // cambien los datos sino porque pasó la hora de llegada, y entre dos
+  // consultas al servidor pueden pasar varios segundos.
   useEffect(() => {
     const m = mapa.current;
     if (!m) return;
 
-    const vistos = new Set<string>();
-    for (const v of vuelos) {
-      vistos.add(v.id);
-      if (capas.current.has(v.id)) continue;
-
+    for (const v of tramosEnElAire(vuelos, ahoraRef.current())) {
       const color = AVES[v.ave].color;
+      const existente = capas.current.get(v.clave);
+
+      // El desvío del perico no viene desde el principio: aparece recién cuando
+      // se distrae. Por eso se comprueba también sobre capas ya creadas.
+      if (existente) {
+        if (v.desvio && !existente.giro) {
+          const centro = puntoEnRuta(v.origen, v.destino, v.desvio.en);
+          existente.giro = {
+            circulo: L.circle([centro.lat, centro.lng], {
+              radius: radioGiro(v.distanciaKm) * 1000,
+              color: "#f472b6",
+              weight: 1.5,
+              opacity: 0.75,
+              dashArray: "3 5",
+              fill: false,
+              interactive: false,
+            }).addTo(m),
+            perica: L.marker([centro.lat, centro.lng], {
+              icon: iconoPerica(),
+              interactive: false,
+              zIndexOffset: 480,
+            }).addTo(m),
+          };
+        }
+        continue;
+      }
+
       const puntos = ruta(v.origen, v.destino, 96);
       const latlngs = puntos.map((p) => [p.lat, p.lng] as [number, number]);
 
-      capas.current.set(v.id, {
+      // La paloma va sembrando flores. Se crean las siete de una y arrancan
+      // invisibles: crear marcadores adentro del bucle de animación es la
+      // forma más rápida de que el mapa se ponga a tironear.
+      const flores: L.Marker[] =
+        v.ave === "paloma" && !v.vuelta
+          ? Array.from({ length: FLORES }, (_, i) => {
+              const p = puntoEnRuta(v.origen, v.destino, (i + 1) / (FLORES + 1));
+              return L.marker([p.lat, p.lng], {
+                icon: L.divIcon({
+                  className: "marcador-ave",
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8],
+                  html: `<span style="font-size:13px;filter:drop-shadow(0 1px 3px #000)">${
+                    i % 2 ? "🌷" : "🌹"
+                  }</span>`,
+                }),
+                interactive: false,
+                opacity: 0,
+                zIndexOffset: 400,
+              }).addTo(m);
+            })
+          : [];
+
+      capas.current.set(v.clave, {
         puntos,
+        llegada: v.llegada,
+        flores,
+        giro: null,
         completa: L.polyline(latlngs, {
           color,
           weight: 1.5,
-          opacity: 0.3,
-          dashArray: "3 9",
+          opacity: v.vuelta ? 0.18 : 0.3,
+          // La vuelta se dibuja más fina y más punteada: es el mismo mensaje
+          // volviendo, no uno nuevo, y no tiene que competir con las idas.
+          dashArray: v.vuelta ? "2 10" : "3 9",
           interactive: false,
         }).addTo(m),
         recorrida: L.polyline([], {
           color,
-          weight: 3.5,
-          opacity: 0.95,
+          weight: v.vuelta ? 2 : 3.5,
+          opacity: v.vuelta ? 0.7 : 0.95,
+          dashArray: v.vuelta ? "6 5" : undefined,
           interactive: false,
         }).addTo(m),
         ave: L.marker([v.origen.lat, v.origen.lng], {
@@ -306,14 +439,6 @@ export default function Mapa({
           zIndexOffset: 500,
         }).addTo(m),
       });
-    }
-
-    for (const [id, capa] of capas.current) {
-      if (vistos.has(id)) continue;
-      capa.completa.remove();
-      capa.recorrida.remove();
-      capa.ave.remove();
-      capas.current.delete(id);
     }
   }, [vuelos]);
 
@@ -325,15 +450,29 @@ export default function Mapa({
     const paso = () => {
       if (!vivo) return;
       const ahora = ahoraRef.current();
+      const tramos = tramosEnElAire(vuelos, ahora);
+      const vivos = new Set(tramos.map((t) => t.clave));
 
-      for (const v of vuelos) {
-        const capa = capas.current.get(v.id);
+      for (const v of tramos) {
+        const capa = capas.current.get(v.clave);
         if (!capa) continue;
 
-        const total = Math.max(1, v.llegada - v.salida);
-        const t = Math.min(1, Math.max(0, (ahora - v.salida) / total));
+        const { avance: t, girando } = avanceVuelo(v, ahora);
 
-        const pos = puntoEnRuta(v.origen, v.destino, t);
+        // Dónde está y hacia dónde mira. Mientras da vueltas, el ave no avanza:
+        // orbita el punto donde se distrajo, y apunta a la tangente.
+        const enRuta = puntoEnRuta(v.origen, v.destino, t);
+        let pos = enRuta;
+        let grados: number;
+        if (girando) {
+          const angulo = ((ahora % GIRO_MS) / GIRO_MS) * 360;
+          pos = desplazar(enRuta, radioGiro(v.distanciaKm), angulo);
+          grados = angulo + 90;
+        } else {
+          const adelante = puntoEnRuta(v.origen, v.destino, Math.min(1, t + 0.01));
+          grados =
+            t < 0.995 ? rumbo(pos, adelante) : rumbo(puntoEnRuta(v.origen, v.destino, 0.98), pos);
+        }
         capa.ave.setLatLng([pos.lat, pos.lng]);
 
         // Lo recorrido: los puntos de la ruta que quedaron atrás, más el punto
@@ -345,13 +484,20 @@ export default function Mapa({
         trozo.push([pos.lat, pos.lng]);
         capa.recorrida.setLatLngs(trozo);
 
-        // Rumbo: hacia dónde va desde acá. Cerca del final se mira el punto
-        // anterior para no quedar apuntando a ninguna parte.
-        const adelante = puntoEnRuta(v.origen, v.destino, Math.min(1, t + 0.01));
-        const grados =
-          t < 0.995 ? rumbo(pos, adelante) : rumbo(puntoEnRuta(v.origen, v.destino, 0.98), pos);
         const el = capa.ave.getElement()?.querySelector("[data-rot]") as HTMLElement | null;
-        if (el) el.style.transform = `rotate(${grados - 90}deg)`;
+        if (el) el.style.transform = orientar(grados);
+
+        // Las flores aparecen cuando la paloma ya pasó por encima.
+        for (let i = 0; i < capa.flores.length; i++) {
+          const donde = (i + 1) / (capa.flores.length + 1);
+          capa.flores[i].setOpacity(t >= donde ? 0.95 : 0);
+        }
+      }
+
+      // Poda: los tramos que ya aterrizaron dejan de dibujarse acá, sin esperar
+      // a la próxima consulta al servidor.
+      for (const clave of [...capas.current.keys()]) {
+        if (!vivos.has(clave)) borrarCapa(clave);
       }
 
       cuadro = requestAnimationFrame(paso);
@@ -370,13 +516,13 @@ export default function Mapa({
     if (!m || !foco) return;
     const id = foco.split("#")[0];
 
-    const vuelo = vuelos.find((v) => v.id === id);
-    if (vuelo) {
-      const t = Math.min(
-        1,
-        Math.max(0, (ahoraRef.current() - vuelo.salida) / Math.max(1, vuelo.llegada - vuelo.salida))
-      );
-      const p = puntoEnRuta(vuelo.origen, vuelo.destino, t);
+    const ahora = ahoraRef.current();
+    // Un loro puede tener dos tramos en el aire (la ida terminó, la vuelta no).
+    // Se enfoca el que todavía se está moviendo.
+    const tramo = tramosEnElAire(vuelos, ahora).find((t) => t.loroId === id);
+    if (tramo) {
+      const { avance } = avanceVuelo(tramo, ahora);
+      const p = puntoEnRuta(tramo.origen, tramo.destino, avance);
       m.flyTo([p.lat, p.lng], Math.max(m.getZoom(), 11), { duration: 0.9 });
       return;
     }

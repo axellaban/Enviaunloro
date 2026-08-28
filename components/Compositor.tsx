@@ -41,7 +41,6 @@ export function Compositor({
   );
   const [ave, setAve] = useState<AveId>(aveInicial ?? yo.ave);
   const [texto, setTexto] = useState(textoInicial ?? "");
-  const [turbo, setTurbo] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -52,7 +51,7 @@ export function Compositor({
 
   const a = AVES[ave];
   const sobra = a.maxCaracteres - texto.length;
-  const duracion = duracionVuelo(km, ave, turbo, escala);
+  const duracion = duracionVuelo(km, ave, escala);
 
   async function soltar() {
     if (!para || !texto.trim()) return;
@@ -60,12 +59,14 @@ export function Compositor({
     setError("");
     try {
       await pedir("/api/loros", {
-        datos: { para: para.id, ave, texto: texto.trim(), turbo },
+        datos: { para: para.id, ave, texto: texto.trim() },
       });
       alEnviado(
-        `${a.articulo === "la" ? "Tu cotorra salió" : `Tu ${a.nombre.toLowerCase()} despegó`} hacia ${
+        `Tu ${a.nombre.toLowerCase()} ${a.articulo === "la" ? "salió" : "despegó"} hacia ${
           para.nombre
-        }. Aterriza en ${formatearDuracion(duracion)}.`
+        }. Aterriza en ${formatearDuracion(duracion)}${
+          a.rareza === "romance" ? ", si no se distrae en el camino." : "."
+        }`
       );
     } catch (e: any) {
       setError(e?.message || "No se pudo soltar el ave.");
@@ -174,7 +175,12 @@ export function Compositor({
             >
               {AVES_LISTA.map((x) => {
                 const activa = x.id === ave;
-                const eta = formatearDuracion(duracionVuelo(km, x.id, turbo, escala));
+                // El "+" no es decoración: el perico a veces se enamora en el
+                // camino y llega bastante más tarde. Prometer el número pelado
+                // sería mentir, y esconder el número sería peor.
+                const eta =
+                  formatearDuracion(duracionVuelo(km, x.id, escala)) +
+                  (x.rareza === "romance" ? "+" : "");
                 return (
                   <button
                     key={x.id}
@@ -206,24 +212,24 @@ export function Compositor({
               })}
             </div>
 
-            {/* El perico entrega el mensaje mordido. Avisarlo DESPUÉS de mandar
-                sería una trampa: va acá, pegado a la elección. */}
-            {ave === "perico" && (
+            {/* Cuatro de las seis aves hacen algo raro con el mensaje o con la
+                pantalla del otro lado. Avisarlo DESPUÉS de mandar sería una
+                trampa: va acá, pegado a la elección, y sale de la misma tabla
+                que las velocidades. */}
+            {a.aviso && (
               <p
                 style={{
                   margin: "-6px 0 14px",
                   padding: "9px 12px",
                   borderRadius: 10,
-                  background: `${AVES.perico.color}14`,
-                  border: `1px dashed ${AVES.perico.color}55`,
+                  background: `${a.color}14`,
+                  border: `1px dashed ${a.color}55`,
                   fontSize: 12.5,
                   lineHeight: 1.5,
                   color: "var(--suave)",
                 }}
               >
-                Ojo: el perico llega antes que nadie, pero{" "}
-                <strong style={{ color: AVES.perico.color }}>se olvida la mitad</strong>. El
-                mensaje llega con palabras perdidas, repetidas o mezcladas.
+                {a.aviso}
               </p>
             )}
 
@@ -248,25 +254,6 @@ export function Compositor({
                 {sobra} caracteres para {a.articulo === "la" ? "la" : "el"}{" "}
                 {a.nombre.toLowerCase()}
               </span>
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  color: "var(--suave)",
-                  cursor: "pointer",
-                  userSelect: "none",
-                }}
-                title="Comprime el viaje a unos minutos, manteniendo las proporciones entre aves. Para mostrar la app sin esperar de verdad."
-              >
-                <input
-                  type="checkbox"
-                  checked={turbo}
-                  onChange={(e) => setTurbo(e.target.checked)}
-                  style={{ accentColor: "var(--esmeralda)" }}
-                />
-                Vuelo de prueba
-              </label>
             </div>
 
             <p
@@ -277,10 +264,7 @@ export function Compositor({
                 margin: "-6px 0 14px",
               }}
             >
-              <strong style={{ color: "var(--suave)" }}>Vuelo de prueba:</strong> comprime el
-              viaje a unos minutos para mostrar la app sin esperar de verdad; las cuatro aves
-              mantienen la proporción entre sí. · 2 de cada 1000 loros se pierden en el camino y
-              no llegan nunca.
+              2 de cada 1000 loros se pierden en el camino y no llegan nunca.
             </p>
 
             {error && (
@@ -295,7 +279,9 @@ export function Compositor({
             >
               {enviando
                 ? "Despegando…"
-                : `Soltar ${a.articulo} ${a.nombre.toLowerCase()} · llega en ${formatearDuracion(duracion)}`}
+                : `Soltar ${a.articulo} ${a.nombre.toLowerCase()} · llega en ${formatearDuracion(
+                    duracion
+                  )}${a.rareza === "romance" ? "+" : ""}`}
             </button>
           </>
         )}

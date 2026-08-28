@@ -9,7 +9,7 @@
 //    texto: lo escribió, ya lo sabe.
 //
 // 2. **Las coordenadas exactas de otra persona tampoco salen.** Se manda un
-//    punto corrido hasta 3 km (lib/privacidad.ts) y el radio de esa imprecisión,
+//    punto corrido hasta 300 m (lib/privacidad.ts) y el radio de esa imprecisión,
 //    para que el mapa pueda dibujar una zona en vez de un pin. La distancia y
 //    el tiempo de vuelo se calculan antes, con los puntos reales, así que son
 //    exactos aunque el dibujo sea aproximado.
@@ -17,7 +17,8 @@
 // Tu propio nido sí viaja exacto: es tu dato.
 
 import type { AveId } from "./aves";
-import type { Loro, Nido } from "./datos";
+import type { Loro, Nido, Suerte } from "./datos";
+import type { Desvio } from "./vuelo";
 import { distanciaKm, type Punto } from "./geo";
 import { RADIO_ZONA_KM, zonaDe } from "./privacidad";
 
@@ -47,7 +48,6 @@ export type LoroVista = {
   distanciaKm: number;
   salida: number;
   llegada: number;
-  turbo: boolean;
   llego: boolean;
   /** Se perdió: no llegó ni va a llegar. */
   perdido: boolean;
@@ -55,6 +55,12 @@ export type LoroVista = {
   extravio: number | null;
   /** Qué le pasó. Vacío hasta que efectivamente se pierde. */
   motivo: string;
+  /**
+   * El romance del perico. null mientras no haya pasado — por la misma razón
+   * que el extravío: saber de antemano que se va a distraer arruina el momento
+   * en que se distrae.
+   */
+  desvio: Desvio | null;
   /** null mientras vuela y es para vos: todavía no existe de este lado. */
   texto: string | null;
   /** El perico perdió cosas por el camino. Solo se sabe una vez que aterrizó. */
@@ -62,6 +68,10 @@ export type LoroVista = {
   /** Cómo llegó del otro lado. Solo para quien lo mandó, y recién al aterrizar. */
   entregado: string | null;
   leido: number | null;
+  /** Qué hizo con el ave quien la recibió. null si todavía no decidió. */
+  suerte: Suerte | null;
+  /** Si la soltó: el vuelo de vuelta, para dibujarlo en el mapa. */
+  vuelta: { salida: number; llegada: number } | null;
 };
 
 const punto = (n: Nido): Punto => ({ lat: n.lat, lng: n.lng });
@@ -109,6 +119,16 @@ export function verLoro(
   const entregado = l.textoEntregado ?? l.texto;
   const olvido = entregado !== l.texto;
 
+  // Mismo criterio que el extravío: el desvío no viaja hasta que sucede.
+  const desvio = l.desvio ?? null;
+  const seDistrajo = desvio !== null && ahora >= desvio.desde;
+
+  const suerte = l.suerte ?? null;
+  const vuelta =
+    suerte === "soltado" && l.suerteEn && l.regreso
+      ? { salida: l.suerteEn, llegada: l.regreso }
+      : null;
+
   // La punta del otro se corre; la propia queda exacta. Las dos personas ven
   // líneas apenas distintas y el mismo avance: el tiempo es lo que importa.
   const origen = enviado ? l.origen : zonaDe(l.origen, l.de);
@@ -129,11 +149,11 @@ export function verLoro(
     distanciaKm: l.distanciaKm,
     salida: l.salida,
     llegada: l.llegada,
-    turbo: l.turbo,
     llego,
     perdido,
     extravio: perdido ? extravio : null,
     motivo: perdido ? l.motivo || "" : "",
+    desvio: seDistrajo ? desvio : null,
     // Un loro perdido nunca llega, así que su texto tampoco: quien lo esperaba
     // no va a saber nunca qué decía. Quien lo escribió lo sigue viendo.
     //
@@ -146,5 +166,7 @@ export function verLoro(
     olvido: llego && olvido,
     entregado: enviado && llego && olvido ? entregado : null,
     leido: l.leido,
+    suerte,
+    vuelta,
   };
 }

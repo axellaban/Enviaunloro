@@ -18,6 +18,10 @@ const BASE = process.env.LOROS_URL || "http://localhost:3000";
 //   LOROS_PROB_EXTRAVIO=1 npm run prueba
 const MODO_EXTRAVIO = process.env.LOROS_PROB_EXTRAVIO === "1";
 
+// Lo mismo para el romance del perico: con LOROS_PROB_ROMANCE=1 se distraen
+// todos y se puede verificar el desvío sin mandar diez y cruzar los dedos.
+const MODO_ROMANCE = process.env.LOROS_PROB_ROMANCE === "1";
+
 function cliente(nombre) {
   let cookie = "";
   return {
@@ -106,7 +110,10 @@ const REAL_ANA = { lat: -34.6037, lng: -58.3816 };
 const anaSegunBeto = (await beto.llamar("/api/estado")).amigos.find((a) => a.nombre === "Ana");
 const corrimiento = metros(REAL_ANA, { lat: anaSegunBeto.lat, lng: anaSegunBeto.lng });
 console.log(`  Beto ve a Ana corrida ${Math.round(corrimiento)} m de donde está`);
-chequear(corrimiento > 150, "las coordenadas de Ana NO son las reales");
+// El corrimiento es al azar dentro del radio, así que no se puede exigir un
+// mínimo grande sin volver la prueba caprichosa. Lo que sí es un error seguro:
+// que salga el punto exacto, o que se pase del radio declarado.
+chequear(corrimiento > 1, "las coordenadas de Ana NO son las reales");
 chequear(corrimiento <= anaSegunBeto.radioKm * 1000 + 1, "el corrimiento entra en el radio declarado");
 chequear(anaSegunBeto.radioKm > 0, "viene el radio de la zona para dibujarla");
 chequear(
@@ -147,13 +154,46 @@ try {
   chequear(false, "el perico rechaza más de 120 caracteres");
 } catch { chequear(true, "el perico rechaza más de 120 caracteres"); }
 
-// --- el vuelo ---
+// --- las seis aves no tardan lo mismo, ni siquiera pegadas ---
+//
+// Antes había un piso de 25 segundos por vuelo, y a corta distancia las seis
+// daban exactamente ese número: elegir ave dejaba de significar nada justo con
+// la gente que uno tiene cerca. Ahora el piso es de distancia (400 m), así que
+// las proporciones sobreviven. Beto se muda al lado de Ana para probarlo — y de
+// paso los vuelos de acá abajo duran segundos y no horas.
 const idBeto = anaAhora.amigos.find((a) => a.nombre === "Beto").id;
+await beto.llamar("/api/ubicacion", { lat: -34.6082, lng: -58.3816 }); // ~500 m de Ana
+const cerca = (await ana.llamar("/api/estado")).amigos.find((a) => a.id === idBeto);
+console.log(`  Beto se mudó a ${Math.round((cerca.distanciaKm ?? 0) * 1000)} m de Ana`);
+chequear((cerca.distanciaKm ?? 9) < 1, "Beto quedó a menos de un kilómetro");
+
+//
+// El perico queda afuera de esta comparación a propósito: es el único cuyo
+// tiempo no es determinista —si se enamora, llega después que todos— y meterlo
+// acá haría fallar la prueba cuatro de cada diez corridas por el motivo
+// equivocado. Su desvío se verifica más abajo, con su propia variable.
+const ORDEN = ["cuervo", "cotorra", "loro", "guacamayo"];
+const duraciones = {};
+for (const especie of ORDEN) {
+  const l = (await ana.llamar("/api/loros", { para: idBeto, ave: especie, texto: `probando el ${especie}` })).loro;
+  duraciones[especie] = l.llegada - l.salida;
+}
+console.log("  " + ORDEN.map((k) => `${k} ${Math.round(duraciones[k] / 1000)}s`).join(" · "));
+chequear(
+  ORDEN.every((especie, i) => i === 0 || duraciones[ORDEN[i - 1]] < duraciones[especie]),
+  "a 500 m las aves siguen tardando distinto, y en el orden correcto"
+);
+chequear(
+  duraciones.guacamayo / duraciones.cuervo > 2.5,
+  "y la proporción se mantiene: el guacamayo tarda casi el triple que el cuervo"
+);
+
+// --- el vuelo ---
 const SECRETO = "Esto no lo puede leer Beto hasta que aterrice el ave.";
-const envio = await ana.llamar("/api/loros", { para: idBeto, ave: "loro", texto: SECRETO, turbo: true });
+const envio = await ana.llamar("/api/loros", { para: idBeto, ave: "loro", texto: SECRETO });
 const vuelo = envio.loro;
 const segundos = Math.round((vuelo.llegada - vuelo.salida) / 1000);
-console.log(`  vuelo de ${Math.round(vuelo.distanciaKm)} km · ${segundos} s (vuelo de prueba)`);
+console.log(`  vuelo de ${Math.round(vuelo.distanciaKm * 1000)} m · ${segundos} s`);
 
 const enVueloBeto = (await beto.llamar("/api/estado")).loros.find((l) => l.id === vuelo.id);
 chequear(!!enVueloBeto, "a Beto le aparece el loro en el aire");
@@ -213,22 +253,22 @@ if (MODO_EXTRAVIO) {
 const deCarla = await carla.llamar("/api/estado");
 chequear(!deCarla.loros.some((l) => l.id === vuelo.id), "un tercero no ve el loro ajeno");
 
-// --- el perico se olvida la mitad ---
+// --- la cotorra repite tanto el mensaje que se le mezcla ---
 const CARTA = "Che acordate de traer el cargador que me lo dejé en tu casa el finde pasado";
-const conPerico = (
-  await ana.llamar("/api/loros", { para: idBeto, ave: "perico", texto: CARTA, turbo: true })
+const conCotorra = (
+  await ana.llamar("/api/loros", { para: idBeto, ave: "cotorra", texto: CARTA })
 ).loro;
-const esperaPerico = Math.round((conPerico.llegada - conPerico.salida) / 1000) + 4;
-console.log(`  perico en el aire, ${esperaPerico} s…`);
+const esperaCotorra = Math.round((conCotorra.llegada - conCotorra.salida) / 1000) + 4;
+console.log(`  cotorra en el aire, ${esperaCotorra} s…`);
 
-const volando = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
-chequear(volando.olvido === false, "mientras vuela no se adelanta que va a llegar mordido");
+const volando = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conCotorra.id);
+chequear(volando.olvido === false, "mientras vuela no se adelanta que va a llegar mezclado");
 
-await new Promise((r) => setTimeout(r, esperaPerico * 1000));
-const mordido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
-chequear(mordido.llego === true, "el perico aterrizó");
-chequear(mordido.olvido === true, "avisa que se olvidó cosas");
-chequear(mordido.texto !== CARTA, `a Beto le llega cambiado: "${mordido.texto}"`);
+await new Promise((r) => setTimeout(r, esperaCotorra * 1000));
+const mordido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conCotorra.id);
+chequear(mordido.llego === true, "la cotorra aterrizó");
+chequear(mordido.olvido === true, "avisa que llegó cambiado");
+chequear(mordido.texto !== CARTA, `a Beto le llega mezclado: "${mordido.texto}"`);
 
 // Cambiado, no destruido: tiene que seguir entendiéndose.
 const comunes = CARTA.split(" ").filter((w) => mordido.texto.includes(w)).length;
@@ -238,12 +278,74 @@ chequear(
   "no toca ni la primera ni la última palabra"
 );
 
-const delLadoDeAna = (await ana.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
+const delLadoDeAna = (await ana.llamar("/api/estado")).loros.find((l) => l.id === conCotorra.id);
 chequear(delLadoDeAna.texto === CARTA, "Ana sigue viendo lo que escribió");
 chequear(delLadoDeAna.entregado === mordido.texto, "y ve cómo llegó del otro lado");
 
-const otraVezMordido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
-chequear(otraVezMordido.texto === mordido.texto, "el olvido es el mismo en cada consulta");
+const otraVezMordido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conCotorra.id);
+chequear(otraVezMordido.texto === mordido.texto, "la mezcla es la misma en cada consulta");
+
+// --- el loro clásico no toca nada ---
+const conLoro = (await ana.llamar("/api/loros", { para: idBeto, ave: "loro", texto: CARTA })).loro;
+await new Promise((r) => setTimeout(r, (conLoro.llegada - conLoro.salida) + 3000));
+const intacto = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conLoro.id);
+chequear(intacto.texto === CARTA, "el loro entrega el mensaje tal cual se escribió");
+chequear(intacto.olvido === false, "y no dice que lo haya cambiado");
+
+// --- qué hace Beto con el ave que le quedó en la ventana ---
+chequear(intacto.suerte === null, "el ave queda posada, sin destino decidido");
+const soltado = (await beto.llamar("/api/loros/suerte", { id: conLoro.id, suerte: "soltado" })).loro;
+chequear(soltado.suerte === "soltado", "Beto lo suelta");
+chequear(!!soltado.vuelta, "y aparece el vuelo de vuelta");
+chequear(
+  Math.abs((soltado.vuelta.llegada - soltado.vuelta.salida) - (conLoro.llegada - conLoro.salida)) < 2000,
+  "volver cuesta lo mismo que venir"
+);
+const deVueltaAna = (await ana.llamar("/api/estado")).loros.find((l) => l.id === conLoro.id);
+chequear(!!deVueltaAna.vuelta, "Ana ve que su loro vuelve, sin que Beto le haya escrito nada");
+
+// No se puede cambiar de opinión, ni decidir por un ave ajena.
+const otraVezSuerte = (await beto.llamar("/api/loros/suerte", { id: conLoro.id, suerte: "puchero" })).loro;
+chequear(otraVezSuerte.suerte === "soltado", "una vez decidido no se cambia");
+try {
+  await ana.llamar("/api/loros/suerte", { id: conLoro.id, suerte: "enjaulado" });
+  chequear(false, "quien lo mandó no decide el destino del ave");
+} catch { chequear(true, "quien lo mandó no decide el destino del ave"); }
+
+// --- las dos aves nuevas ---
+const conPaloma = (await ana.llamar("/api/loros", { para: idBeto, ave: "paloma", texto: "te quiero" })).loro;
+chequear(conPaloma.ave === "paloma", "la paloma vuela");
+const conCuervo = (await ana.llamar("/api/loros", { para: idBeto, ave: "cuervo", texto: "malas noticias" })).loro;
+chequear(conCuervo.ave === "cuervo", "el cuervo también");
+chequear(
+  conCuervo.llegada - conCuervo.salida < conPaloma.llegada - conPaloma.salida,
+  "y el cuervo llega antes que la paloma: las malas noticias no se demoran"
+);
+try {
+  await ana.llamar("/api/loros", { para: idBeto, ave: "cuervo", texto: "x".repeat(251) });
+  chequear(false, "el cuervo rechaza más de 250 caracteres");
+} catch { chequear(true, "el cuervo rechaza más de 250 caracteres"); }
+
+// --- el perico se distrae ---
+const conPerico = (await ana.llamar("/api/loros", { para: idBeto, ave: "perico", texto: CARTA.slice(0, 110) })).loro;
+const recienSalido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
+chequear(
+  recienSalido.desvio === null,
+  "recién salido no se filtra si se va a distraer (igual que el extravío)"
+);
+if (MODO_ROMANCE) {
+  console.log("  (modo romance: todos los pericos se distraen)");
+  // El perico limpio recorre 500 m en unos 20 s. Con el desvío, el piso son 40
+  // segundos más de vueltas.
+  chequear(
+    conPerico.llegada - conPerico.salida > 55_000,
+    `con romance forzado el vuelo dura mucho más que el limpio (${Math.round(
+      (conPerico.llegada - conPerico.salida) / 1000
+    )} s)`
+  );
+  const retocado = (await ana.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
+  chequear(retocado.texto.startsWith("Che"), "quien lo mandó sigue viendo su propio texto");
+}
 
 // --- la llave: el mismo nido en otro dispositivo ---
 const { llave } = await ana.llamar("/api/sesion");

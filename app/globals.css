@@ -241,6 +241,21 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   background: linear-gradient(to top, rgba(8, 17, 16, 0.98) 62%, transparent);
 }
 
+/* Leaflet apila sus controles en z-index 800–1000, muy por encima de todo lo
+   que dibuja la app: el zoom y la línea de atribución se veían ENCIMA del modal
+   de escribir, flotando arriba de las tarjetas de las aves. La app tiene su
+   propia escala —400 controles del mapa · 500 chapas · 600 avisos · 900 modal ·
+   1900 ceremonias— y los controles de Leaflet entran acá, abajo de todo. 450 y
+   no menos: tienen que seguir estando arriba de los mosaicos. */
+/* Con `.leaflet-top` a secas no alcanza: la hoja de Leaflet se importa desde el
+   componente del mapa y Next la inyecta DESPUÉS de esta, así que a igual
+   especificidad gana ella. Calificado con el contenedor, el orden deja de
+   importar. */
+.leaflet-container .leaflet-top,
+.leaflet-container .leaflet-bottom {
+  z-index: 450;
+}
+
 .flotante {
   position: absolute;
   z-index: 500;

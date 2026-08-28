@@ -6,7 +6,7 @@
 // es siempre un punto corrido.
 //
 // Cómo: a cada nido se le asigna un desvío fijo —rumbo y distancia al azar,
-// hasta 3 km— derivado de su id. Fijo importa: si cambiara en cada consulta, el
+// hasta 300 m— derivado de su id. Fijo importa: si cambiara en cada consulta, el
 // punto bailaría en el mapa y, peor, con unas cuantas muestras se podría
 // promediar el centro y recuperar la posición real. Al ser siempre el mismo, lo
 // único que se ve es un punto equivocado y quieto.
@@ -20,8 +20,12 @@ import { desplazar, type Punto } from "./geo";
 
 /** Radio del desvío, y también el del círculo que dibuja el mapa. Los dos son
  *  el mismo número a propósito: el círculo tiene que decir la verdad sobre
- *  cuánta imprecisión hay. */
-export const RADIO_ZONA_KM = 3;
+ *  cuánta imprecisión hay.
+ *
+ *  300 m: una manzana y media. Alcanza para no dar una dirección y es lo
+ *  bastante chico para que la zona de alguien que vive cerca no se te coma
+ *  media pantalla del mapa. */
+export const RADIO_ZONA_KM = 0.3;
 
 /**
  * El punto que se le muestra a los demás. Determinista: el mismo nido siempre

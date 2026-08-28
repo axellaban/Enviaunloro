@@ -9,8 +9,13 @@
 // dibuja punteado — sin JavaScript ni bibliotecas.
 //
 // La geografía es deliberadamente aproximada: alcanza con que se lea "esto
-// cruza un océano". Las rutas sí son las de la portada: Buenos Aires a Madrid
-// es la que en la tabla tarda días.
+// cruza un océano". Las seis rutas caen sobre tierra en la grilla de MUNDO, una
+// por especie, y la más larga —Buenos Aires a Dublín— es la que en la tabla
+// tarda días.
+//
+// Adentro del teléfono no hay ningún botón. Había uno, "Soltar un loro", y era
+// un error: en una portada donde todo lo demás sí se puede tocar, un botón
+// dibujado se toca y no pasa nada.
 
 import { AVES } from "../lib/aves";
 import { svgAve } from "./Ave";
@@ -46,6 +51,43 @@ function AveEnRuta({
       >
         <mpath href={`#${ruta}`} />
       </animateMotion>
+    </g>
+  );
+}
+
+/** Una tarjeta de la pestaña "En vuelo", dibujada. */
+function TarjetaVuelo({
+  y,
+  color,
+  titulo,
+  detalle,
+  reloj,
+  avance,
+}: {
+  y: number;
+  color: string;
+  titulo: string;
+  detalle: string;
+  reloj: string;
+  /** Ancho de la barra llena, en unidades del viewBox (de 0 a 216). */
+  avance: number;
+}) {
+  return (
+    <g>
+      <rect x="26" y={y} width="248" height="60" rx="14" fill="rgba(8,20,19,.94)" stroke={`${color}66`} />
+      {/* 11 y no 12,5: "Ciudad de México → Lisboa" con el reloj al lado no
+          entra en 216 unidades, y se montaban uno arriba del otro. */}
+      <text x="42" y={y + 22} fill="#e9f3f0" fontSize="11" fontWeight="700" fontFamily="ui-sans-serif, system-ui">
+        {titulo}
+      </text>
+      <text x="42" y={y + 39} fill="#8ba39d" fontSize="10" fontFamily="ui-sans-serif, system-ui">
+        {detalle}
+      </text>
+      <text x="258" y={y + 24} fill={color} fontSize="11.5" fontWeight="700" textAnchor="end" fontFamily="ui-monospace, monospace">
+        {reloj}
+      </text>
+      <rect x="42" y={y + 47} width="216" height="4" rx="2" fill="rgba(255,255,255,.1)" />
+      <rect x="42" y={y + 47} width={avance} height="4" rx="2" fill={color} />
     </g>
   );
 }
@@ -124,13 +166,16 @@ export function TelefonoHero() {
     >
       <svg viewBox="0 0 300 610" style={{ width: "100%", height: "100%" }}>
         <defs>
-          {/* Las rutas: se dibujan punteadas y además son el riel de las aves. */}
-          {/* Buenos Aires → Madrid, Nueva York → Lisboa, São Paulo → Lagos.
-              Las puntas caen sobre tierra en la grilla de MUNDO, y los arcos se
-              curvan como se curva un vuelo largo de verdad. */}
+          {/* Las rutas: se dibujan punteadas y además son el riel de las aves.
+              Una por especie. Las puntas caen sobre tierra en la grilla de
+              MUNDO, y los arcos se curvan como se curva un vuelo largo de
+              verdad. */}
           <path id="ruta-larga" d="M125 275 C170 246 208 180 224 99" fill="none" />
-          <path id="ruta-media" d="M114 121 C145 82 185 78 213 110" fill="none" />
+          <path id="ruta-media" d="M114 121 C145 82 185 78 224 110" fill="none" />
           <path id="ruta-corta" d="M158 220 C172 206 188 202 202 209" fill="none" />
+          <path id="ruta-norte" d="M92 143 C130 108 190 78 235 88" fill="none" />
+          <path id="ruta-sur" d="M136 297 C160 292 190 280 213 264" fill="none" />
+          <path id="ruta-vieja" d="M235 121 C258 160 250 210 224 253" fill="none" />
 
           <clipPath id="pantalla">
             <rect x="12" y="12" width="276" height="586" rx="34" />
@@ -159,56 +204,66 @@ export function TelefonoHero() {
 
           <Mundo />
 
-          {/* Rutas punteadas */}
-          <g fill="none" strokeLinecap="round">
-            <use href="#ruta-larga" stroke={AVES.guacamayo.color} strokeWidth="1.8" strokeOpacity=".7" strokeDasharray="2 7" />
-            <use href="#ruta-media" stroke={AVES.perico.color} strokeWidth="1.8" strokeOpacity=".7" strokeDasharray="2 7" />
-            <use href="#ruta-corta" stroke={AVES.cotorra.color} strokeWidth="1.8" strokeOpacity=".7" strokeDasharray="2 7" />
+          {/* Rutas punteadas, del color de quien las vuela */}
+          <g fill="none" strokeLinecap="round" strokeWidth="1.8" strokeOpacity=".7" strokeDasharray="2 7">
+            <use href="#ruta-larga" stroke={AVES.guacamayo.color} />
+            <use href="#ruta-media" stroke={AVES.perico.color} />
+            <use href="#ruta-corta" stroke={AVES.cotorra.color} />
+            <use href="#ruta-norte" stroke={AVES.loro.color} />
+            <use href="#ruta-sur" stroke={AVES.paloma.color} />
+            <use href="#ruta-vieja" stroke={AVES.cuervo.color} />
           </g>
 
           {/* Nidos en las puntas de cada ruta */}
-          <Nido x={125} y={275} />
-          <Nido x={224} y={99} color="#22d3ee" />
-          <Nido x={114} y={121} color="#a3e635" />
-          <Nido x={213} y={110} color="#a3e635" />
-          <Nido x={158} y={220} color="#22d3ee" />
-          <Nido x={202} y={209} color="#22d3ee" />
+          <Nido x={125} y={275} color={AVES.guacamayo.color} />
+          <Nido x={224} y={99} color={AVES.guacamayo.color} />
+          <Nido x={114} y={121} color={AVES.perico.color} />
+          <Nido x={224} y={110} color={AVES.perico.color} />
+          <Nido x={158} y={220} color={AVES.cotorra.color} />
+          <Nido x={202} y={209} color={AVES.cotorra.color} />
+          <Nido x={92} y={143} color={AVES.loro.color} />
+          <Nido x={235} y={88} color={AVES.loro.color} />
+          <Nido x={136} y={297} color={AVES.paloma.color} />
+          <Nido x={213} y={264} color={AVES.paloma.color} />
+          <Nido x={235} y={121} color={AVES.cuervo.color} />
+          <Nido x={224} y={253} color={AVES.cuervo.color} />
 
-          {/* Las aves, cada una a su velocidad: el guacamayo tarda el triple */}
+          {/* Las seis aves, cada una a su velocidad: el guacamayo tarda el
+              triple que el perico en un trecho parecido, igual que en la app. */}
           <AveEnRuta ruta="ruta-larga" especie="guacamayo" segundos={22} retraso={6} tamaño={28} />
           <AveEnRuta ruta="ruta-media" especie="perico" segundos={8} retraso={3} tamaño={22} />
           <AveEnRuta ruta="ruta-corta" especie="cotorra" segundos={13} retraso={5} tamaño={24} />
+          <AveEnRuta ruta="ruta-norte" especie="loro" segundos={16} retraso={2} tamaño={25} />
+          <AveEnRuta ruta="ruta-sur" especie="paloma" segundos={11} retraso={4} tamaño={24} />
+          <AveEnRuta ruta="ruta-vieja" especie="cuervo" segundos={14} retraso={12} tamaño={24} />
 
           {/* Chapa de arriba */}
           <g>
             <rect x="26" y="30" width="112" height="30" rx="15" fill="rgba(8,20,19,.9)" stroke="rgba(255,255,255,.14)" />
             <circle cx="45" cy="45" r="4" fill="#10b981" />
             <text x="57" y="49" fill="#e9f3f0" fontSize="12" fontWeight="700" fontFamily="ui-sans-serif, system-ui">
-              3 en el aire
+              6 en el aire
             </text>
           </g>
 
-          {/* Tarjeta de vuelo */}
-          <g>
-            <rect x="26" y="392" width="248" height="60" rx="14" fill="rgba(8,20,19,.94)" stroke="rgba(251,191,36,.4)" />
-            <text x="42" y="414" fill="#e9f3f0" fontSize="12.5" fontWeight="700" fontFamily="ui-sans-serif, system-ui">
-              Guacamayo → Marta
-            </text>
-            <text x="42" y="431" fill="#8ba39d" fontSize="10.5" fontFamily="ui-sans-serif, system-ui">
-              10.045 km · faltan 6.120 km
-            </text>
-            <text x="258" y="420" fill={AVES.guacamayo.color} fontSize="13" fontWeight="700" textAnchor="end" fontFamily="ui-monospace, monospace">
-              9 d 4 h
-            </text>
-            <rect x="42" y="439" width="216" height="4" rx="2" fill="rgba(255,255,255,.1)" />
-            <rect x="42" y="439" width="85" height="4" rx="2" fill={AVES.guacamayo.color} />
-          </g>
-
-          {/* Botón principal */}
-          <rect x="26" y="466" width="248" height="42" rx="21" fill="#10b981" />
-          <text x="150" y="493" fill="#04120e" fontSize="14" fontWeight="800" textAnchor="middle" fontFamily="ui-sans-serif, system-ui">
-            🦜 Soltar un loro
-          </text>
+          {/* Dos tarjetas de vuelo, con los números que salen de la tabla: a 25
+              km/h, 6.800 km son once días. */}
+          <TarjetaVuelo
+            y={392}
+            color={AVES.guacamayo.color}
+            titulo="Buenos Aires → Dublín"
+            detalle="11.150 km · faltan 6.800 km"
+            reloj="11 d 8 h"
+            avance={84}
+          />
+          <TarjetaVuelo
+            y={462}
+            color={AVES.perico.color}
+            titulo="México → Lisboa"
+            detalle="9.050 km · faltan 1.240 km"
+            reloj="13 h 47 m"
+            avance={185}
+          />
 
           {/* Barra de abajo */}
           <g fill="#5d7873" fontSize="9.5" textAnchor="middle" fontFamily="ui-sans-serif, system-ui">

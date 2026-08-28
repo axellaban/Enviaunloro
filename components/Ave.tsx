@@ -1,12 +1,15 @@
 "use client";
 
-// Los cuatro loros, dibujados.
+// Las seis aves, dibujadas.
 //
-// Una sola pose —de vuelo, mirando a la DERECHA— para las cuatro especies,
+// Una sola pose —de vuelo, mirando a la DERECHA— para las seis especies,
 // porque es la que tiene que funcionar arriba del mapa a 34 píxeles. Lo que
 // cambia entre una y otra no es el estilo sino la silueta: la cola, la cresta,
 // el tamaño del cuerpo. A esa escala el color solo no alcanza para
-// distinguirlas; el contorno sí.
+// distinguirlas; el contorno sí. Por eso ninguna repite silueta: el perico
+// tiene rayas de velocidad, la cotorra la cola en abanico, el loro la mancha
+// roja del ala, el guacamayo dos plumas larguísimas, la paloma una rosa en el
+// pico y el cuervo un pico recto de daga y cero cachete rosado.
 //
 // Se escriben como texto SVG y no como JSX por una razón práctica: el marcador
 // de Leaflet necesita HTML crudo, y tener el mismo dibujo escrito dos veces
@@ -128,6 +131,60 @@ ${pico(93, 43, "#f59e0b", "#c2410c", 1.02)}`,
 <path d="M73 51 C77 49 81 49 84 51" stroke="#f59e0b" stroke-width="1.6" fill="none" stroke-linecap="round"/>
 ${ojo(85, 35, 6.2)}
 ${pico(94, 44, "#fde68a", "#78350f", 1.02)}`,
+
+  // Paloma: la romántica. Blanca, con el ala apenas rosada, una rosa en el pico
+  // y un corazón flotando atrás. Es la única clarita de las seis: sobre el mapa
+  // oscuro se ve venir de lejos, que es exactamente lo que tiene que pasar.
+  paloma: `
+<g class="rastro" opacity="0.6">
+  <path d="M8 40 C4 33 13 29 15 36 C17 29 26 33 22 40 C20 44 16 47 15 48 C14 47 10 44 8 40 Z" fill="#f9a8d4"/>
+  <circle cx="27" cy="68" r="3" fill="#fbcfe8"/>
+</g>
+<path d="M34 48 L4 42 L10 54 L4 66 L34 62 Z" fill="#cbd5e1"/>
+<path d="M34 52 L14 50 L18 58 L34 60 Z" fill="#f1f5f9"/>
+<path d="M32 58 C34 44 52 36 72 38 C88 39 97 46 97 55 C97 65 84 71 62 71 C42 71 31 68 32 58 Z" fill="#f8fafc"/>
+<path d="M42 64 C42 74 56 80 72 78 C58 82 43 78 40 70 Z" fill="#fbcfe8" opacity="0.85"/>
+<g class="ala">
+  <path d="M53 54 C42 34 54 12 78 9 C67 24 63 40 64 57 Z" fill="#e2e8f0"/>
+  <path d="M58 51 C54 37 59 24 71 18 C65 30 61 41 62 52 Z" fill="#ffffff" opacity="0.75"/>
+  <path d="M56 46 C54 38 57 30 63 25 C60 33 58 40 59 47 Z" fill="#f9a8d4" opacity="0.8"/>
+</g>
+<circle cx="86" cy="40" r="17" fill="#f8fafc"/>
+<path d="M71 45 C70 33 78 27 88 28 C82 35 80 43 81 51 Z" fill="#ffffff"/>
+${cachete(76, 52, 4.4)}
+${ojo(86, 37, 5.8)}
+${pico(93, 43, "#fb7185", "#e11d48", 0.78)}
+<g transform="translate(103 50)">
+  <path d="M0 1 C5 -1 9 -6 8 -12" stroke="#4ade80" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <path d="M5 -5 C1 -8 -2 -3 2 -1 Z" fill="#4ade80"/>
+  <circle cx="9" cy="-14" r="5.2" fill="#e11d48"/>
+  <circle cx="7.6" cy="-15.4" r="2.5" fill="#fb7185"/>
+</g>`,
+
+  // Cuervo: el de las malas noticias. Negro violáceo, pico recto de daga en vez
+  // del gancho simpático de los loros, ceja caída y ningún cachete. Todo el
+  // dibujo está hecho para que se lea distinto ANTES de leer una palabra.
+  cuervo: `
+<g class="charla" opacity="0.75">
+  <path d="M18 28 C13 34 15 43 21 45 C17 39 17 33 18 28 Z" fill="#4c1d95"/>
+  <path d="M9 60 C4 66 6 75 12 77 C8 71 8 65 9 60 Z" fill="#3730a3"/>
+</g>
+<path d="M32 46 L0 36 L4 52 L0 68 L32 64 Z" fill="#1b1830"/>
+<path d="M32 52 L10 48 L14 58 L32 60 Z" fill="#4c4370"/>
+<path d="M30 58 C32 44 50 36 70 38 C87 39 96 46 96 55 C96 65 82 72 60 72 C41 72 29 68 30 58 Z" fill="#242040"/>
+<path d="M40 64 C40 75 54 81 70 79 C56 83 41 79 38 70 Z" fill="#17142a" opacity="0.9"/>
+<g class="ala">
+  <path d="M52 54 C38 32 52 8 78 5 C66 21 61 39 62 58 Z" fill="#332f52"/>
+  <path d="M57 50 C53 35 59 21 71 14 C64 27 60 39 61 51 Z" fill="#a78bfa" opacity="0.62"/>
+  <path d="M52 54 C38 32 52 8 78 5" stroke="#a78bfa" stroke-width="2.2" fill="none" opacity="0.55" stroke-linecap="round"/>
+  <path d="M53 32 C51 21 59 10 73 5 C64 14 57 23 55 33 Z" fill="#17142a"/>
+</g>
+<circle cx="85" cy="40" r="17" fill="#242040"/>
+<path d="M70 46 C69 34 77 28 87 29 C81 36 79 44 80 52 Z" fill="#332f52"/>
+${ojo(85, 37, 5.4)}
+<path d="M75 26 C83 25 91 28 96 33" stroke="#0d0b18" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+<path d="M92 39 L119 46 L92 52 Z" fill="#52525b"/>
+<path d="M92 46 L119 46 L92 50 Z" fill="#18181b"/>`,
 };
 
 /** El SVG de una especie, como texto. Fuente única del dibujo. */

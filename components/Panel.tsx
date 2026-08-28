@@ -9,16 +9,18 @@
 // mueva.
 
 import { useState } from "react";
-import { AVES, AVES_LISTA, type AveId } from "../lib/aves";
+import { AVES, AVES_LISTA } from "../lib/aves";
 import {
   cuentaRegresiva,
   formatearDistancia,
   formatearDuracion,
 } from "../lib/geo";
-import { duracionVuelo } from "../lib/vuelo";
+import { avanceVuelo, duracionVuelo } from "../lib/vuelo";
 import { pedir, pedirUbicacion, useTic } from "../lib/cliente";
+import type { Suerte } from "../lib/datos";
 import type { LoroVista, NidoVista } from "../lib/vista";
 import { Ave } from "./Ave";
+import { Fiesta } from "./Fiesta";
 
 type Props = {
   yo: NidoVista;
@@ -37,17 +39,23 @@ type Props = {
 
 export function Panel(p: Props) {
   const [pestaña, setPestaña] = useState<"vuelo" | "buzon" | "bandada" | "nido">("vuelo");
+  const ahora = p.ahoraServidor();
   const enVuelo = p.loros
     .filter((l) => !l.llego && !l.perdido)
     .sort((a, b) => a.llegada - b.llegada);
+  // Las aves que ya entregaron y vuelven a casa cuentan igual: están cruzando
+  // el mapa y tienen su propia cuenta regresiva.
+  const volviendo = p.loros
+    .filter((l) => l.vuelta && ahora < l.vuelta.llegada)
+    .sort((a, b) => a.vuelta!.llegada - b.vuelta!.llegada);
   // El buzón guarda lo que terminó, haya terminado bien o mal.
   const llegados = p.loros.filter((l) => l.llego || l.perdido);
   const sinLeer = llegados.filter((l) => l.direccion === "recibido" && !l.leido).length;
 
-  useTic(enVuelo.length > 0);
+  useTic(enVuelo.length + volviendo.length > 0);
 
   const pestañas = [
-    { id: "vuelo" as const, texto: "En vuelo", contador: enVuelo.length },
+    { id: "vuelo" as const, texto: "En vuelo", contador: enVuelo.length + volviendo.length },
     { id: "buzon" as const, texto: "Buzón", contador: sinLeer },
     { id: "bandada" as const, texto: "Bandada", contador: 0 },
     // Tu código, tu ubicación y tu llave vivían en la cabecera, ocupando un
@@ -105,20 +113,30 @@ export function Panel(p: Props) {
       <div className="scroll" style={{ flex: 1, minHeight: 0, padding: "0 14px 90px" }}>
         {pestaña === "vuelo" && (
           <>
-            {enVuelo.length === 0 ? (
+            {enVuelo.length + volviendo.length === 0 ? (
               <Vacio
                 titulo="No hay nada en el aire"
                 texto="Cuando sueltes un ave la vas a ver acá, cruzando el mapa en tiempo real."
               />
             ) : (
-              enVuelo.map((l) => (
-                <TarjetaVuelo
-                  key={l.id}
-                  loro={l}
-                  ahora={p.ahoraServidor()}
-                  alTocar={() => p.alEnfocar(l.id)}
-                />
-              ))
+              <>
+                {enVuelo.map((l) => (
+                  <TarjetaVuelo
+                    key={l.id}
+                    loro={l}
+                    ahora={ahora}
+                    alTocar={() => p.alEnfocar(l.id)}
+                  />
+                ))}
+                {volviendo.map((l) => (
+                  <TarjetaVuelta
+                    key={`${l.id}@vuelta`}
+                    loro={l}
+                    ahora={ahora}
+                    alTocar={() => p.alEnfocar(l.id)}
+                  />
+                ))}
+              </>
             )}
           </>
         )}
@@ -202,10 +220,10 @@ function TarjetaVuelo({
   alTocar: () => void;
 }) {
   const a = AVES[loro.ave];
-  const total = Math.max(1, loro.llegada - loro.salida);
-  const t = Math.min(1, Math.max(0, (ahora - loro.salida) / total));
+  const { avance: t, girando } = avanceVuelo(loro, ahora);
   const falta = Math.max(0, loro.llegada - ahora);
   const enviado = loro.direccion === "enviado";
+  const suyo = enviado ? "tu" : "el";
 
   return (
     <button
@@ -228,9 +246,8 @@ function TarjetaVuelo({
             {enviado ? `${a.nombre} → ${loro.otro.nombre}` : `${a.nombre} de ${loro.otro.nombre}`}
           </p>
           <p style={{ color: "var(--tenue)", fontSize: 12 }}>
-            {enviado ? "En camino" : "Viene hacia vos"} ·{" "}
+            {girando ? "Detenido" : enviado ? "En camino" : "Viene hacia vos"} ·{" "}
             {formatearDistancia(loro.distanciaKm * (1 - t))} por delante
-            {loro.turbo ? " · vuelo de prueba" : ""}
           </p>
         </div>
         <span
@@ -269,6 +286,118 @@ function TarjetaVuelo({
       <p style={{ color: "var(--tenue)", fontSize: 11.5, marginTop: 7 }}>
         {Math.round(t * 100)}% del camino · {formatearDistancia(loro.distanciaKm)} en total
       </p>
+
+      {/* El romance del perico. Mientras da vueltas se dice fuerte —es lo que
+          está pasando ahora mismo en el mapa— y después queda la nota de que
+          pasó, para que la demora tenga una explicación y no parezca un bug. */}
+      {loro.desvio && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "9px 11px",
+            borderRadius: 10,
+            background: girando ? "rgba(244,114,182,.12)" : "rgba(255,255,255,.03)",
+            border: `1px dashed ${girando ? "rgba(244,114,182,.5)" : "var(--borde)"}`,
+          }}
+        >
+          <p style={{ fontSize: 12.5, fontWeight: 700, color: girando ? "#f9a8d4" : "var(--suave)" }}>
+            {girando
+              ? `💗 Ups, ${suyo} perico se distrajo en el camino`
+              : `Se distrajo ${formatearDuracion(loro.desvio.hasta - loro.desvio.desde)} con una perica`}
+          </p>
+          <p style={{ fontSize: 11.5, lineHeight: 1.5, color: "var(--tenue)", marginTop: 3 }}>
+            {girando
+              ? `Se cruzó con una perica y está dando vueltas. Retoma el viaje en ${cuentaRegresiva(
+                  Math.max(0, loro.desvio.hasta - ahora)
+                )} — y ojo, que ella le está leyendo el mensaje.`
+              : "La cuenta regresiva ya lo tiene sumado."}
+          </p>
+        </div>
+      )}
+    </button>
+  );
+}
+
+/**
+ * El ave que ya entregó y vuelve a casa.
+ *
+ * Es la mitad que le faltaba al producto: hasta ahora un loro llegaba y
+ * desaparecía. Ahora, si del otro lado lo sueltan, se lo ve volver — y quien lo
+ * mandó recibe algo de vuelta sin que el otro haya escrito una palabra.
+ */
+function TarjetaVuelta({
+  loro,
+  ahora,
+  alTocar,
+}: {
+  loro: LoroVista;
+  ahora: number;
+  alTocar: () => void;
+}) {
+  const a = AVES[loro.ave];
+  const v = loro.vuelta!;
+  const t = Math.min(1, Math.max(0, (ahora - v.salida) / Math.max(1, v.llegada - v.salida)));
+  const mio = loro.direccion === "enviado";
+
+  return (
+    <button
+      onClick={alTocar}
+      className="tarjeta"
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        padding: 14,
+        marginBottom: 10,
+        cursor: "pointer",
+        borderStyle: "dashed",
+        borderColor: `${a.color}44`,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        {/* Espejada: vuelve, no va. */}
+        <span style={{ display: "inline-flex", transform: "scaleX(-1)" }}>
+          <Ave especie={loro.ave} size={30} aletea />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 14.5, fontWeight: 700 }}>
+            {mio
+              ? `${a.nombre} volviendo a tu nido`
+              : `${a.nombre} volviendo con ${loro.otro.nombre}`}
+          </p>
+          <p style={{ color: "var(--tenue)", fontSize: 12 }}>
+            {mio
+              ? `${loro.otro.nombre} lo soltó · ya entregó el mensaje`
+              : "Lo soltaste · vuelve a su nido"}
+          </p>
+        </div>
+        <span
+          style={{ fontFamily: "var(--mono)", fontSize: 17, fontWeight: 700, color: a.color }}
+        >
+          {cuentaRegresiva(Math.max(0, v.llegada - ahora))}
+        </span>
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          height: 5,
+          borderRadius: 99,
+          background: "rgba(255,255,255,.08)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: `${t * 100}%`,
+            background: a.color,
+            opacity: 0.6,
+            borderRadius: 99,
+          }}
+        />
+      </div>
     </button>
   );
 }
@@ -286,6 +415,7 @@ function TarjetaBuzon({
 }) {
   const [abriendo, setAbriendo] = useState(false);
   const [abierto, setAbierto] = useState(Boolean(loro.leido));
+  const [fiesta, setFiesta] = useState<"confeti" | "luto" | null>(null);
   const a = AVES[loro.ave];
   const enviado = loro.direccion === "enviado";
   const sellado = !enviado && !abierto;
@@ -304,6 +434,11 @@ function TarjetaBuzon({
       setAbierto(true);
     } finally {
       setAbriendo(false);
+      // La ceremonia es de quien recibe, y solo la primera vez que abre. Quien
+      // lo mandó ya sabe qué escribió: tirarle confeti sería tirárselo a sí
+      // mismo.
+      if (a.rareza === "confeti") setFiesta("confeti");
+      else if (a.rareza === "luto") setFiesta("luto");
     }
   }
 
@@ -355,45 +490,184 @@ function TarjetaBuzon({
             {loro.texto}
           </p>
 
-          {/* Que el mensaje llegue mordido tiene que leerse como el perico y no
-              como un error de la app, así que se dice con todas las letras. A
-              quien lo mandó se le muestra además cómo llegó: ahí está el chiste. */}
-          {loro.olvido && (
-            <div
-              style={{
-                marginTop: 10,
-                padding: "9px 11px",
-                borderRadius: 10,
-                background: `${AVES.perico.color}14`,
-                border: `1px dashed ${AVES.perico.color}55`,
-              }}
-            >
-              <p style={{ fontSize: 12, color: AVES.perico.color, fontWeight: 700 }}>
-                {enviado ? "Así llegó del otro lado" : "El perico se olvidó parte del camino"}
-              </p>
-              {enviado ? (
-                <p
-                  style={{
-                    marginTop: 6,
-                    fontSize: 13.5,
-                    lineHeight: 1.55,
-                    color: "var(--texto)",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {loro.entregado}
-                </p>
-              ) : (
-                <p style={{ marginTop: 4, fontSize: 12, color: "var(--tenue)", lineHeight: 1.5 }}>
-                  Llega antes que nadie, pero no se acuerda de todo.
-                </p>
-              )}
-            </div>
-          )}
+          {/* Que el mensaje llegue cambiado tiene que leerse como el ave y no
+              como un error de la app, así que se dice con todas las letras —y
+              con el motivo correcto, que no es el mismo para las dos. A quien
+              lo mandó se le muestra además cómo llegó: ahí está el chiste. */}
+          {loro.olvido && <PorQueLlegoAsi loro={loro} />}
+
+          {/* El ave sigue posada del otro lado. Quien la recibió decide. */}
+          {!enviado && !loro.perdido && <QueHagoConElAve loro={loro} refrescar={refrescar} />}
+          {loro.suerte && <FinalDelAve loro={loro} />}
         </div>
       )}
+
+      {fiesta && <Fiesta tipo={fiesta} alTerminar={() => setFiesta(null)} />}
     </div>
+  );
+}
+
+/** Por qué lo que se lee no es lo que se escribió. */
+function PorQueLlegoAsi({ loro }: { loro: LoroVista }) {
+  const enviado = loro.direccion === "enviado";
+  // El desvío del perico y la cháchara de la cotorra dejan el mismo rastro —un
+  // texto cambiado— pero son dos historias distintas, y contarlas al revés
+  // arruina las dos.
+  const perica = Boolean(loro.desvio);
+  const color = perica ? "#f472b6" : AVES.cotorra.color;
+  const titulo = enviado
+    ? perica
+      ? "Así llegó, después de que la perica le metiera mano"
+      : "Así llegó del otro lado"
+    : perica
+      ? "Ups, el perico se distrajo en el camino"
+      : "La cotorra lo repitió tanto que se le mezcló";
+  const nota = perica
+    ? "Se cruzó con una perica, se quedó dando vueltas y ella le leyó el mensaje entero antes de dejarlo seguir."
+    : "De tanto ir repitiéndolo en voz alta pierde palabras, repite otras y da vuelta alguna.";
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: "9px 11px",
+        borderRadius: 10,
+        background: `${color}14`,
+        border: `1px dashed ${color}55`,
+      }}
+    >
+      <p style={{ fontSize: 12, color, fontWeight: 700 }}>{titulo}</p>
+      {enviado ? (
+        <p
+          style={{
+            marginTop: 6,
+            fontSize: 13.5,
+            lineHeight: 1.55,
+            color: "var(--texto)",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {loro.entregado}
+        </p>
+      ) : (
+        <p style={{ marginTop: 4, fontSize: 12, color: "var(--tenue)", lineHeight: 1.5 }}>{nota}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Los tres finales.
+ *
+ * Los textos toman el artículo del ave —"la soltaste", "lo soltaste"— porque
+ * cuatro de las seis son masculinas y dos femeninas, y una app en castellano
+ * que le dice "soltarlo" a una paloma se lee escrita por una máquina. El botón
+ * va en infinitivo, que no tiene el problema y además entra más corto.
+ */
+const FINALES: Record<
+  Suerte,
+  {
+    icono: string;
+    boton: string;
+    pie: string;
+    mio: (lo: string) => string;
+    suyo: (quien: string, lo: string) => string;
+  }
+> = {
+  soltado: {
+    icono: "🕊",
+    boton: "Soltar",
+    pie: "Se vuelve volando. Se la ve cruzar el mapa de nuevo.",
+    mio: (lo) => `${lo === "la" ? "La" : "Lo"} soltaste. Va camino a su nido.`,
+    suyo: (quien, lo) => `${quien} ${lo} soltó: viene de vuelta.`,
+  },
+  enjaulado: {
+    icono: "🔒",
+    boton: "Enjaular",
+    pie: "Se queda con vos. No vuelve nunca.",
+    mio: () => "Quedó en tu jaula. No vuelve.",
+    suyo: (quien, lo) =>
+      `${quien} se ${lo} quedó. ${lo === "la" ? "Esa" : "Ese"} no vuelve más.`,
+  },
+  puchero: {
+    icono: "🍲",
+    boton: "Al puchero",
+    pie: "No preguntes.",
+    mio: () => "Fue al puchero. Estuvo rico.",
+    suyo: () => "No volvió. Mejor no preguntes.",
+  },
+};
+
+/**
+ * Qué hace con el ave quien recibió el mensaje.
+ *
+ * Es una decisión chica con consecuencia real: la otra persona se entera de lo
+ * que elegiste sin que le hayas escrito nada. Por eso no hay confirmación —
+ * elegir ya es la respuesta— pero tampoco hay vuelta atrás.
+ */
+function QueHagoConElAve({ loro, refrescar }: { loro: LoroVista; refrescar: () => void }) {
+  const [ocupado, setOcupado] = useState<Suerte | null>(null);
+  const [error, setError] = useState("");
+  const a = AVES[loro.ave];
+
+  if (loro.suerte) return null;
+
+  async function decidir(suerte: Suerte) {
+    setOcupado(suerte);
+    setError("");
+    try {
+      await pedir("/api/loros/suerte", { datos: { id: loro.id, suerte } });
+      refrescar();
+    } catch (e: any) {
+      setError(e?.message || "No se pudo.");
+      setOcupado(null);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--borde)" }}>
+      <p style={{ fontSize: 12.5, color: "var(--suave)", lineHeight: 1.5 }}>
+        {a.articulo === "la" ? "La" : "El"} {a.nombre.toLowerCase()} sigue posad
+        {a.articulo === "la" ? "a" : "o"} en tu ventana. ¿Qué hacés?
+      </p>
+      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+        {(Object.keys(FINALES) as Suerte[]).map((k) => (
+          <button
+            key={k}
+            className="boton fantasma chico"
+            style={{ flex: 1, padding: "9px 4px", fontSize: 12.5, whiteSpace: "nowrap" }}
+            disabled={ocupado !== null}
+            onClick={() => decidir(k)}
+            title={FINALES[k].pie}
+          >
+            {FINALES[k].icono} {ocupado === k ? "…" : FINALES[k].boton}
+          </button>
+        ))}
+      </div>
+      {error && <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>{error}</p>}
+    </div>
+  );
+}
+
+/** Lo que pasó con el ave, contado a cada lado desde donde le tocó estar. */
+function FinalDelAve({ loro }: { loro: LoroVista }) {
+  const f = FINALES[loro.suerte!];
+  const mio = loro.direccion === "recibido";
+  const lo = AVES[loro.ave].articulo === "la" ? "la" : "lo";
+  return (
+    <p
+      style={{
+        marginTop: 12,
+        paddingTop: 10,
+        borderTop: "1px solid var(--borde)",
+        fontSize: 12.5,
+        lineHeight: 1.5,
+        color: "var(--suave)",
+      }}
+    >
+      {f.icono} {mio ? f.mio(lo) : f.suyo(loro.otro.nombre, lo)}
+    </p>
   );
 }
 
@@ -575,8 +849,8 @@ function Bandada({
         }}
       >
         🔒 En el mapa nadie ve tu dirección: de cada nido ajeno se dibuja una
-        zona de {amigos.find((f) => f.radioKm > 0)?.radioKm ?? 3} km, no un
-        punto. La distancia y el tiempo de vuelo sí son exactos.
+        zona de {formatearDistancia(amigos.find((f) => f.radioKm > 0)?.radioKm ?? 0.3)}, no
+        un punto. La distancia y el tiempo de vuelo sí son exactos.
       </p>
 
       {amigos.map((f) => {
@@ -606,8 +880,8 @@ function Bandada({
                 </p>
                 {f.bot && (
                   <p style={{ color: "var(--tenue)", fontSize: 11.5, marginTop: 2 }}>
-                    Vecina de práctica: te contesta sola, para probar la app sin
-                    esperar a nadie.
+                    Vecina de práctica: te contesta sola y siempre te devuelve
+                    el ave, para probar la app sin esperar a nadie.
                   </p>
                 )}
               </button>
@@ -616,13 +890,14 @@ function Bandada({
               </button>
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-              {(["perico", "cotorra", "loro", "guacamayo"] as const).map((id) => (
+              {AVES_LISTA.map((x) => (
                 <span
-                  key={id}
+                  key={x.id}
                   className="pastilla"
-                  style={{ color: AVES[id].color, borderColor: `${AVES[id].color}44` }}
+                  style={{ color: x.color, borderColor: `${x.color}44` }}
                 >
-                  {AVES[id].nombre} {formatearDuracion(duracionVuelo(km, id, false, escala))}
+                  {x.nombre} {formatearDuracion(duracionVuelo(km, x.id, escala))}
+                  {x.rareza === "romance" ? "+" : ""}
                 </span>
               ))}
             </div>
@@ -652,13 +927,12 @@ function MiNido({
 }) {
   const [copiado, setCopiado] = useState(false);
   const [nombre, setNombre] = useState(yo.nombre);
-  const [ave, setAve] = useState<AveId>(yo.ave);
   const [guardando, setGuardando] = useState(false);
   const [ubicando, setUbicando] = useState(false);
   const [nota, setNota] = useState("");
   const [llave, setLlave] = useState("");
 
-  const cambiado = nombre.trim() !== yo.nombre || ave !== yo.ave;
+  const cambiado = nombre.trim() !== yo.nombre;
 
   function avisar(texto: string) {
     setNota(texto);
@@ -705,7 +979,7 @@ function MiNido({
   async function guardar() {
     setGuardando(true);
     try {
-      await pedir("/api/nido", { datos: { nombre: nombre.trim(), ave } });
+      await pedir("/api/nido", { datos: { nombre: nombre.trim() } });
       refrescar();
       avisar("Guardado.");
     } catch (e: any) {
@@ -782,7 +1056,10 @@ function MiNido({
         </p>
       </div>
 
-      {/* --- nombre y ave --- */}
+      {/* --- nombre ---
+          El ave se elige al mandar, no acá: tener además un ave "por defecto"
+          en el perfil no cambiaba nada y hacía parecer que uno era dueño de una
+          sola especie. */}
       <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
         <p className="etiqueta">Cómo te anuncia el ave</p>
         <input
@@ -792,32 +1069,6 @@ function MiNido({
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
         />
-        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          {AVES_LISTA.map((a) => {
-            const elegida = a.id === ave;
-            return (
-              <button
-                key={a.id}
-                onClick={() => setAve(a.id)}
-                title={a.nombre}
-                aria-label={a.nombre}
-                style={{
-                  flex: 1,
-                  display: "grid",
-                  placeItems: "center",
-                  padding: "8px 0",
-                  borderRadius: 10,
-                  cursor: "pointer",
-                  background: elegida ? `${a.color}2b` : "var(--panel)",
-                  border: `1px solid ${elegida ? a.color : "var(--borde)"}`,
-                  boxShadow: elegida ? `0 0 0 1px ${a.color}` : "none",
-                }}
-              >
-                <Ave especie={a.id} size={24} aletea={elegida} />
-              </button>
-            );
-          })}
-        </div>
         <button
           className="boton chico"
           style={{ width: "100%", marginTop: 12 }}
@@ -872,28 +1123,28 @@ function MiNido({
         <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
           {[
             [
-              "Cuánto tarda",
-              "Lo ves antes de mandar: al elegir a quién le escribís, cada ave muestra su tiempo hasta esa persona. Después, la pestaña En vuelo lleva la cuenta regresiva y los kilómetros que faltan.",
+              "El mensaje vuela de verdad",
+              "Elegís un ave, escribís, y el bicho sale. Hasta que no cruza los kilómetros que hay entre los dos, tu mensaje no existe del otro lado. Un guacamayo a Madrid tarda dos semanas. Sí, en serio.",
             ],
             [
-              "Las cuatro aves",
-              "Cuanto más rápido vuela, menos le entra en la cabeza: perico 90 km/h y 120 caracteres, cotorra 60 y 400, loro 40 y 1000, guacamayo 25 y 2000. Y el perico se olvida la mitad por el camino.",
+              "Rápida y bruta, o lenta y elegante",
+              "Cuanto más vuela, menos le entra en la cabeza: al perico 120 caracteres, al guacamayo 2000. Elegir el ave ya es parte del mensaje.",
             ],
             [
-              "Vuelo de prueba",
-              "Comprime el viaje a unos minutos para poder mostrar la app sin esperar de verdad. Las cuatro aves mantienen la proporción entre sí.",
+              "Ninguna es de fiar del todo",
+              "La cotorra repite tu mensaje todo el viaje hasta mezclarlo. El perico se enamora en el camino y llega tarde y retocado. La paloma explota en confeti y el cuervo trae malas noticias. Y 2 de cada 1000 aves no llegan nunca.",
             ],
             [
-              "El 0,2%",
-              "2 de cada 1000 loros se pierden y no llegan nunca. Es poco, no es cero. Quien lo esperaba no sabe qué decía; vos recuperás tu texto y podés volver a mandarlo.",
+              "El ave queda del otro lado",
+              "Cuando aterriza, quien la recibió decide: la suelta y la ves volver por el mapa, la enjaula, o la manda al puchero. Vos te enterás sin que te escriba una palabra.",
+            ],
+            [
+              "Nadie ve dónde vivís",
+              "De cada nido ajeno se dibuja una zona de 300 metros, nunca un punto. Los kilómetros y los tiempos sí son exactos.",
             ],
             [
               "Doña Cotorra",
-              "Una vecina automática que aparece sola a 2,2 km cuando armás tu nido, para que tengas a quién escribirle desde el primer minuto. Te contesta con la misma ave que le mandaste.",
-            ],
-            [
-              "Tu ubicación",
-              "Nadie ve dónde vivís: de cada nido ajeno se dibuja una zona de 3 km, nunca un punto. La distancia y el tiempo de vuelo sí son exactos.",
+              "La vecina que aparece sola a 2,2 km cuando armás el nido, para que tengas a quién escribirle el primer día. Contesta con la misma ave que le mandaste.",
             ],
           ].map(([titulo, texto]) => (
             <div key={titulo}>

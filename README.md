@@ -8,23 +8,27 @@ aterriza, el mensaje **no existe** del otro lado.
 
 ---
 
-## Las cuatro aves
+## Las seis aves
 
 Cuanto más rápido vuela, menos le entra en la cabeza. Ese canje es todo el
 diseño del producto: elegir el ave es parte del mensaje.
 
-| Ave | Velocidad | Máximo | Es… |
-|---|---|---|---|
-| **Perico** ⚡ | 90 km/h | 120 caracteres | El express |
-| **Cotorra** 💬 | 60 km/h | 400 caracteres | La charlatana |
-| **Loro** 🦜 | 40 km/h | 1000 caracteres | El clásico |
-| **Guacamayo** 👑 | 25 km/h | 2000 caracteres | El ceremonioso |
+| Ave | Velocidad | Máximo | Es… | Y además |
+|---|---|---|---|---|
+| **Perico** ⚡ | 90 km/h | 120 caracteres | El express | se enamora en el camino |
+| **Cuervo** 🖤 | 70 km/h | 250 caracteres | El de las malas noticias | llega de negro |
+| **Cotorra** 💬 | 60 km/h | 400 caracteres | La charlatana | te mezcla el mensaje |
+| **Paloma** 💌 | 50 km/h | 600 caracteres | La romántica | explota en confeti |
+| **Loro** 🦜 | 40 km/h | 1000 caracteres | El clásico | entrega tal cual |
+| **Guacamayo** 👑 | 25 km/h | 2000 caracteres | El ceremonioso | tarda, y ese es el punto |
 
 Y el 0,2% de los loros no llega nunca. Es poco. No es cero.
 
-Las velocidades **no** son ornitología — un guacamayo de verdad vuela más
-rápido que un perico. Son balance de juego, y viven todas en
-[`lib/aves.ts`](lib/aves.ts): cambiás un número ahí y se corrigen solos la
+La escalera velocidad ↔ caracteres no tiene excepciones a propósito: una sola
+ave que la rompa convierte la elección en un trámite, porque habría una mejor
+que todas. Las velocidades **no** son ornitología —un guacamayo de verdad vuela
+más rápido que un perico—: son balance de juego, y viven todas en
+[`lib/aves.ts`](lib/aves.ts). Cambiás un número ahí y se corrigen solos la
 landing, los ETA, el contador de caracteres y el color de la ruta en el mapa.
 
 Cuánto tarda de verdad:
@@ -33,10 +37,51 @@ Cuánto tarda de verdad:
 |---|---|---|---|---|
 | Cruzar la ciudad (8,4 km) | 5 min | 8 min | 13 min | 21 min |
 | Buenos Aires → Montevideo (205 km) | 2 h 17 | 3 h 25 | 5 h 8 | 8 h 12 |
-| Buenos Aires → Madrid (10.045 km) | 4 d 15 h | 6 d 23 h | 10 d 11 h | 16 d 17 h |
+| Buenos Aires → Dublín (11.150 km) | 5 d 4 h | 7 d 18 h | 11 d 15 h | 18 d 14 h |
 
-Sí: cruzar el Atlántico son días. Esa es la idea. Para mostrar la app sin
-esperar, cada envío tiene un **vuelo de prueba** (ver más abajo).
+Sí: cruzar el Atlántico son días. Esa es la idea.
+
+El piso del vuelo se mide en **distancia** (400 m) y no en tiempo, y eso importa
+más de lo que parece: con un piso de segundos, mandarle algo a alguien de la
+misma cuadra daba el mismo número para las seis aves, y elegir dejaba de
+significar nada justo con la gente que uno tiene más cerca.
+
+### Las que no entregan lo que escribiste
+
+Cuatro de las seis hacen algo raro, y las cuatro lo **avisan antes de mandar**
+(campo `aviso` en [`lib/aves.ts`](lib/aves.ts), que la pantalla de escribir
+muestra pegado a la elección). Avisarlo después sería una trampa.
+
+- **La cotorra** repite el mensaje en voz alta todo el viaje y se le mezcla:
+  pierde palabras, repite otras, da vuelta alguna. Teléfono descompuesto con
+  alas ([`lib/olvido.ts`](lib/olvido.ts)). Nunca toca la primera ni la última
+  palabra —un mensaje que abre y cierra bien se entiende igual aunque el medio
+  sea un desastre— y rompe alrededor de un quinto: más que eso deja de ser un
+  chiste y pasa a ser ruido.
+- **El perico** es el más rápido, y su contra es que se enamora. Cuatro de cada
+  diez se cruzan con una perica a mitad de camino, se quedan dando vueltas —se
+  ven girando en el mapa— y llegan tarde y con el mensaje retocado por ella,
+  firma incluida. Como el tiempo deja de ser exacto, su ETA se muestra con un
+  `+`: prometer el número pelado sería mentir, esconderlo sería peor. Un perico
+  que **no** se distrae entrega el mensaje intacto: es el premio.
+- **La paloma** cruza el mapa dejando flores y un corazón de chocolate, y
+  cuando la abren del otro lado la pantalla explota en confeti.
+- **El cuervo** trae malas noticias: llega casi tan rápido como el perico, y al
+  abrirlo la pantalla se apaga y le caen plumas encima.
+
+Las dos ceremonias son el mismo motor de partículas al revés
+([`components/Fiesta.tsx`](components/Fiesta.tsx)): la alegría es un golpe y la
+mala noticia se asienta. Las dos respetan `prefers-reduced-motion`.
+
+### El ave queda del otro lado
+
+Cuando el mensaje aterriza, el vuelo terminó pero el ave sigue posada en la
+ventana de quien lo recibió, y **esa persona decide**: la suelta —y se la ve
+volver por el mapa hasta el nido de origen, mismo tiempo que la ida—, la
+enjaula, o la manda al puchero. Se decide una sola vez y no se puede desdecir.
+
+Es la única forma que tiene el producto de que alguien responda algo sin
+escribir una palabra: quien lo mandó se entera de la decisión sola.
 
 ## Correr local
 
@@ -71,12 +116,20 @@ antemano que ese loro no va a llegar, y esperar algo que ya sabés que no llega
 no es esperar.
 
 Se puede pisar con `LOROS_PROB_EXTRAVIO` (0 a 1) para probar ese camino sin
-mandar quinientos loros:
+mandar quinientos loros. `LOROS_PROB_ROMANCE` hace lo mismo con el desvío del
+perico:
 
 ```bash
 LOROS_PROB_EXTRAVIO=1 npm run start   # todos se pierden
-npm run prueba                        # la suite detecta el modo y lo verifica
+LOROS_PROB_EXTRAVIO=1 npm run prueba  # la suite detecta el modo y lo verifica
+
+LOROS_PROB_ROMANCE=1 npm run start    # todos los pericos se distraen
+LOROS_PROB_ROMANCE=1 npm run prueba
 ```
+
+El desvío del perico sigue la misma regla que el extravío: se sortea al
+despegar, queda escrito, y **no viaja al navegador hasta que ocurre**. Saber de
+antemano que se va a distraer arruina el momento en que se distrae.
 
 ## Ubicación y privacidad
 
@@ -85,7 +138,7 @@ distintas: **la app sabe dónde estás; tus contactos, no.**
 
 - El servidor guarda las coordenadas exactas y calcula el vuelo con ellas.
 - Lo que sale hacia el navegador de otra persona es un punto **corrido al azar
-  hasta 3 km** ([`lib/privacidad.ts`](lib/privacidad.ts)), y el mapa dibuja ese
+  hasta 300 m** ([`lib/privacidad.ts`](lib/privacidad.ts)), y el mapa dibuja ese
   círculo en lugar de un pin. El desvío es fijo por nido: si cambiara en cada
   consulta, con unas cuantas muestras se podría promediar el centro y recuperar
   la posición real.
@@ -118,23 +171,23 @@ la que le diste tu código, es el canje razonable.
    uno al despegar ("viene un loro, llega en 4 h") y otro al aterrizar. El
    primero importa tanto como el segundo — saber que algo está en camino es la
    mitad del producto.
+6. **Decidí qué hacer con el ave**: quedó posada de tu lado. La soltás y vuelve
+   volando —quien te escribió la ve venir en el mapa—, la enjaulás, o al
+   puchero. Una sola vez, sin vuelta atrás.
 
 **Doña Cotorra** es una vecina automática que aparece sola a 2,2 km de tu nido
 cuando te registrás, y contesta con la misma ave que le mandaste. Existe para
 que la primera persona que entra tenga a quién escribirle.
 
-### El vuelo de prueba
+### Mostrar la app sin esperar días
 
-Un mensaje a Madrid tarda días. Eso está bien para el producto y es un
-problema para mostrarlo, así que cada envío puede marcarse como *vuelo de
-prueba*: comprime el viaje hasta que el ave **más lenta** entre en unos 3
-minutos, y aplica ese mismo factor a las cuatro. Las proporciones entre
-especies quedan intactas — el perico sigue llegando en un tercio de lo que
-tarda el guacamayo, sea el trayecto de 2 km o de 10.000.
-
-No es un `×60`: con un multiplicador fijo, cualquier trayecto corto se
-aplastaba contra el piso de 25 segundos y las cuatro aves daban el mismo
-tiempo, que es exactamente lo que la app existe para diferenciar.
+Había una casilla de *vuelo de prueba* en cada envío y se sacó: era una casilla
+para desactivar la promesa central del producto, y **Doña Cotorra** ya cumple
+esa función mejor —vive a 2,2 km, así que sus vuelos duran minutos y contesta
+sola—. Para una demo con distancias de verdad está
+`LOROS_ESCALA_TIEMPO` (el divisor global del tiempo de vuelo, 1 = tiempo real),
+que viaja al navegador en `/api/estado` para que el tiempo que se promete antes
+de mandar sea exactamente el que después se cumple.
 
 ## ¿Y el login con Google?
 
@@ -168,12 +221,15 @@ vulnerabilidades — vale la pena mantenerlo así, porque esto se deploya públi
 Requiere Node 20.9 o más.
 
 ```
-lib/aves.ts       la tabla de las cuatro especies. Todo sale de acá.
+lib/aves.ts       la tabla de las seis especies. Todo sale de acá.
 lib/vuelo.ts      la fórmula del vuelo. Pura, y la usan servidor Y navegador:
                   si no fueran la misma cuenta, la app prometería un tiempo
                   y cumpliría otro.
 lib/geo.ts        haversine, ruta de círculo máximo, rumbo, formatos.
-lib/datos.ts      nidos, amistades, loros, Doña Cotorra.
+lib/datos.ts      nidos, amistades, loros, la suerte del ave, Doña Cotorra.
+lib/olvido.ts     lo que llega cuando no llega tal cual: la cotorra y la perica.
+lib/tramos.ts     los vuelos dibujables: la ida de cada loro y, si lo soltaron,
+                  la vuelta. Solo tipos importados — lo usa el navegador.
 lib/store.ts      persistencia: Upstash, Supabase o un archivo, según lo que
                   esté configurado.
 lib/vista.ts      qué ve el navegador. Acá se decide qué NO viaja: ni el texto
@@ -184,23 +240,26 @@ lib/geocode.ts    coordenadas → "Palermo, Argentina" (Nominatim, best-effort).
 
 app/page.tsx      la portada.
 app/nido/         la app.
-app/api/          estado, nido, amigos, loros, loros/leer, ubicacion, sesion.
+app/api/          estado, nido, amigos, loros, loros/leer, loros/suerte,
+                  ubicacion, sesion.
 app/entrar/       canjea la llave del nido y redirige al mapa.
 
 components/Mapa.tsx        Leaflet: nidos, rutas y aves animadas.
 components/Compositor.tsx  elegir ave y escribir. La pantalla clave.
-components/Panel.tsx       en vuelo / buzón / bandada.
+components/Panel.tsx       en vuelo / buzón / bandada / nido.
 components/Onboarding.tsx  los tres pasos para tener nido.
-components/Ave.tsx         el ave dibujada, una forma y cuatro colores.
+components/Ave.tsx         las seis aves dibujadas, una pose y seis siluetas.
+components/Fiesta.tsx      el confeti de la paloma y las plumas del cuervo.
 ```
 
-Los cuatro loros son SVG escritos a mano en
+Las seis aves son SVG escritos a mano en
 [`components/Ave.tsx`](components/Ave.tsx), en una sola pose de vuelo. Se
 escriben como texto y no como JSX porque el marcador de Leaflet necesita HTML
 crudo, y tener el mismo dibujo en dos lugares es la forma más rápida de que se
 despeguen. Lo que distingue a una especie de otra a 34 píxeles no es el color
 sino la silueta: la cola del guacamayo, las rayas del perico, el abanico de la
-cotorra.
+cotorra, la rosa en el pico de la paloma, y el pico recto de daga del cuervo
+—el único sin el gancho simpático de los loros, y sin cachete rosado.
 
 ### Dos decisiones que explican casi todo
 

@@ -206,6 +206,12 @@ export default function Nido() {
   }
 
   const enVuelo = est.loros.filter((l) => !l.llego && !l.perdido);
+  // Las que vuelven a casa también cuentan como "en el aire": están cruzando
+  // el mapa igual que las que van.
+  const volviendo = est.loros.filter(
+    (l) => l.vuelta && est.ahoraServidor() < l.vuelta.llegada
+  ).length;
+  const enElAire = enVuelo.length + volviendo;
 
   return (
     <div className="app">
@@ -215,7 +221,7 @@ export default function Nido() {
         <Mapa
           yo={est.yo}
           amigos={est.amigos}
-          vuelos={enVuelo}
+          vuelos={est.loros}
           ahoraServidor={est.ahoraServidor}
           foco={foco}
           modoElegir={mudando}
@@ -256,8 +262,8 @@ export default function Nido() {
         <div className="flotante" style={{ top: 12, left: 56, pointerEvents: "none" }}>
           <Ave especie="loro" size={20} />
           <span>Loros</span>
-          {enVuelo.length > 0 && (
-            <span style={{ color: "var(--esmeralda-alto)" }}>· {enVuelo.length} en el aire</span>
+          {enElAire > 0 && (
+            <span style={{ color: "var(--esmeralda-alto)" }}>· {enElAire} en el aire</span>
           )}
         </div>
 

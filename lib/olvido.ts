@@ -1,9 +1,16 @@
-// Lo que el perico recuerda del mensaje.
+// Lo que llega cuando no llega tal cual se escribió.
 //
-// El perico llega antes que nadie y a cambio se olvida cosas: pierde palabras,
-// repite otras y a veces las mezcla, como el teléfono descompuesto. No es un
-// error de la app — es lo que se paga por la velocidad, y la pantalla de
-// escribir lo avisa antes de mandar.
+// Dos aves entregan algo distinto de lo que se puso en el campo de texto, y por
+// razones distintas:
+//
+//   La cotorra repite el mensaje en voz alta todo el viaje y se le mezcla:
+//   pierde palabras, repite otras, da vuelta un par. Teléfono descompuesto.
+//
+//   Al perico se lo retoca la perica con la que se distrajo. Ella toca menos
+//   —no es su mensaje— pero firma al final, y ahí está el chiste.
+//
+// Ninguna de las dos es un error de la app: las dos se avisan en la pantalla de
+// escribir, antes de mandar (lib/aves.ts, campo `aviso`).
 //
 // Tres reglas para que sea gracioso y no molesto:
 //
@@ -40,14 +47,18 @@ function azar(semilla: number): () => number {
 }
 
 const MINIMO_PALABRAS = 4;
-const PROPORCION = 0.22;
 
-export function loQueRecuerdaElPerico(texto: string, semilla: string): string {
+/** Qué proporción de palabras se rompe. La cotorra habla el viaje entero; la
+ *  perica apenas mete mano en un mensaje que ni siquiera es suyo. */
+const PROPORCION_COTORRA = 0.22;
+const PROPORCION_PERICA = 0.12;
+
+function mezclar(texto: string, semilla: string, proporcion: number): string {
   const palabras = texto.trim().split(/\s+/).filter(Boolean);
   if (palabras.length < MINIMO_PALABRAS) return texto;
 
   const r = azar(semillaNumerica(semilla));
-  const objetivo = Math.max(1, Math.round(palabras.length * PROPORCION));
+  const objetivo = Math.max(1, Math.round(palabras.length * proporcion));
   const salida: string[] = [];
   let rotas = 0;
 
@@ -73,7 +84,7 @@ export function loQueRecuerdaElPerico(texto: string, semilla: string): string {
   }
 
   // Si el azar no rompió nada, el chiste no llega. Se fuerza un olvido en el
-  // medio: un perico que entrega el mensaje perfecto no es un perico.
+  // medio: una cotorra que entrega el mensaje perfecto no es una cotorra.
   if (rotas === 0) salida[Math.floor(palabras.length / 2)] = "…";
 
   return salida
@@ -81,4 +92,30 @@ export function loQueRecuerdaElPerico(texto: string, semilla: string): string {
     .replace(/(?:… ){2,}…?/g, "… ") // dos olvidos seguidos se leen como uno
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** El teléfono descompuesto de la cotorra. */
+export function loQueRepiteLaCotorra(texto: string, semilla: string): string {
+  return mezclar(texto, semilla, PROPORCION_COTORRA);
+}
+
+/**
+ * Lo que queda del mensaje después de que la perica le metiera mano.
+ *
+ * Toca menos palabras que la cotorra —no es su mensaje, solo lo está espiando—
+ * pero firma al final. La firma es lo que convierte "llegó raro" en "pasó algo
+ * en el camino", que es la historia que la app quiere contar.
+ */
+const FIRMAS = [
+  "(esto último lo escribió una perica, no preguntes)",
+  "(la perica también te manda saludos)",
+  "(pd: tu perico ahora es mi perico)",
+  "(el perico está ocupado, termino yo)",
+  "(perdón, se lo leí entero antes de traerlo)",
+];
+
+export function loQueRetocaLaPerica(texto: string, semilla: string): string {
+  const mezclado = mezclar(texto, `perica:${semilla}`, PROPORCION_PERICA);
+  const firma = FIRMAS[semillaNumerica(`firma:${semilla}`) % FIRMAS.length];
+  return `${mezclado} ${firma}`;
 }

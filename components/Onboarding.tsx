@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { AVES_LISTA, type AveId } from "../lib/aves";
+import { AVES_COTIDIANAS, type AveId } from "../lib/aves";
 import type { Punto } from "../lib/geo";
 import { pedir, pedirUbicacion } from "../lib/cliente";
 import type { NidoVista } from "../lib/vista";
@@ -149,7 +149,7 @@ export function Onboarding({
                 <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--suave)" }}>
                   🔒 <strong style={{ color: "var(--texto)" }}>Nadie ve dónde vivís.</strong>{" "}
                   Tus coordenadas se usan para calcular la distancia y no salen de
-                  acá: los demás ven una zona de 3 km y el nombre de tu ciudad,
+                  acá: los demás ven una zona de 300 metros y el nombre de tu ciudad,
                   nunca tu calle. El tiempo de vuelo sí es exacto.
                 </p>
               </div>
@@ -237,11 +237,12 @@ export function Onboarding({
               <h2 style={{ fontSize: 21, margin: "10px 0 6px" }}>Elegí tu ave</h2>
               <p style={{ color: "var(--suave)", fontSize: 14.5, marginBottom: 16 }}>
                 Cuanto más rápido vuela, menos le entra en la cabeza. Podés cambiar
-                de ave en cada mensaje.
+                de ave en cada mensaje — y adentro te esperan dos más, una paloma
+                y un cuervo, para cuando haga falta.
               </p>
 
               <div style={{ display: "grid", gap: 10 }}>
-                {AVES_LISTA.map((a) => {
+                {AVES_COTIDIANAS.map((a) => {
                   const elegida = ave === a.id;
                   return (
                     <button

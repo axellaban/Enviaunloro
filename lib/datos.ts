@@ -15,8 +15,13 @@ import {
 } from "./geo";
 import { lugarDe } from "./geocode";
 import { escribirDoc, leerDoc, store } from "./store";
-import { duracionVuelo, probabilidadExtravio } from "./vuelo";
-import { loQueRecuerdaElPerico } from "./perico";
+import {
+  duracionVuelo,
+  probabilidadExtravio,
+  sortearDesvio,
+  type Desvio,
+} from "./vuelo";
+import { loQueRepiteLaCotorra, loQueRetocaLaPerica } from "./olvido";
 import { nuevoId } from "./sesion";
 
 export type Nido = {
@@ -44,10 +49,11 @@ export type Loro = {
   /** Lo que se escribió. Quien lo mandó ve siempre esto. */
   texto: string;
   /**
-   * Lo que llega del otro lado. Igual al original salvo con el perico, que se
-   * olvida y mezcla palabras por el camino (lib/perico.ts). Se calcula al
-   * despegar y queda escrito: si se calculara al leer, cada consulta entregaría
-   * un mensaje distinto.
+   * Lo que llega del otro lado. Igual al original salvo con la cotorra —que
+   * repite el mensaje todo el viaje hasta mezclarlo— y con el perico al que lo
+   * agarró una perica en el camino (lib/olvido.ts). Se calcula al despegar y
+   * queda escrito: si se calculara al leer, cada consulta entregaría un
+   * mensaje distinto.
    */
   textoEntregado: string;
   origen: Punto;
@@ -56,8 +62,6 @@ export type Loro = {
   /** Epoch ms del despegue y del aterrizaje. El vuelo es la diferencia. */
   salida: number;
   llegada: number;
-  /** Vuelo acelerado, para poder mostrar la app sin esperar de verdad. */
-  turbo: boolean;
   /**
    * Epoch ms en que el ave se pierde, o null si llega bien. Se sortea al
    * soltarla y queda escrito: si se decidiera al mirar, dos personas mirando
@@ -66,10 +70,40 @@ export type Loro = {
   extravio: number | null;
   /** Qué le pasó. Vacío si no se perdió. */
   motivo: string;
+  /**
+   * El romance del perico: cuándo se cruzó con la perica, hasta cuándo estuvo
+   * dando vueltas y en qué punto del camino. null si el viaje salió derecho.
+   * La hora de llegada ya lo tiene sumado.
+   */
+  desvio: Desvio | null;
   leido: number | null;
+  /**
+   * Qué hizo con el ave quien la recibió. null mientras no haya decidido: el
+   * ave está posada en su ventana esperando.
+   */
+  suerte?: Suerte | null;
+  /** Cuándo lo decidió. */
+  suerteEn?: number | null;
+  /** Si la soltó: cuándo llega de vuelta al nido de origen. */
+  regreso?: number | null;
   /** Interno de Doña Cotorra: si ya devolvió el ave con su respuesta. */
   respondido?: boolean;
 };
+
+/**
+ * Qué hace con el ave quien recibió el mensaje.
+ *
+ * El vuelo termina cuando el mensaje llega, pero el ave sigue ahí, posada del
+ * otro lado. Que la decisión sea de quien la recibió —y no automática— es lo
+ * que le da consecuencia a mandar: soltarla te la devuelve volando y se ve en
+ * el mapa; enjaularla o mandarla al puchero significa que ese loro no vuelve
+ * más, y quien lo mandó se entera.
+ */
+export type Suerte = "soltado" | "enjaulado" | "puchero";
+
+export function esSuerte(x: unknown): x is Suerte {
+  return x === "soltado" || x === "enjaulado" || x === "puchero";
+}
 
 /**
  * Qué le pasó al ave que no llegó. Da lo mismo cuál toque —ninguna es más
@@ -82,7 +116,7 @@ const MOTIVOS = [
   "Se lo llevó el viento para el otro lado.",
   "Se metió en una tormenta y perdió el rumbo.",
   "Encontró un árbol que le gustó más que tu destinatario.",
-  "Se cruzó con otra ave y se olvidó de todo.",
+  "Confundió el destino con otro balcón parecido y se quedó ahí.",
   "Lo vieron por última vez dando vueltas sobre un campanario.",
 ];
 
@@ -234,12 +268,23 @@ export type ResultadoEnvio =
   | { ok: true; loro: Loro }
   | { ok: false; error: string };
 
+/** Qué texto llega efectivamente del otro lado, según el ave y cómo le fue. */
+function retocarTexto(
+  aveId: AveId,
+  texto: string,
+  semilla: string,
+  desvio: Desvio | null
+): string {
+  if (AVES[aveId].rareza === "olvida") return loQueRepiteLaCotorra(texto, semilla);
+  if (desvio) return loQueRetocaLaPerica(texto, semilla);
+  return texto;
+}
+
 export async function enviarLoro(datos: {
   de: Nido;
   para: Nido;
   ave: AveId;
   texto: string;
-  turbo: boolean;
 }): Promise<ResultadoEnvio> {
   const texto = datos.texto.trim();
   if (!texto) return { ok: false, error: "El loro no puede volar sin nada que decir." };
@@ -256,7 +301,9 @@ export async function enviarLoro(datos: {
   const destino: Punto = { lat: datos.para.lat, lng: datos.para.lng };
   const km = distanciaKm(origen, destino);
   const salida = Date.now();
-  const duracion = duracionVuelo(km, datos.ave, datos.turbo, escalaGlobal());
+  const escala = escalaGlobal();
+  // Lo que iba a tardar si nada raro pasaba. Todo lo demás se mide contra esto.
+  const duracionLimpia = duracionVuelo(km, datos.ave, escala);
 
   // El sorteo va acá, una sola vez, y el resultado queda guardado. Ni cerca
   // del principio ni del final: perderse a los tres segundos de despegar no se
@@ -264,6 +311,12 @@ export async function enviarLoro(datos: {
   // crueldad innecesaria.
   const seExtravia = Math.random() < probabilidadExtravio();
   const dondeSePierde = 0.15 + Math.random() * 0.7;
+
+  // Un ave que se pierde no se enamora: la historia de cada vuelo es una sola.
+  const desvio = seExtravia
+    ? null
+    : sortearDesvio(datos.ave, salida, duracionLimpia, escala);
+  const duracion = duracionLimpia + (desvio ? desvio.hasta - desvio.desde : 0);
 
   const id = nuevoId();
   const loro: Loro = {
@@ -276,15 +329,21 @@ export async function enviarLoro(datos: {
     destino,
     distanciaKm: km,
     salida,
-    // El perico vuela más rápido y llega con la mitad al revés. Es la contra
-    // de su velocidad, y la pantalla de escribir lo avisa antes de mandar.
-    textoEntregado:
-      datos.ave === "perico" ? loQueRecuerdaElPerico(texto, id) : texto,
+    // Dos aves entregan otra cosa: la cotorra por hablar de más, y el perico
+    // al que la perica le metió mano mientras estaba distraído. Un perico que
+    // no se distrajo entrega el mensaje intacto — es el premio por mandar el
+    // ave más rápida y que salga bien.
+    textoEntregado: retocarTexto(datos.ave, texto, id, desvio),
     llegada: salida + duracion,
-    turbo: datos.turbo,
-    extravio: seExtravia ? salida + Math.round(duracion * dondeSePierde) : null,
+    extravio: seExtravia
+      ? salida + Math.round(duracionLimpia * dondeSePierde)
+      : null,
     motivo: seExtravia ? MOTIVOS[Math.floor(Math.random() * MOTIVOS.length)] : "",
+    desvio,
     leido: null,
+    suerte: null,
+    suerteEn: null,
+    regreso: null,
   };
 
   await escribirDoc(claveLoro(loro.id), loro);
@@ -328,6 +387,42 @@ export async function marcarLeido(loroId: string, lector: string): Promise<Loro 
   return actualizado;
 }
 
+/**
+ * Qué hace el destinatario con el ave, una vez leído el mensaje.
+ *
+ * Solo decide quien la recibió, solo una vez, y solo cuando el ave ya aterrizó:
+ * antes de eso el ave no está de su lado y no hay nada que decidir. Y no se
+ * puede cambiar de opinión — un ave que ya salió de vuelta no se puede
+ * desenjaular.
+ */
+export async function decidirSuerte(
+  loroId: string,
+  quien: string,
+  suerte: Suerte
+): Promise<Loro | null> {
+  const l = await loro(loroId);
+  if (!l || l.para !== quien) return null;
+  const ahora = Date.now();
+  // Un ave que nunca llegó no está posada en la ventana de nadie.
+  if (l.extravio !== null && ahora >= l.extravio) return null;
+  if (ahora < l.llegada) return null;
+  if (l.suerte) return l;
+
+  const actualizado: Loro = {
+    ...l,
+    suerte,
+    suerteEn: ahora,
+    // Volver cuesta lo mismo que venir: misma ave, misma distancia. Y sin
+    // romances: el perico ya gastó el suyo en la ida.
+    regreso:
+      suerte === "soltado"
+        ? ahora + duracionVuelo(l.distanciaKm, l.ave, escalaGlobal())
+        : null,
+  };
+  await escribirDoc(claveLoro(loroId), actualizado);
+  return actualizado;
+}
+
 // ---------- Doña Cotorra ----------
 //
 // La vecina de práctica. Existe por una razón concreta: sin ella, la primera
@@ -342,9 +437,25 @@ const RESPUESTAS = [
   "¡Llegó tu {ave}! Se posó en mi ventana, repitió todo dos veces y se comió mis semillas. Te lo devuelvo con la respuesta.",
   "Recibido. Acá a {km} de vos también está lindo el día. Mandame otro cuando quieras, esta vez probá con el guacamayo.",
   "Che, tu {ave} venía cansadísimo. Descansó un rato y ya sale de vuelta con esto.",
-  "Lo leí tres veces. Muy bueno. Ojo que el perico llega antes pero se olvida la mitad — para las cosas importantes mandá el loro.",
+  "Lo leí tres veces. Muy bueno. Ojo con la cotorra, que de tanto repetirlo te lo entrega todo mezclado — para las cosas importantes mandá el loro.",
   "Confirmo recepción. {km} de vuelo para decirme eso, y valió la pena.",
 ];
+
+/**
+ * Para las aves que traen algo más que texto, contestar con la frase genérica
+ * quedaría sordo: mandarle un cuervo a la vecina y que responda "¡qué lindo
+ * día!" rompe el chiste que la persona acaba de hacer.
+ */
+const RESPUESTAS_POR_AVE: Partial<Record<AveId, string>> = {
+  paloma:
+    "¡Ay, tu paloma! Llegó con las flores medio aplastadas del viaje pero llegó, y el chocolate estaba entero. Te devuelvo una igual, que esto no se agradece con un loro cualquiera.",
+  cuervo:
+    "Uf. Me llegó tu cuervo y lo leí sentada. No sé bien qué decirte, así que te lo mando de vuelta con un abrazo y nada más.",
+  perico:
+    "Tu perico llegó… en algún momento. Espero que lo que dice sea lo que escribiste. Acá a {km} igual te leo.",
+  cotorra:
+    "Tu cotorra llegó hablando sola y me entregó esto medio mezclado, pero se entendió. {km} de chusmerío bien invertidos.",
+};
 
 function idVecina(idUsuario: string): string {
   return `vecina-${idUsuario}`;
@@ -392,7 +503,14 @@ export async function atenderVecina(idUsuario: string): Promise<void> {
     if (l.extravio !== null && ahora >= l.extravio) continue;
     await escribirDoc(claveLoro(l.id), { ...l, respondido: true, leido: l.leido || ahora });
 
-    const plantilla = RESPUESTAS[Math.floor(Math.random() * RESPUESTAS.length)];
+    // Doña Cotorra siempre suelta el ave. Es la manera de que alguien que
+    // todavía no tiene a nadie en la bandada vea las dos mitades del producto
+    // el primer día: su loro volviendo por el mapa, y una respuesta aparte.
+    await decidirSuerte(l.id, id, "soltado");
+
+    const plantilla =
+      RESPUESTAS_POR_AVE[l.ave] ||
+      RESPUESTAS[Math.floor(Math.random() * RESPUESTAS.length)];
     const texto = plantilla
       .replace("{ave}", AVES[l.ave].nombre.toLowerCase())
       .replace("{km}", formatearDistancia(l.distanciaKm));
@@ -403,7 +521,6 @@ export async function atenderVecina(idUsuario: string): Promise<void> {
       // Devuelve el ave que le mandaste: la respuesta tarda lo mismo que la ida.
       ave: l.ave,
       texto: texto.slice(0, AVES[l.ave].maxCaracteres),
-      turbo: l.turbo,
     });
   }
 }
