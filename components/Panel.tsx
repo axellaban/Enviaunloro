@@ -9,14 +9,14 @@
 // mueva.
 
 import { useState } from "react";
-import { AVES } from "../lib/aves";
+import { AVES, AVES_LISTA, type AveId } from "../lib/aves";
 import {
   cuentaRegresiva,
   formatearDistancia,
   formatearDuracion,
 } from "../lib/geo";
 import { duracionVuelo } from "../lib/vuelo";
-import { pedir, useTic } from "../lib/cliente";
+import { pedir, pedirUbicacion, useTic } from "../lib/cliente";
 import type { LoroVista, NidoVista } from "../lib/vista";
 import { Ave } from "./Ave";
 
@@ -30,11 +30,13 @@ type Props = {
   alEnfocar: (id: string) => void;
   alEscribir: (idAmigo?: string) => void;
   alReenviar: (loro: LoroVista) => void;
+  /** Prende el modo "tocá el mapa" para mover el nido. Lo maneja la página. */
+  alElegirEnMapa: () => void;
   refrescar: () => void;
 };
 
 export function Panel(p: Props) {
-  const [pestaña, setPestaña] = useState<"vuelo" | "buzon" | "bandada">("vuelo");
+  const [pestaña, setPestaña] = useState<"vuelo" | "buzon" | "bandada" | "nido">("vuelo");
   const enVuelo = p.loros
     .filter((l) => !l.llego && !l.perdido)
     .sort((a, b) => a.llegada - b.llegada);
@@ -48,11 +50,15 @@ export function Panel(p: Props) {
     { id: "vuelo" as const, texto: "En vuelo", contador: enVuelo.length },
     { id: "buzon" as const, texto: "Buzón", contador: sinLeer },
     { id: "bandada" as const, texto: "Bandada", contador: 0 },
+    // Tu código, tu ubicación y tu llave vivían en la cabecera, ocupando un
+    // tercio del panel en el celular antes de que empezara el contenido. Acá
+    // están igual de a mano y no le comen espacio a lo que se lee todo el rato.
+    { id: "nido" as const, texto: "Nido", contador: 0 },
   ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-      <Cabecera yo={p.yo} codigo={p.codigo} />
+      <Cabecera yo={p.yo} />
 
       <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
         {pestañas.map((t) => {
@@ -143,6 +149,15 @@ export function Panel(p: Props) {
             refrescar={p.refrescar}
           />
         )}
+
+        {pestaña === "nido" && (
+          <MiNido
+            yo={p.yo}
+            codigo={p.codigo}
+            alElegirEnMapa={p.alElegirEnMapa}
+            refrescar={p.refrescar}
+          />
+        )}
       </div>
     </div>
   );
@@ -150,145 +165,24 @@ export function Panel(p: Props) {
 
 // ---------- cabecera ----------
 
-function Cabecera({ yo, codigo }: { yo: NidoVista; codigo: string }) {
-  const [copiado, setCopiado] = useState(false);
-  const [llave, setLlave] = useState("");
-  const [pidiendoLlave, setPidiendoLlave] = useState(false);
-
-  async function compartir() {
-    // El código va DENTRO del link, no suelto al lado. Pedirle a alguien que
-    // copie seis caracteres de un mensaje de WhatsApp y después adivine dónde
-    // pegarlos es donde se caía la invitación: ahora toca el link, ve de quién
-    // viene, y al armar su nido queda conectado solo.
-    const url = typeof window !== "undefined" ? `${window.location.origin}/?n=${codigo}` : "";
-    const texto = "Mandame un loro 🦜 Tocá el link y quedamos conectados:";
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "Loros", text: texto, url });
-      } else {
-        await navigator.clipboard.writeText(`${texto} ${url}`);
-      }
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
-    } catch {}
-  }
-
-  async function pedirLlave() {
-    setPidiendoLlave(true);
-    try {
-      const r = await pedir<{ llave: string }>("/api/sesion");
-      const url = `${window.location.origin}/entrar?llave=${encodeURIComponent(r.llave)}`;
-      setLlave(url);
-      await navigator.clipboard.writeText(url).catch(() => {});
-    } catch {
-      setLlave("no-se-pudo");
-    } finally {
-      setPidiendoLlave(false);
-    }
-  }
-
+function Cabecera({ yo }: { yo: NidoVista }) {
   return (
-    <div style={{ padding: "16px 16px 12px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Ave especie={yo.ave} size={30} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontWeight: 750, fontSize: 15.5 }}>{yo.nombre}</p>
-          <p
-            style={{
-              color: "var(--tenue)",
-              fontSize: 12.5,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {yo.lugar || `${yo.lat.toFixed(3)}, ${yo.lng.toFixed(3)}`}
-          </p>
-        </div>
-        <button className="boton fantasma chico" onClick={compartir}>
-          {copiado ? "✓ Copiado" : "Compartir"}
-        </button>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          marginTop: 12,
-          padding: "9px 12px",
-          borderRadius: 10,
-          background: "var(--panel)",
-          border: "1px dashed var(--borde-alto)",
-        }}
-      >
-        <span className="etiqueta">Tu código</span>
-        <span
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px 12px" }}>
+      <Ave especie={yo.ave} size={30} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontWeight: 750, fontSize: 15.5 }}>{yo.nombre}</p>
+        <p
           style={{
-            fontFamily: "var(--mono)",
-            fontSize: 17,
-            fontWeight: 700,
-            letterSpacing: "0.18em",
-            color: "var(--esmeralda-alto)",
+            color: "var(--tenue)",
+            fontSize: 12.5,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
         >
-          {codigo}
-        </span>
-      </div>
-
-      {/* Sin cuentas, el nido vive en esta cookie. Esto es la única forma de
-          llevárselo a otro teléfono — y de no perderlo al limpiar el navegador. */}
-      <button
-        onClick={pedirLlave}
-        disabled={pidiendoLlave}
-        style={{
-          background: "none",
-          border: "none",
-          padding: "8px 2px 0",
-          cursor: "pointer",
-          fontSize: 12,
-          color: "var(--tenue)",
-          textDecoration: "underline",
-          textUnderlineOffset: 3,
-        }}
-      >
-        {llave ? "Llave copiada" : "Abrir mi nido en otro dispositivo"}
-      </button>
-      {llave === "no-se-pudo" && (
-        <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 6 }}>
-          No se pudo generar la llave. Probá de nuevo.
+          {yo.lugar || `${yo.lat.toFixed(3)}, ${yo.lng.toFixed(3)}`}
         </p>
-      )}
-      {llave && llave !== "no-se-pudo" && (
-        <div
-          style={{
-            marginTop: 8,
-            padding: "10px 12px",
-            borderRadius: 10,
-            background: "rgba(251,191,36,.08)",
-            border: "1px solid rgba(251,191,36,.28)",
-          }}
-        >
-          <p style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--suave)" }}>
-            Copiamos un link al portapapeles. Abrilo en el otro dispositivo y tu
-            nido aparece ahí.{" "}
-            <strong style={{ color: "#fbbf24" }}>
-              No se lo pases a nadie: ese link ES tu nido
-            </strong>
-            , no es tu código.
-          </p>
-          <p
-            style={{
-              marginTop: 8,
-              fontFamily: "var(--mono)",
-              fontSize: 10.5,
-              color: "var(--tenue)",
-              wordBreak: "break-all",
-            }}
-          >
-            {llave}
-          </p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -688,6 +582,244 @@ function Bandada({
           </div>
         );
       })}
+    </>
+  );
+}
+
+// ---------- mi nido ----------
+
+/**
+ * Todo lo que es tuyo y no de los demás: tu código, dónde estás, cómo te
+ * llamás, y la llave para llevarte el nido a otro dispositivo.
+ */
+function MiNido({
+  yo,
+  codigo,
+  alElegirEnMapa,
+  refrescar,
+}: {
+  yo: NidoVista;
+  codigo: string;
+  alElegirEnMapa: () => void;
+  refrescar: () => void;
+}) {
+  const [copiado, setCopiado] = useState(false);
+  const [nombre, setNombre] = useState(yo.nombre);
+  const [ave, setAve] = useState<AveId>(yo.ave);
+  const [guardando, setGuardando] = useState(false);
+  const [ubicando, setUbicando] = useState(false);
+  const [nota, setNota] = useState("");
+  const [llave, setLlave] = useState("");
+
+  const cambiado = nombre.trim() !== yo.nombre || ave !== yo.ave;
+
+  function avisar(texto: string) {
+    setNota(texto);
+    setTimeout(() => setNota((n) => (n === texto ? "" : n)), 4000);
+  }
+
+  async function compartir() {
+    // El código va DENTRO del link, no suelto al lado. Pedirle a alguien que
+    // copie seis caracteres de un mensaje de WhatsApp y después adivine dónde
+    // pegarlos es donde se caía la invitación: ahora toca el link, ve de quién
+    // viene, y al armar su nido queda conectado solo.
+    const url = typeof window !== "undefined" ? `${window.location.origin}/?n=${codigo}` : "";
+    const texto = "Mandame un loro 🦜 Tocá el link y quedamos conectados:";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Loros", text: texto, url });
+      } else {
+        await navigator.clipboard.writeText(`${texto} ${url}`);
+      }
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {}
+  }
+
+  async function usarGps() {
+    setUbicando(true);
+    const r = await pedirUbicacion();
+    if (!r.ok) {
+      setUbicando(false);
+      avisar(r.motivo);
+      return;
+    }
+    try {
+      await pedir("/api/ubicacion", { datos: r.punto });
+      refrescar();
+      avisar("Nido mudado. Los próximos vuelos salen desde acá.");
+    } catch (e: any) {
+      avisar(e?.message || "No se pudo mover el nido.");
+    } finally {
+      setUbicando(false);
+    }
+  }
+
+  async function guardar() {
+    setGuardando(true);
+    try {
+      await pedir("/api/nido", { datos: { nombre: nombre.trim(), ave } });
+      refrescar();
+      avisar("Guardado.");
+    } catch (e: any) {
+      avisar(e?.message || "No se pudo guardar.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function pedirLlave() {
+    try {
+      const r = await pedir<{ llave: string }>("/api/sesion");
+      const url = `${window.location.origin}/entrar?llave=${encodeURIComponent(r.llave)}`;
+      setLlave(url);
+      await navigator.clipboard.writeText(url).catch(() => {});
+    } catch {
+      setLlave("no-se-pudo");
+    }
+  }
+
+  return (
+    <>
+      {/* --- código e invitación --- */}
+      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+        <p className="etiqueta">Tu código de nido</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 12px" }}>
+          <span
+            style={{
+              flex: 1,
+              fontFamily: "var(--mono)",
+              fontSize: 20,
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              color: "var(--esmeralda-alto)",
+            }}
+          >
+            {codigo}
+          </span>
+        </div>
+        <button className="boton chico" style={{ width: "100%" }} onClick={compartir}>
+          {copiado ? "✓ Link copiado" : "Compartir mi nido"}
+        </button>
+        <p style={{ fontSize: 12, color: "var(--tenue)", marginTop: 9, lineHeight: 1.5 }}>
+          El link lleva tu código adentro: quien lo abre queda conectado sin
+          copiar nada.
+        </p>
+      </div>
+
+      {/* --- ubicación --- */}
+      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+        <p className="etiqueta">Dónde está tu nido</p>
+        <p style={{ fontSize: 14, margin: "9px 0 4px" }}>
+          {yo.lugar || "Sin nombre de lugar"}
+        </p>
+        <p style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--tenue)" }}>
+          {yo.lat.toFixed(4)}, {yo.lng.toFixed(4)}
+        </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button
+            className="boton fantasma chico"
+            style={{ flex: 1 }}
+            onClick={usarGps}
+            disabled={ubicando}
+          >
+            {ubicando ? "Buscando…" : "📍 Usar mi GPS"}
+          </button>
+          <button className="boton fantasma chico" style={{ flex: 1 }} onClick={alElegirEnMapa}>
+            Elegir en el mapa
+          </button>
+        </div>
+        <p style={{ fontSize: 12, color: "var(--tenue)", marginTop: 9, lineHeight: 1.5 }}>
+          Desde acá despegan tus loros. Moverlo cambia cuánto tardan, no los que
+          ya están en el aire.
+        </p>
+      </div>
+
+      {/* --- nombre y ave --- */}
+      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+        <p className="etiqueta">Cómo te anuncia el ave</p>
+        <input
+          className="campo"
+          style={{ marginTop: 10 }}
+          maxLength={24}
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+        />
+        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+          {AVES_LISTA.map((a) => {
+            const elegida = a.id === ave;
+            return (
+              <button
+                key={a.id}
+                onClick={() => setAve(a.id)}
+                title={a.nombre}
+                aria-label={a.nombre}
+                style={{
+                  flex: 1,
+                  display: "grid",
+                  placeItems: "center",
+                  padding: "8px 0",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  background: elegida ? `${a.color}2b` : "var(--panel)",
+                  border: `1px solid ${elegida ? a.color : "var(--borde)"}`,
+                  boxShadow: elegida ? `0 0 0 1px ${a.color}` : "none",
+                }}
+              >
+                <Ave especie={a.id} size={24} aletea={elegida} />
+              </button>
+            );
+          })}
+        </div>
+        <button
+          className="boton chico"
+          style={{ width: "100%", marginTop: 12 }}
+          disabled={!cambiado || !nombre.trim() || guardando}
+          onClick={guardar}
+        >
+          {guardando ? "Guardando…" : cambiado ? "Guardar cambios" : "Sin cambios"}
+        </button>
+      </div>
+
+      {/* --- llave --- */}
+      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+        <p className="etiqueta">Otro dispositivo</p>
+        <button
+          className="boton fantasma chico"
+          style={{ width: "100%", marginTop: 10 }}
+          onClick={pedirLlave}
+        >
+          {llave && llave !== "no-se-pudo" ? "✓ Llave copiada" : "Copiar la llave de mi nido"}
+        </button>
+        {llave === "no-se-pudo" ? (
+          <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>
+            No se pudo generar la llave. Probá de nuevo.
+          </p>
+        ) : (
+          <p style={{ fontSize: 12, color: "var(--tenue)", marginTop: 9, lineHeight: 1.5 }}>
+            Abrí ese link en la compu y tu nido aparece ahí.{" "}
+            <strong style={{ color: "#fbbf24" }}>No se lo pases a nadie: ese link ES tu nido</strong>
+            , no es tu código.
+          </p>
+        )}
+        {llave && llave !== "no-se-pudo" && (
+          <p
+            style={{
+              marginTop: 8,
+              fontFamily: "var(--mono)",
+              fontSize: 10.5,
+              color: "var(--tenue)",
+              wordBreak: "break-all",
+            }}
+          >
+            {llave}
+          </p>
+        )}
+      </div>
+
+      {nota && (
+        <p style={{ fontSize: 13, color: "var(--esmeralda-alto)", padding: "0 2px 8px" }}>{nota}</p>
+      )}
     </>
   );
 }

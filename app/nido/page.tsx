@@ -13,6 +13,7 @@ import { Onboarding } from "../../components/Onboarding";
 import { Panel } from "../../components/Panel";
 import { Compositor } from "../../components/Compositor";
 import { Ave } from "../../components/Ave";
+import { Cta } from "../../components/Cta";
 import {
   avisar,
   pedir,
@@ -50,6 +51,8 @@ export default function Nido() {
   const [foco, setFoco] = useState<string | null>(null);
   const enfocar = useCallback((id: string) => setFoco(`${id}#${Date.now()}`), []);
   const [aviso, setAviso] = useState("");
+  /** Modo "tocá el mapa para mudar tu nido". */
+  const [mudando, setMudando] = useState(false);
   /** Código que venía en el link compartido, esperando a que haya nido. */
   const invitacion = useRef<string | null>(null);
   const sumado = useRef(false);
@@ -215,7 +218,39 @@ export default function Nido() {
           vuelos={enVuelo}
           ahoraServidor={est.ahoraServidor}
           foco={foco}
+          modoElegir={mudando}
+          alElegirPunto={async (punto) => {
+            if (!mudando) return;
+            setMudando(false);
+            try {
+              await pedir("/api/ubicacion", { datos: punto });
+              est.refrescar();
+              mostrarAviso("🪺 Nido mudado. Los próximos vuelos salen desde acá.");
+            } catch (e: any) {
+              mostrarAviso(e?.message || "No se pudo mover el nido.");
+            }
+          }}
         />
+
+        {mudando && (
+          <div className="aviso entra pasa-clics" style={{ borderColor: "var(--borde-alto)" }}>
+            Tocá el mapa donde queda tu nido.{" "}
+            <button
+              onClick={() => setMudando(false)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--suave)",
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+                font: "inherit",
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
 
         {/* left: 56 y no 12 — el control de zoom de Leaflet vive en la esquina. */}
         <div className="flotante" style={{ top: 12, left: 56, pointerEvents: "none" }}>
@@ -262,6 +297,7 @@ export default function Nido() {
           ahoraServidor={est.ahoraServidor}
           alEnfocar={enfocar}
           alEscribir={(id) => setCompositor({ abierto: true, para: id })}
+          alElegirEnMapa={() => setMudando(true)}
           alReenviar={(l) =>
             setCompositor({
               abierto: true,
@@ -273,13 +309,11 @@ export default function Nido() {
           refrescar={est.refrescar}
         />
         <div className="pie-panel">
-          <button
-            className="boton"
-            style={{ width: "100%" }}
-            onClick={() => setCompositor({ abierto: true })}
-          >
-            🦜 Soltar un loro
-          </button>
+          <Cta ancho>
+            <button className="boton" onClick={() => setCompositor({ abierto: true })}>
+              🦜 Soltar un loro
+            </button>
+          </Cta>
         </div>
       </div>
 

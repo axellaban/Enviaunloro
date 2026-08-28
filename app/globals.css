@@ -211,7 +211,10 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 }
 .app-panel {
   position: relative;
-  height: 46dvh;
+  /* En el celular el panel es la app: acá vive todo lo que se lee. Con 46dvh,
+     descontando cabecera, pestañas y el botón de abajo, quedaban unos 90 px de
+     lista útil. */
+  height: 58dvh;
   flex: 0 0 auto;
   background: rgba(8, 17, 16, 0.92);
   border-top: 1px solid var(--borde);
@@ -234,7 +237,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgba(8, 17, 16, 0.98) 62%, transparent);
 }
 
@@ -260,6 +263,12 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 /* El error de la app no puede ir en la misma pastilla que las chapas del mapa:
    son frases largas —"revisá que hayas corrido supabase.sql"— y en una píldora
    de borde redondo, a una línea, se cortan justo cuando más se necesitan. */
+/* Un cartel que pide "tocá el mapa" y encima tapa el mapa es una trampa: los
+   toques en su zona no llegaban a ninguna parte. Deja pasar los clics; solo su
+   botón los recibe. */
+.aviso.pasa-clics { pointer-events: none; }
+.aviso.pasa-clics button { pointer-events: auto; }
+
 .error-flotante {
   position: absolute;
   z-index: 600;
@@ -378,3 +387,49 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   color: var(--suave);
 }
 .invitacion strong { color: var(--texto); }
+
+/* ---------- halo de los CTA ---------- */
+
+.cta {
+  position: relative;
+  display: inline-flex;
+}
+.cta-ancho,
+.cta-ancho > .boton {
+  display: flex;
+  width: 100%;
+}
+
+/* El botón va encima del halo por ser posicionado y venir después en el DOM. */
+.cta > .boton {
+  position: relative;
+}
+
+.cta-halo {
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #10b981,
+    #34d399,
+    #a3e635,
+    #fbbf24,
+    #f59e0b,
+    #fb7185,
+    #22d3ee,
+    #10b981
+  );
+  background-size: 300% 100%;
+  filter: blur(12px);
+  opacity: 0.75;
+  pointer-events: none;
+  animation: loroGlow 5s linear infinite;
+  transition: opacity 0.35s ease;
+}
+.cta:hover .cta-halo { opacity: 1; }
+
+@keyframes loroGlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}

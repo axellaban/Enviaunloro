@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { Ave } from "../components/Ave";
 import { TelefonoHero } from "../components/TelefonoHero";
+import { Cta } from "../components/Cta";
 import { nidoPorCodigo } from "../lib/datos";
 
 /**
@@ -85,13 +86,15 @@ export default async function Portada({
           </p>
 
           <div style={{ marginTop: 34 }}>
-            <Link
-              href={invita ? `/nido?n=${codigo}` : "/nido"}
-              className="boton"
-              style={{ padding: "15px 28px", fontSize: 16 }}
-            >
-              {invita ? `Armar mi nido y sumar a ${invita.nombre}` : "Soltar mi primer loro"}
-            </Link>
+            <Cta>
+              <Link
+                href={invita ? `/nido?n=${codigo}` : "/nido"}
+                className="boton"
+                style={{ padding: "15px 28px", fontSize: 16 }}
+              >
+                {invita ? `Armar mi nido y sumar a ${invita.nombre}` : "Soltar mi primer loro"}
+              </Link>
+            </Cta>
           </div>
 
           <Trayectoria />
