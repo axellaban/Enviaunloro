@@ -28,14 +28,41 @@ import { desplazar, type Punto } from "./geo";
 export const RADIO_ZONA_KM = 0.3;
 
 /**
+ * Radio de la vista del resto —los loros de desconocidos, sin nombre— que es
+ * un problema distinto y bastante más serio.
+ *
+ * En la bandada, 300 m alcanzan: quien te ve ahí ya tiene tu código, se lo
+ * diste vos. En la vista del resto te ve cualquiera, así que el punto se corre
+ * a escala de ciudad. 25 km dicen "esto sale de Buenos Aires" y no dicen nada
+ * más — que es justo lo que hace interesante el mapa sin poner a nadie.
+ */
+export const RADIO_MUNDO_KM = 25;
+
+/**
  * El punto que se le muestra a los demás. Determinista: el mismo nido siempre
  * cae en el mismo lugar equivocado.
  */
 export function zonaDe(punto: Punto, semilla: string): Punto {
-  const h = createHash("sha256").update(`zona:${semilla}`).digest();
+  return correr(punto, `zona:${semilla}`, RADIO_ZONA_KM);
+}
+
+/**
+ * El punto que se le muestra al mundo entero.
+ *
+ * Semilla distinta a propósito, y no es un detalle: con la misma, alguien de tu
+ * bandada —que ya te ve corrido 300 m— podría cruzar las dos vistas y sacar el
+ * rumbo del desvío, que es la mitad del secreto. Con semillas separadas, los
+ * dos puntos falsos no tienen nada que ver entre sí.
+ */
+export function zonaMundial(punto: Punto, semilla: string): Punto {
+  return correr(punto, `mundo:${semilla}`, RADIO_MUNDO_KM);
+}
+
+function correr(punto: Punto, semilla: string, radioKm: number): Punto {
+  const h = createHash("sha256").update(semilla).digest();
   const rumbo = (h.readUInt16BE(0) / 0xffff) * 360;
   // Raíz cuadrada para repartir parejo sobre el área del círculo. Sin ella los
   // puntos se apelotonan cerca del centro, que es justo donde no queremos.
-  const distancia = Math.sqrt(h.readUInt16BE(2) / 0xffff) * RADIO_ZONA_KM;
+  const distancia = Math.sqrt(h.readUInt16BE(2) / 0xffff) * radioKm;
   return desplazar(punto, distancia, rumbo);
 }

@@ -40,6 +40,11 @@ export async function POST(req: Request) {
       nombre,
       ave,
       visto: Date.now(),
+      // Aparecer o no en la vista del resto. Solo se toca si vino en el
+      // cuerpo: este endpoint también lo usa el panel para guardar el nombre,
+      // y ahí no manda `publico`. Sin esta comprobación, cambiarse el nombre
+      // te volvía a meter en el mapa del mundo sin que lo pidieras.
+      ...(typeof b?.publico === "boolean" ? { publico: b.publico } : {}),
       ...(punto ? { lat: punto.lat, lng: punto.lng } : {}),
     };
     await guardarNido(actualizado);

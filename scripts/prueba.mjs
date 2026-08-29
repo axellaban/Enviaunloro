@@ -347,6 +347,80 @@ if (MODO_ROMANCE) {
   chequear(retocado.texto.startsWith("Che"), "quien lo mandó sigue viendo su propio texto");
 }
 
+// --- la vista del resto ---
+//
+// Lo que se chequea acá no es que la lista tenga cosas: es que lo que tiene NO
+// alcance para saber de quién son. Un mapa del mundo que filtra nombres o
+// coordenadas de verdad es peor que no tener mapa del mundo.
+const carlaVe = await carla.llamar("/api/mundo");
+const mio = carlaVe.vuelos.find((v) => v.ave === "paloma" || v.ave === "cuervo");
+chequear(carlaVe.vuelos.length > 0, `Carla ve vuelos ajenos en el mundo (${carlaVe.vuelos.length})`);
+chequear(!!mio, "entre ellos, aves que ella no mandó");
+
+const crudo = JSON.stringify(carlaVe);
+for (const [aguja, que] of [
+  ["Ana", "el nombre de quien lo mandó"],
+  ["Beto", "el nombre de quien lo recibe"],
+  [idBeto, "el id del nido"],
+  [estAna.codigo, "el código del nido"],
+  ["te quiero", "el texto del mensaje"],
+  ["malas noticias", "el texto del mensaje"],
+]) {
+  chequear(!crudo.includes(aguja), `la vista del resto NO filtra ${que}`);
+}
+chequear(
+  mio.origen && !("nombre" in mio) && !("otro" in mio) && !("texto" in mio),
+  "cada vuelo trae ruta y horarios, y nada más"
+);
+
+// Las puntas están a escala de ciudad, no de casa.
+const lejos = metros(REAL_ANA, mio.origen);
+console.log(`  la punta del vuelo se ve a ${(lejos / 1000).toFixed(1)} km de donde salió`);
+chequear(lejos > 1000, "la punta NO está donde está el nido de verdad");
+chequear(lejos <= 25_000 + 500, "pero sí adentro de los 25 km declarados");
+
+// Y el corrimiento del mundo no es el mismo que el de la bandada: si lo fuera,
+// cruzar las dos vistas daría el rumbo del desvío, que es medio secreto.
+const enLaBandada = (await beto.llamar("/api/estado")).amigos.find((a) => a.nombre === "Ana");
+chequear(
+  metros(enLaBandada, mio.origen) > 500,
+  "el punto del mundo y el de la bandada son distintos (semillas separadas)"
+);
+
+// Apagar el interruptor saca TODOS tus vuelos, no solo los próximos.
+await ana.llamar("/api/nido", { nombre: "Ana", publico: false });
+const despues = await carla.llamar("/api/mundo");
+chequear(
+  despues.vuelos.length < carlaVe.vuelos.length,
+  `apagando «Del resto» los vuelos de Ana desaparecen (${carlaVe.vuelos.length} → ${despues.vuelos.length})`
+);
+await ana.llamar("/api/nido", { nombre: "Ana", publico: true });
+chequear(
+  (await carla.llamar("/api/mundo")).vuelos.length === carlaVe.vuelos.length,
+  "y volviéndolo a prender, vuelven"
+);
+// Guardar el nombre no puede volver a prenderlo solo.
+await ana.llamar("/api/nido", { nombre: "Ana", publico: false });
+await ana.llamar("/api/nido", { nombre: "Ana Laura" });
+chequear(
+  (await carla.llamar("/api/mundo")).vuelos.length < carlaVe.vuelos.length,
+  "y editar el nombre no te vuelve a meter en el mapa sin querer"
+);
+await ana.llamar("/api/nido", { nombre: "Ana", publico: true });
+
+// Doña Cotorra no cuenta como gente.
+chequear(
+  !JSON.stringify(await ana.llamar("/api/mundo")).includes("vecina-"),
+  "los vuelos de Doña Cotorra no entran al mundo"
+);
+
+// Y sin nido no se mira el mundo.
+const nadie = cliente("sin nido");
+try {
+  await nadie.llamar("/api/mundo");
+  chequear(false, "sin nido no se puede mirar el mundo");
+} catch (e) { chequear(String(e).includes("401"), "sin nido no se puede mirar el mundo"); }
+
 // --- la llave: el mismo nido en otro dispositivo ---
 const { llave } = await ana.llamar("/api/sesion");
 const compuDeAna = cliente("Ana (compu)");

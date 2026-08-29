@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Punto } from "./geo";
-import type { LoroVista, NidoVista } from "./vista";
+import type { LoroVista, NidoVista, VueloMundo } from "./vista";
 
 export type Estado = {
   yo: NidoVista | null;
@@ -232,4 +232,52 @@ export function avisar(titulo: string, cuerpo: string): void {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
     new Notification(titulo, { body: cuerpo, icon: "/icono.svg", tag: titulo });
   } catch {}
+}
+
+/**
+ * Los loros del mundo, para la vista "Del resto".
+ *
+ * Se consulta aparte de /api/estado y solo mientras la vista está prendida: es
+ * una respuesta que no le sirve de nada a quien está mirando lo suyo, y son
+ * decenas de vuelos que no hacen falta traer a cada rato.
+ *
+ * Ocho segundos entre consultas, y no cuatro como el estado propio: acá no hay
+ * nada esperando que aterrice: las aves se mueven solas entre consulta y
+ * consulta, con la misma cuenta que usa el mapa para las tuyas.
+ */
+export function useMundo(activa: boolean) {
+  const [vuelos, setVuelos] = useState<VueloMundo[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!activa) return;
+    let vivo = true;
+
+    const traer = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const j = await pedir<{ vuelos: VueloMundo[] }>("/api/mundo");
+        if (!vivo) return;
+        setVuelos(j.vuelos || []);
+        setError("");
+      } catch (e: any) {
+        if (vivo) setError(e?.message || "No se pudo mirar el mundo.");
+      } finally {
+        if (vivo) setCargando(false);
+      }
+    };
+
+    setCargando(true);
+    traer();
+    const id = setInterval(traer, 8000);
+    document.addEventListener("visibilitychange", traer);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", traer);
+    };
+  }, [activa]);
+
+  return { vuelos, cargando, error };
 }

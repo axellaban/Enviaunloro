@@ -33,9 +33,9 @@ import "leaflet-rotate";
 import { AVES, type AveId } from "../lib/aves";
 import { desplazar, puntoEnRuta, rumbo, ruta, type Punto } from "../lib/geo";
 import { avanceVuelo } from "../lib/vuelo";
-import { tramosEnElAire, type Tramo } from "../lib/tramos";
+import { tramosDelMundo, tramosEnElAire, type Tramo } from "../lib/tramos";
 import { aveHtml } from "./Ave";
-import type { LoroVista, NidoVista } from "../lib/vista";
+import type { LoroVista, NidoVista, VueloMundo } from "../lib/vista";
 
 const MAPBOX = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -167,6 +167,18 @@ function escapar(s: string): string {
   );
 }
 
+/** Qué tramos van en el mapa según la vista elegida. */
+function loQueSeDibuja(
+  vista: "tuyos" | "resto",
+  vuelos: LoroVista[],
+  mundo: VueloMundo[] | undefined,
+  ahora: number
+): Tramo[] {
+  return vista === "resto"
+    ? tramosDelMundo(mundo ?? [], ahora)
+    : tramosEnElAire(vuelos, ahora);
+}
+
 type CapaVuelo = {
   completa: L.Polyline;
   recorrida: L.Polyline;
@@ -186,6 +198,8 @@ export default function Mapa({
   yo,
   amigos,
   vuelos,
+  mundo,
+  vista = "tuyos",
   ahoraServidor,
   foco,
   modoElegir = false,
@@ -194,6 +208,9 @@ export default function Mapa({
   yo: NidoVista | null;
   amigos: NidoVista[];
   vuelos: LoroVista[];
+  /** Los vuelos anónimos de la vista del resto. */
+  mundo?: VueloMundo[];
+  vista?: "tuyos" | "resto";
   ahoraServidor: () => number;
   /** "<id>#<nonce>": id de un loro o de un nido para centrar la cámara. El
    *  número de atrás permite volver a enfocar lo mismo dos veces seguidas. */
@@ -289,7 +306,11 @@ export default function Mapa({
     const m = mapa.current;
     if (!m) return;
 
-    const todos = [...(yo ? [yo] : []), ...amigos];
+    // En la vista del resto no se dibuja ni un nido ajeno: los arcos ya vienen
+    // corridos 25 km, y marcar sus puntas con un pin diría "acá vive alguien"
+    // con una precisión que no tenemos y que además no nos corresponde. Queda
+    // el propio, para no perder de vista dónde estás parado.
+    const todos = vista === "resto" ? (yo ? [yo] : []) : [...(yo ? [yo] : []), ...amigos];
     const vistos = new Set<string>();
 
     for (const n of todos) {
@@ -369,7 +390,7 @@ export default function Mapa({
         m.fitBounds(limites, { padding: [50, 50], maxZoom: 14 });
       }
     }
-  }, [yo, amigos]);
+  }, [yo, amigos, vista]);
 
   /** Saca del mapa todo lo que dibuja un tramo. */
   function borrarCapa(clave: string) {
@@ -393,7 +414,7 @@ export default function Mapa({
     const m = mapa.current;
     if (!m) return;
 
-    for (const v of tramosEnElAire(vuelos, ahoraRef.current())) {
+    for (const v of loQueSeDibuja(vista, vuelos, mundo, ahoraRef.current())) {
       const color = AVES[v.ave].color;
       const existente = capas.current.get(v.clave);
 
@@ -476,7 +497,7 @@ export default function Mapa({
         }).addTo(m),
       });
     }
-  }, [vuelos]);
+  }, [vuelos, mundo, vista]);
 
   // ---- animación ----
   useEffect(() => {
@@ -486,7 +507,7 @@ export default function Mapa({
     const paso = () => {
       if (!vivo) return;
       const ahora = ahoraRef.current();
-      const tramos = tramosEnElAire(vuelos, ahora);
+      const tramos = loQueSeDibuja(vista, vuelos, mundo, ahora);
       const vivos = new Set(tramos.map((t) => t.clave));
 
       for (const v of tramos) {
@@ -523,6 +544,7 @@ export default function Mapa({
         const el = capa.ave.getElement()?.querySelector("[data-rot]") as HTMLElement | null;
         if (el) el.style.transform = orientar(grados + rumboRef.current);
 
+
         // Las flores aparecen cuando la paloma ya pasó por encima.
         for (let i = 0; i < capa.flores.length; i++) {
           const donde = (i + 1) / (capa.flores.length + 1);
@@ -544,7 +566,44 @@ export default function Mapa({
       vivo = false;
       cancelAnimationFrame(cuadro);
     };
-  }, [vuelos]);
+  }, [vuelos, mundo, vista]);
+
+  // ---- al cambiar de vista, encuadrar lo que hay ----
+  //
+  // Sin esto, tocar "Del resto" con el mapa en tu barrio deja una pantalla
+  // vacía: los vuelos del mundo están a miles de kilómetros y no hay forma de
+  // adivinar hacia dónde mover el mapa.
+  const vistaPrevia = useRef(vista);
+  /* Queda pendiente encuadrar. Hace falta separarlo del cambio de vista: al
+     tocar "Del resto" los vuelos del mundo todavía no llegaron —recién ahí
+     sale la consulta— así que en ese instante no hay nada que encuadrar, y el
+     mapa se quedaba mirando tu barrio con los vuelos a diez mil kilómetros. */
+  const porEncuadrar = useRef(false);
+  useEffect(() => {
+    if (vista !== vistaPrevia.current) {
+      vistaPrevia.current = vista;
+      porEncuadrar.current = true;
+    }
+    const m = mapa.current;
+    if (!m || !porEncuadrar.current) return;
+
+    const tramos = loQueSeDibuja(vista, vuelos, mundo, ahoraRef.current());
+    // Todavía no llegó nada: se vuelve a intentar cuando llegue.
+    if (vista === "resto" && tramos.length === 0) return;
+
+    // Sobre los puntos de la ruta y no sobre las dos puntas: un vuelo largo se
+    // curva bastante afuera de la caja que forman su origen y su destino, y
+    // encuadrando las puntas el arco se salía por arriba de la pantalla.
+    const limites = L.latLngBounds([]);
+    for (const t of tramos) {
+      for (const p of ruta(t.origen, t.destino, 16)) limites.extend([p.lat, p.lng]);
+    }
+    if (vista === "tuyos" && yo) limites.extend([yo.lat, yo.lng]);
+    if (!limites.isValid()) return;
+
+    porEncuadrar.current = false;
+    m.flyToBounds(limites, { padding: [60, 60], maxZoom: 13, duration: 0.8 });
+  }, [vista, mundo, vuelos, yo]);
 
   // ---- cámara ----
   useEffect(() => {
@@ -600,7 +659,9 @@ export default function Mapa({
       {sinMosaicos && (
         <div
           className="flotante"
-          style={{ bottom: 34, left: 12, color: "var(--suave)", cursor: "default" }}
+          // bottom 74 y no 34: abajo del todo va la cuenta de lo que hay en
+          // pantalla, y las dos chapas se pisaban.
+          style={{ bottom: 74, left: 12, color: "var(--suave)", cursor: "default" }}
         >
           🗺 Sin mosaicos del mapa — los vuelos se siguen viendo
         </div>

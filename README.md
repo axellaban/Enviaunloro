@@ -218,6 +218,43 @@ alturas: el mínimo que deja ver quién sos, las pestañas y el botón; el 58% d
 siempre; y casi toda la pantalla. La altura mínima se **mide**, no se fija:
 depende del tamaño de letra del sistema y de la barra de gestos del teléfono.
 
+## Los tuyos, y del resto
+
+Arriba del mapa hay un interruptor con dos vistas. **Los tuyos** es la de
+siempre: tu nido, tu bandada y los loros que van o vienen de vos. **Del resto**
+muestra lo que está cruzando el planeta ahora mismo, de cualquiera.
+
+Esa segunda vista es la única parte de la app donde alguien ve algo de una
+persona con la que no tiene ninguna relación previa, así que las reglas de la
+bandada no alcanzan y hay otras:
+
+| | Bandada | Del resto |
+|---|---|---|
+| Quién te ve | quien tiene tu código, se lo diste vos | cualquiera con nido |
+| Tu ubicación | corrida hasta **300 m** | corrida hasta **25 km** |
+| Tu nombre | sí | **no** |
+| El id de tu nido | sí | **no** |
+| El mensaje | solo al aterrizar, y solo a quien va dirigido | **nunca** |
+| Nidos dibujados | sí, con su círculo | **ninguno** |
+
+Tres detalles que no son obvios:
+
+- **Las semillas del corrimiento son distintas** (`zona:` y `mundo:` en
+  [`lib/privacidad.ts`](lib/privacidad.ts)). Con la misma, alguien de tu bandada
+  —que ya te ve corrido 300 m— podría cruzar las dos vistas y despejar el rumbo
+  del desvío, que es la mitad del secreto.
+- **No se dibuja ningún nido**, ni siquiera un punto tenue. Los 25 km son toda
+  la protección: poner un pin sobre una coordenada corrida al azar aparenta una
+  precisión que no existe.
+- **Se puede apagar**, desde *Nido → Aparecer en «Del resto»*. Y apagarlo saca
+  todos tus vuelos, no solo los próximos. Guardar el nombre no vuelve a
+  prenderlo: el panel usa el mismo endpoint para las dos cosas, y sin esa
+  distinción cambiarse el nombre te devolvía al mapa del mundo sin pedirlo.
+
+Los vuelos de Doña Cotorra no entran: es una vecina de práctica, y hacerla pasar
+por gente sería inflar el mapa con vuelos que no existen. Cuando no hay nadie
+volando, lo dice.
+
 ## ¿Y el login con Google?
 
 Las apps de este tipo (Roost, Carrier Pigeon) piden login con Gmail. Acá no, y
@@ -263,20 +300,22 @@ lib/store.ts      persistencia: Upstash, Supabase o un archivo, según lo que
                   esté configurado.
 lib/vista.ts      qué ve el navegador. Acá se decide qué NO viaja: ni el texto
                   de un loro en vuelo, ni las coordenadas exactas de nadie.
-lib/privacidad.ts el desvío fijo que convierte un punto en una zona.
+lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
+                  mapa del mundo, con semillas separadas.
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
 lib/geocode.ts    coordenadas → "Palermo, Argentina" (Nominatim, best-effort).
 
 app/page.tsx      la portada.
 app/nido/         la app.
 app/api/          estado, nido, amigos, loros, loros/leer, loros/suerte,
-                  ubicacion, sesion.
+                  mundo, ubicacion, sesion.
 app/entrar/       canjea la llave del nido y redirige al mapa.
 
 components/Mapa.tsx        Leaflet: nidos, rutas y aves animadas.
 components/Compositor.tsx  elegir ave y escribir. La pantalla clave.
 components/Panel.tsx       en vuelo / buzón / bandada / nido.
 components/HojaInferior.tsx  el panel de abajo, arrastrable a tres alturas.
+components/VistaMapa.tsx     el interruptor "Los tuyos / Del resto".
 components/Trayectoria.tsx   el arco de la portada: sale, entrega, vuelve.
 components/Onboarding.tsx  los tres pasos para tener nido.
 components/Ave.tsx         las seis aves dibujadas, una pose y seis siluetas.

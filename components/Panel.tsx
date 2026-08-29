@@ -929,6 +929,7 @@ function MiNido({
 }) {
   const [copiado, setCopiado] = useState(false);
   const [nombre, setNombre] = useState(yo.nombre);
+  const [enElMundo, setEnElMundo] = useState(yo.publico !== false);
   const [guardando, setGuardando] = useState(false);
   const [ubicando, setUbicando] = useState(false);
   const [nota, setNota] = useState("");
@@ -988,6 +989,25 @@ function MiNido({
       avisar(e?.message || "No se pudo guardar.");
     } finally {
       setGuardando(false);
+    }
+  }
+
+  /** Aparecer o no en la vista del resto. Se guarda solo, sin botón: es un
+   *  interruptor de privacidad, y hacer que además haya que confirmarlo es la
+   *  forma más rápida de que alguien crea que se salió y siga adentro. */
+  async function cambiarMundo(valor: boolean) {
+    setEnElMundo(valor);
+    try {
+      await pedir("/api/nido", { datos: { nombre: yo.nombre, publico: valor } });
+      refrescar();
+      avisar(
+        valor
+          ? "Tus vuelos vuelven a aparecer en «Del resto», sin tu nombre."
+          : "Listo: tus vuelos ya no aparecen en «Del resto»."
+      );
+    } catch (e: any) {
+      setEnElMundo(!valor);
+      avisar(e?.message || "No se pudo guardar.");
     }
   }
 
@@ -1056,6 +1076,38 @@ function MiNido({
           Desde acá despegan tus loros. Moverlo cambia cuánto tardan, no los que
           ya están en el aire.
         </p>
+      </div>
+
+      {/* --- aparecer en la vista del resto --- */}
+      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+        <label
+          style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
+        >
+          <input
+            type="checkbox"
+            checked={enElMundo}
+            onChange={(e) => cambiarMundo(e.target.checked)}
+            style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--esmeralda)" }}
+          />
+          <span>
+            <span style={{ display: "block", fontSize: 14, fontWeight: 700 }}>
+              Aparecer en «Del resto»
+            </span>
+            <span
+              style={{
+                display: "block",
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: "var(--tenue)",
+                marginTop: 4,
+              }}
+            >
+              Tus vuelos se ven en el mapa del mundo <strong>sin tu nombre</strong>, sin
+              el mensaje y con las puntas corridas 25 km — a escala de ciudad, no
+              de casa. Si lo apagás, no aparece ninguno.
+            </span>
+          </span>
+        </label>
       </div>
 
       {/* --- nombre ---

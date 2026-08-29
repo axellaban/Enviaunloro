@@ -13,6 +13,7 @@ import { Onboarding } from "../../components/Onboarding";
 import { Panel } from "../../components/Panel";
 import { Compositor } from "../../components/Compositor";
 import { HojaInferior } from "../../components/HojaInferior";
+import { VistaMapa, type Vista } from "../../components/VistaMapa";
 import { Ave } from "../../components/Ave";
 import { Cta } from "../../components/Cta";
 import {
@@ -21,6 +22,7 @@ import {
   pedirPermisoAvisos,
   pedirUbicacion,
   useEstado,
+  useMundo,
 } from "../../lib/cliente";
 import { distanciaKm, formatearDuracion } from "../../lib/geo";
 import { AVES, type AveId } from "../../lib/aves";
@@ -54,6 +56,10 @@ export default function Nido() {
   const [aviso, setAviso] = useState("");
   /** Modo "tocá el mapa para mudar tu nido". */
   const [mudando, setMudando] = useState(false);
+  /** Qué loros muestra el mapa: los tuyos, o los de todo el mundo. */
+  const [vista, setVista] = useState<Vista>("tuyos");
+  // Solo consulta mientras la vista del resto está prendida.
+  const mundo = useMundo(vista === "resto");
   /** Código que venía en el link compartido, esperando a que haya nido. */
   const invitacion = useRef<string | null>(null);
   const sumado = useRef(false);
@@ -223,6 +229,8 @@ export default function Nido() {
           yo={est.yo}
           amigos={est.amigos}
           vuelos={est.loros}
+          mundo={mundo.vuelos}
+          vista={vista}
           ahoraServidor={est.ahoraServidor}
           foco={foco}
           modoElegir={mudando}
@@ -260,11 +268,35 @@ export default function Nido() {
         )}
 
         {/* left: 56 y no 12 — el control de zoom de Leaflet vive en la esquina. */}
-        <div className="flotante" style={{ top: 12, left: 56, pointerEvents: "none" }}>
-          <Ave especie="loro" size={20} />
-          <span>Loros</span>
-          {enElAire > 0 && (
-            <span style={{ color: "var(--esmeralda-alto)" }}>· {enElAire} en el aire</span>
+        <VistaMapa vista={vista} alCambiar={setVista} />
+
+        {/* La cuenta de lo que hay en pantalla. Abajo y no arriba: arriba ya
+            están el zoom, el interruptor, la brújula y "Mi nido", y en 390 px
+            no entra nada más sin que se pisen. */}
+        <div
+          className="flotante"
+          style={{ bottom: 34, left: 12, pointerEvents: "none", maxWidth: "calc(100% - 24px)" }}
+        >
+          {vista === "resto" ? (
+            <>
+              <Ave especie="perico" size={18} />
+              <span style={{ color: mundo.vuelos.length ? "var(--esmeralda-alto)" : "var(--tenue)" }}>
+                {mundo.error
+                  ? mundo.error
+                  : mundo.cargando && mundo.vuelos.length === 0
+                    ? "Mirando el mundo…"
+                    : mundo.vuelos.length === 0
+                      ? "Nadie volando ahora. Soltá el primero."
+                      : `${mundo.vuelos.length} cruzando el mundo`}
+              </span>
+            </>
+          ) : (
+            <>
+              <Ave especie="loro" size={18} />
+              <span style={{ color: enElAire ? "var(--esmeralda-alto)" : "var(--tenue)" }}>
+                {enElAire > 0 ? `${enElAire} en el aire` : "Nada en el aire"}
+              </span>
+            </>
           )}
         </div>
 

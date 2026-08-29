@@ -37,6 +37,13 @@ export type Nido = {
   lugar: string;
   /** Doña Cotorra, la vecina de práctica. */
   bot: boolean;
+  /**
+   * Si sus vuelos aparecen en la vista del resto, anónimos y corridos 25 km.
+   * Sin definir cuenta como sí: los nidos que existían antes de que hubiera
+   * vista del resto no tienen el campo, y dejarlos afuera vaciaría el mapa.
+   * Se apaga desde el panel, en Nido.
+   */
+  publico?: boolean;
   creado: number;
   visto: number;
 };
@@ -152,6 +159,21 @@ const claveCodigo = (c: string) => `codigo:${c.toUpperCase()}`;
 const claveAmigos = (id: string) => `amigos:${id}`;
 const claveBuzon = (id: string) => `buzon:${id}`;
 const claveLoro = (id: string) => `loro:${id}`;
+/**
+ * El índice de la vista del resto: los últimos loros soltados, de todo el
+ * mundo. Una lista y no una consulta sobre todos los loros porque el store es
+ * clave-valor: sin este índice, "qué hay en el aire ahora" obligaría a leer la
+ * base entera en cada consulta.
+ */
+const CLAVE_MUNDO = "mundo";
+
+/**
+ * Cuántos loros recordar en el índice. Los vuelos largos duran días, así que
+ * la lista tiene que ser bastante más larga que lo que entra en pantalla: con
+ * una lista corta, un guacamayo cruzando el Atlántico se caería del índice a
+ * mitad de viaje y desaparecería del mapa mientras sigue volando.
+ */
+const MAX_MUNDO = 300;
 
 export async function nido(id: string): Promise<Nido | null> {
   return leerDoc<Nido>(claveNido(id));
@@ -233,6 +255,22 @@ export async function actualizarUbicacion(id: string, punto: Punto): Promise<Nid
 
 export async function idsAmigos(id: string): Promise<string[]> {
   return (await leerDoc<string[]>(claveAmigos(id))) || [];
+}
+
+/** Varios nidos de una, por id. Una sola ida a la base y no una por nido. */
+export async function nidos(ids: string[]): Promise<Map<string, Nido>> {
+  const mapa = new Map<string, Nido>();
+  const unicos = [...new Set(ids)];
+  if (unicos.length === 0) return mapa;
+  const crudos = await store().leerVarios(unicos.map(claveNido));
+  for (const c of crudos) {
+    if (!c) continue;
+    try {
+      const n = JSON.parse(c) as Nido;
+      mapa.set(n.id, n);
+    } catch {}
+  }
+  return mapa;
 }
 
 export async function amigos(id: string): Promise<Nido[]> {
@@ -352,6 +390,12 @@ export async function enviarLoro(datos: {
   // recién cuando aterriza (eso lo resuelve la vista, en la API).
   await store().agregarALista(claveBuzon(datos.de.id), loro.id, MAX_BUZON);
   await store().agregarALista(claveBuzon(datos.para.id), loro.id, MAX_BUZON);
+  // El índice de la vista del resto. Los de Doña Cotorra no entran: es una
+  // vecina de práctica, y hacerla pasar por gente sería inflar el mapa con
+  // vuelos que no existen.
+  if (!datos.de.bot && !datos.para.bot) {
+    await store().agregarALista(CLAVE_MUNDO, loro.id, MAX_MUNDO);
+  }
 
   return { ok: true, loro };
 }
@@ -372,6 +416,30 @@ export async function buzon(id: string): Promise<Loro[]> {
     } catch {}
   }
   return lista.sort((x, y) => y.salida - x.salida);
+}
+
+/**
+ * Los loros que ahora mismo están cruzando el mapa, de cualquiera.
+ *
+ * Devuelve los loros crudos: quién puede ver qué de ellos lo decide
+ * lib/vista.ts, que es donde vive esa regla para todo lo demás.
+ */
+export async function enElAire(ahora: number): Promise<Loro[]> {
+  const ids = await store().leerLista(CLAVE_MUNDO);
+  if (ids.length === 0) return [];
+  const crudos = await store().leerVarios(ids.map(claveLoro));
+  const lista: Loro[] = [];
+  for (const c of crudos) {
+    if (!c) continue;
+    try {
+      const l = JSON.parse(c) as Loro;
+      // Ya llegó, o se perdió por el camino: en los dos casos no está en el aire.
+      if (ahora >= l.llegada) continue;
+      if (l.extravio !== null && ahora >= l.extravio) continue;
+      lista.push(l);
+    } catch {}
+  }
+  return lista;
 }
 
 /** Abrir un loro. Solo cuenta si ya aterrizó y si lo abre su destinatario. */

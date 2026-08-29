@@ -20,7 +20,8 @@ import type { AveId } from "./aves";
 import type { Loro, Nido, Suerte } from "./datos";
 import type { Desvio } from "./vuelo";
 import { distanciaKm, type Punto } from "./geo";
-import { RADIO_ZONA_KM, zonaDe } from "./privacidad";
+import { RADIO_ZONA_KM, zonaDe, zonaMundial } from "./privacidad";
+import { createHash } from "node:crypto";
 
 export type NidoVista = {
   id: string;
@@ -35,6 +36,9 @@ export type NidoVista = {
   /** Distancia real hasta vos, en km. Calculada en el servidor con los puntos
    *  de verdad — no se puede sacar de lat/lng, que vienen corridos. */
   distanciaKm?: number;
+  /** Si aparece en la vista del resto. Solo viaja para el nido propio: si de
+   *  los ajenos se supiera quién se escondió, esconderse no serviría de nada. */
+  publico?: boolean;
 };
 
 export type LoroVista = {
@@ -93,6 +97,7 @@ export function verNido(n: Nido, yo?: Nido | null): NidoVista {
     ave: n.ave,
     radioKm: esMio ? 0 : RADIO_ZONA_KM,
     distanciaKm: esMio || !yo ? undefined : distanciaKm(punto(yo), punto(n)),
+    publico: esMio ? n.publico !== false : undefined,
   };
 }
 
@@ -168,5 +173,70 @@ export function verLoro(
     leido: l.leido,
     suerte,
     vuelta,
+  };
+}
+
+
+// ---------- la vista del resto ----------
+//
+// Los loros de gente que no conocés, cruzando el mapa. Es la parte de la app
+// que se ve a sí misma viva, y también la más fácil de arruinar: acá NO hay
+// una relación previa entre quien mira y quien voló, así que las reglas de la
+// bandada no alcanzan.
+//
+// Lo que se manda, y lo que no:
+//
+//   ✗ nombres, códigos, ids de nido — nada que identifique a nadie
+//   ✗ el texto del mensaje, ni siquiera después de aterrizar
+//   ✗ el id real del loro (va hasheado, para que sea una clave de dibujo y
+//     nada más)
+//   ✓ la especie, los horarios, y las dos puntas corridas 25 km
+//
+// Los 25 km son toda la protección, y por eso el mapa no dibuja ningún nido en
+// esta vista: no hay un punto que valga la pena marcar, y un pin sobre una
+// coordenada corrida al azar aparenta una precisión que no existe. Aparecen
+// únicamente los vuelos donde LAS DOS puntas aceptaron: el arco muestra las
+// dos, así que basta con que a una no le guste para que el vuelo no salga.
+
+export type VueloMundo = {
+  /** Hash del id real. Sirve para que el mapa reconozca sus capas, y para nada más. */
+  id: string;
+  ave: AveId;
+  origen: Punto;
+  destino: Punto;
+  /** Redondeada: la distancia exacta entre dos puntos corridos igual estrecha
+   *  demasiado dónde están las puntas de verdad. */
+  distanciaKm: number;
+  salida: number;
+  llegada: number;
+  desvio: Desvio | null;
+};
+
+/** Los nidos que aceptaron aparecer. Sin el campo cuenta como que sí: los
+ *  nidos anteriores a esta vista no lo tienen. */
+export function apareceEnElMundo(n: Nido | undefined | null): boolean {
+  return Boolean(n) && n!.publico !== false && !n!.bot;
+}
+
+/** Menos precisión cuanto más largo el vuelo. "11.100 km" cuenta lo mismo que
+ *  "11.147 km" y no ayuda a ubicar a nadie. */
+function redondear(km: number): number {
+  if (km < 100) return Math.round(km / 5) * 5;
+  if (km < 1000) return Math.round(km / 25) * 25;
+  return Math.round(km / 100) * 100;
+}
+
+export function verVueloMundial(l: Loro, ahora: number): VueloMundo {
+  const desvio = l.desvio ?? null;
+  return {
+    id: createHash("sha256").update(`vuelo:${l.id}`).digest("hex").slice(0, 12),
+    ave: l.ave,
+    origen: zonaMundial(l.origen, l.de),
+    destino: zonaMundial(l.destino, l.para),
+    distanciaKm: redondear(l.distanciaKm),
+    salida: l.salida,
+    llegada: l.llegada,
+    // Misma regla que en la bandada: el desvío no viaja hasta que pasa.
+    desvio: desvio && ahora >= desvio.desde ? desvio : null,
   };
 }
