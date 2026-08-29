@@ -213,7 +213,7 @@ export function Onboarding({
                 </>
               )}
               {error && (
-                <p style={{ color: "#b91c1c", fontSize: 13.5, marginTop: 12, lineHeight: 1.5 }}>
+                <p style={{ color: "#fca5a5", fontSize: 13.5, marginTop: 12, lineHeight: 1.5 }}>
                   {error}
                 </p>
               )}
@@ -286,7 +286,7 @@ export function Onboarding({
                 {ocupado ? "Armando el nido…" : "Entrar al mapa"}
               </button>
               {error && (
-                <p style={{ color: "#b91c1c", fontSize: 13.5, marginTop: 12 }}>{error}</p>
+                <p style={{ color: "#fca5a5", fontSize: 13.5, marginTop: 12 }}>{error}</p>
               )}
               <p style={{ color: "var(--tenue)", fontSize: 12.5, marginTop: 14, lineHeight: 1.6 }}>
                 Sin registro ni contraseña: tu nido queda guardado en este

@@ -227,23 +227,46 @@ código se reserva con la misma operación atómica que el resto.
 
 ## El color
 
-Claro, con los grises de Instagram: `#ffffff` de fondo, `#fafafa` para lo
-agrupado, `#efefef` para los botones secundarios, `#dbdbdb` para las
-separaciones y `#737373` para el texto de segundo orden. La fuente es la del
-sistema, que es también la que usa Instagram en web.
+Oscuro: selva de noche, fondo casi negro con verde adentro, y el color fuerte
+reservado para una sola cosa —el ave—. Cada especie tiene el suyo y ese color
+es el mismo en la tarjeta, en la ruta del mapa y en el ave que vuela, así se
+sigue un vuelo de un vistazo sin leer nada. El verde de los botones es
+exactamente el del perico: no un verde parecido, el mismo valor, para que el
+botón y el bicho sean la misma cosa.
 
-Con una excepción, y es deliberada: para el tercer nivel de texto ellos usan
-`#a8a8a8`, que sobre blanco da **2,38:1** y no se lee. Acá va `#767676`. Sobre
+### El tema claro está escrito, apagado
+
+Por un rato la app fue clara, con los grises de Instagram. Volvió a oscura,
+pero esa paleta **no se tiró**: quedó viva en el código, y prenderla es una
+línea.
+
+```js
+document.documentElement.dataset.tema = "claro";
+```
+
+Con eso solo cambia todo lo que es CSS: fondos, bordes, textos, botones, la
+hoja de abajo, las chapas que flotan sobre el mapa y los controles de Leaflet.
+Los valores están en `app/globals.css`, en `:root[data-tema="claro"]`.
+
+Son los de Instagram —`#ffffff`, `#fafafa`, `#efefef` para los botones
+secundarios, `#dbdbdb` para las separaciones, `#737373` para el texto de
+segundo orden— con una excepción deliberada: para el tercer nivel ellos usan
+`#a8a8a8`, que da **2,38:1** sobre blanco y no se lee. Acá va `#767676`. Sobre
 fondo claro no hay lugar para tres grises legibles, y que un valor esté
-"estudiado" no lo hace accesible.
+estudiado no lo hace accesible.
 
-**Los colores de las aves no son los mismos con otro nombre.** Los de la
-versión oscura estaban elegidos para brillar contra un fondo casi negro, y
-sobre blanco daban entre 1,51:1 y 2,72:1 — todos ilegibles, cuando el mínimo es
-4,5:1. Los de ahora son la misma familia dos o tres pasos más oscura: el perico
-sigue siendo verde lima y el guacamayo sigue siendo ámbar, pero se leen. Van de
-4,99:1 a 7,10:1. El verde de los botones es exactamente el del perico, no un
-verde parecido: el botón y el bicho son la misma cosa.
+**Lo que no es CSS vive en `lib/tema.ts`**, y es la mitad del asunto: las rutas
+que Leaflet dibuja en SVG, el confeti del canvas y las aves se arman en
+JavaScript y no leen una variable de CSS sin ayuda. Ahí están, medidos, los
+colores de las seis aves en los dos temas, los rótulos del mapa, las sombras y
+los mosaicos. El archivo explica los cuatro pasos que faltan para el
+interruptor.
+
+Los colores de las aves no son los mismos con otro nombre. Los oscuros están
+elegidos para brillar contra un fondo casi negro y sobre blanco dan entre
+1,51:1 y 2,72:1 —todos ilegibles, cuando el mínimo es 4,5:1—. Los claros son la
+misma familia dos o tres pasos más oscura: el perico sigue siendo verde lima y
+el guacamayo sigue siendo ámbar, pero se leen. Van de 4,99:1 a 7,10:1.
 
 ### Un color para cada persona
 
@@ -252,18 +275,24 @@ el resto. Con tres amigos alcanza; con diez, "¿cuál de estos puntos es Jez?" s
 contesta leyendo etiquetas una por una.
 
 Ahora cada persona tiene el suyo, y tiene que cumplir dos cosas que tiran para
-lados opuestos. **Estable**: si Jez es violeta hoy y naranja mañana porque entró
-alguien más, el color no dice nada. Por eso sale del id del nido, no de la
-posición en una lista. **Distinto**: y aun así dos personas de tu bandada no
-pueden compartirlo, que es justo lo que el sorteo por id no puede prometer —con
-15 colores y 5 amigos, la probabilidad de que dos caigan en el mismo es del 50%
-(el problema del cumpleaños, mucho menos intuitivo de lo que parece).
+lados opuestos. **Estable**: si Jez es violeta hoy y naranja mañana porque
+entró alguien más, el color no dice nada. Por eso sale del id del nido, no de
+la posición en una lista. **Distinto**: y aun así dos personas de tu bandada no
+pueden compartirlo, que es justo lo que el sorteo por id no puede prometer
+—con 15 colores y 5 amigos, la probabilidad de que dos caigan en el mismo es
+del 50%, el problema del cumpleaños, mucho menos intuitivo de lo que parece—.
 
 Se resuelven en ese orden: cada uno pide el color que le toca por id y, si está
 tomado, agarra el siguiente libre, recorriendo la bandada ordenada por id. El
 color de alguien solo cambia si entra otra persona que choca con él.
 
-El verde de la app queda fuera de la paleta: es el de **tu** nido, y compartir
+Hay una paleta por tema y **no son intercambiables**: los 15 claros dan entre
+2,2:1 y 3,9:1 sobre el fondo oscuro, o sea que media bandada sería invisible.
+Los oscuros van de 6,58:1 a 13,01:1; los claros, de 5,02:1 a 9,07:1. Están
+ordenadas igual, así una persona conserva su tono al cambiar de tema aunque
+cambie el valor.
+
+El verde de la app queda fuera de las dos: es el de **tu** nido, y compartir
 color con un amigo sería el único choque que de verdad confunde. Y el mismo
 punto aparece al lado del nombre en la bandada — sin eso, el color del mapa no
 se puede contestar: ves un punto violeta y no sabés de quién es.
@@ -527,6 +556,7 @@ lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
                   mapa del mundo, con semillas separadas.
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
 lib/colorNido.ts  un color por persona, estable y sin choques en tu bandada.
+lib/tema.ts       los dos temas. Lo que no es CSS: aves, mapa, confeti.
 lib/codigo.ts     el código de nido en palabras, y la compatibilidad con los
                   de seis caracteres de antes.
 lib/geocode.ts    coordenadas → "Palermo, Argentina" (Nominatim, best-effort).

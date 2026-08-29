@@ -37,13 +37,14 @@ import { tramosDelMundo, tramosEnElAire, type Tramo } from "../lib/tramos";
 import { aveHtml } from "./Ave";
 import type { LoroVista, NidoVista, VueloMundo } from "../lib/vista";
 import { coloresDeBandada, MI_COLOR } from "../lib/colorNido";
+import { pintura } from "../lib/tema";
 
 const MAPBOX = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 function capaBase(): L.TileLayer {
   if (MAPBOX) {
     return L.tileLayer(
-      `https://api.mapbox.com/styles/v1/mapbox/light-v11/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX}`,
+      `https://api.mapbox.com/styles/v1/mapbox/${pintura.mosaicoMapbox}/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX}`,
       {
         maxZoom: 20,
         tileSize: 512,
@@ -54,7 +55,7 @@ function capaBase(): L.TileLayer {
     );
   }
   return L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    `https://{s}.basemaps.cartocdn.com/${pintura.mosaicoCarto}/{z}/{x}/{y}{r}.png`,
     {
       maxZoom: 20,
       subdomains: "abcd",
@@ -70,15 +71,15 @@ function iconoNido(n: NidoVista, esMio: boolean, color: string): L.DivIcon {
   // tiene que aparentar que sí.
   const cuerpo = esMio
     ? `<span style="position:absolute;inset:0;border-radius:99px;background:${color};animation:latido 2.4s ease-out infinite"></span>
-       <span style="position:absolute;inset:0;border-radius:99px;background:${color};border:2px solid rgba(255,255,255,.95);box-shadow:0 0 12px ${color}88"></span>`
-    : `<span style="position:absolute;inset:3px;border-radius:99px;background:${color};opacity:.9;border:2px solid rgba(255,255,255,.9)"></span>`;
+       <span style="position:absolute;inset:0;border-radius:99px;background:${color};border:2px solid ${pintura.anilloNido};box-shadow:0 0 12px ${color}88"></span>`
+    : `<span style="position:absolute;inset:3px;border-radius:99px;background:${color};opacity:.75;border:2px solid ${pintura.anilloNido}"></span>`;
   return L.divIcon({
     className: "marcador-nido",
     iconSize: [14, 14],
     iconAnchor: [7, 7],
     html: `<div style="position:relative;width:14px;height:14px">
       ${cuerpo}
-      <span style="position:absolute;left:50%;top:17px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 ui-sans-serif,system-ui;color:#111;text-shadow:0 1px 3px #fff,0 0 8px #fff,0 0 3px #fff;pointer-events:none">${escapar(
+      <span style="position:absolute;left:50%;top:17px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 ui-sans-serif,system-ui;color:${pintura.rotuloMapa};text-shadow:${pintura.rotuloHalo};pointer-events:none">${escapar(
         esMio ? "Tu nido" : n.nombre
       )}</span>
     </div>`,
@@ -99,7 +100,7 @@ function iconoAve(especie: AveId, grados: number): L.DivIcon {
     // El rotado va en un div interno: el externo lo posiciona Leaflet con su
     // propio transform y pisarlo rompe el mapa.
     html: `<div style="position:relative;width:34px;height:28px;display:grid;place-items:center">
-      <div data-rot style="transform:rotate(${grados}deg);filter:drop-shadow(0 1px 3px rgba(0,0,0,.35))">${aveHtml(
+      <div data-rot style="transform:rotate(${grados}deg);filter:${pintura.sombraAve}">${aveHtml(
         especie,
         34
       )}</div>${carga}
@@ -114,7 +115,7 @@ function iconoPerica(): L.DivIcon {
     iconSize: [30, 26],
     iconAnchor: [15, 13],
     html: `<div style="position:relative;width:30px;height:26px;display:grid;place-items:center">
-      <div style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.35)) hue-rotate(-95deg) saturate(1.5)">${aveHtml(
+      <div style="filter:${pintura.sombraAve} hue-rotate(-95deg) saturate(1.5)">${aveHtml(
         "perico",
         30
       )}</div>
@@ -339,11 +340,11 @@ export default function Mapa({
             n.id,
             L.circle([n.lat, n.lng], {
               radius: n.radioKm * 1000,
-              color: colores.get(n.id) ?? "#94a3b8",
+              color: colores.get(n.id) ?? pintura.zonaSinColor,
               weight: 1,
               opacity: 0.35,
               dashArray: "4 7",
-              fillColor: colores.get(n.id) ?? "#6b7280",
+              fillColor: colores.get(n.id) ?? pintura.zonaSinColor,
               fillOpacity: 0.07,
               interactive: false,
             }).addTo(m)
@@ -428,7 +429,7 @@ export default function Mapa({
           existente.giro = {
             circulo: L.circle([centro.lat, centro.lng], {
               radius: radioGiro(v.distanciaKm) * 1000,
-              color: "#be185d",
+              color: AVES.paloma.color,
               weight: 1.5,
               opacity: 0.75,
               dashArray: "3 5",
@@ -651,8 +652,8 @@ export default function Mapa({
         >
           <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
             <g transform={`rotate(${-rumboMapa} 12 12)`}>
-              <path d="M12 3 L16 13 L12 11 Z" fill="#dc2626" />
-              <path d="M12 21 L8 11 L12 13 Z" fill="#111827" />
+              <path d="M12 3 L16 13 L12 11 Z" fill="#f87171" />
+              <path d="M12 21 L8 11 L12 13 Z" fill="${pintura.nidoSinColor}" />
             </g>
           </svg>
         </button>

@@ -42,6 +42,8 @@ export type Ave = {
   velocidadKmh: number;
   maxCaracteres: number;
   /** Color de la especie. Se usa en la ruta del mapa, el ave y las tarjetas. */
+  /** El del tema oscuro, que es el que la app usa. El claro vive en
+   *  lib/tema.ts (COLOR_AVE), medido, para cuando haya interruptor. */
   color: string;
   lema: string;
   rareza?: Rareza;
@@ -60,7 +62,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "el",
     velocidadKmh: 90,
     maxCaracteres: 120,
-    color: "#4d7c0f",
+    color: "#a3e635",
     lema: "El express",
     rareza: "romance",
     aviso:
@@ -72,7 +74,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "la",
     velocidadKmh: 60,
     maxCaracteres: 400,
-    color: "#0e7490",
+    color: "#22d3ee",
     lema: "La charlatana",
     rareza: "olvida",
     aviso:
@@ -84,7 +86,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "el",
     velocidadKmh: 40,
     maxCaracteres: 1000,
-    color: "#047857",
+    color: "#10b981",
     lema: "El clásico",
   },
   guacamayo: {
@@ -93,7 +95,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "el",
     velocidadKmh: 25,
     maxCaracteres: 2000,
-    color: "#b45309",
+    color: "#fbbf24",
     lema: "El ceremonioso",
   },
   paloma: {
@@ -102,7 +104,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "la",
     velocidadKmh: 50,
     maxCaracteres: 600,
-    color: "#be185d",
+    color: "#f472b6",
     lema: "La romántica",
     rareza: "confeti",
     aviso:
@@ -114,7 +116,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "el",
     velocidadKmh: 70,
     maxCaracteres: 250,
-    color: "#6d28d9",
+    color: "#a78bfa",
     lema: "El de las malas noticias",
     rareza: "luto",
     aviso:

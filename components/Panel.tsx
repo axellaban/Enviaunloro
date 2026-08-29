@@ -134,7 +134,7 @@ export function Panel(p: Props) {
                     borderRadius: 99,
                     fontSize: 11,
                     background: "var(--esmeralda)",
-                    color: "#ffffff",
+                    color: "#04120e",
                   }}
                 >
                   {t.contador}
@@ -776,7 +776,7 @@ function QueHagoConElAve({ loro, refrescar }: { loro: LoroVista; refrescar: () =
           </button>
         ))}
       </div>
-      {error && <p style={{ color: "#b91c1c", fontSize: 12, marginTop: 8 }}>{error}</p>}
+      {error && <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>{error}</p>}
     </div>
   );
 }
@@ -866,7 +866,7 @@ function TarjetaPerdido({
               marginTop: 10,
               padding: "9px 11px",
               borderRadius: 9,
-              background: "var(--fondo-2)",
+              background: "rgba(0,0,0,.25)",
               fontSize: 13.5,
               lineHeight: 1.55,
               color: "var(--tenue)",
@@ -969,7 +969,7 @@ function Bandada({
         {mensaje && (
           <p style={{ color: "var(--esmeralda-alto)", fontSize: 13, marginTop: 10 }}>{mensaje}</p>
         )}
-        {error && <p style={{ color: "#b91c1c", fontSize: 13, marginTop: 10 }}>{error}</p>}
+        {error && <p style={{ color: "#fca5a5", fontSize: 13, marginTop: 10 }}>{error}</p>}
       </div>
 
       <p
@@ -1291,13 +1291,13 @@ function MiNido({
           {llave && llave !== "no-se-pudo" ? "✓ Llave copiada" : "Copiar la llave de mi nido"}
         </button>
         {llave === "no-se-pudo" ? (
-          <p style={{ color: "#b91c1c", fontSize: 12, marginTop: 8 }}>
+          <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>
             No se pudo generar la llave. Probá de nuevo.
           </p>
         ) : (
           <p style={{ fontSize: 12, color: "var(--tenue)", marginTop: 9, lineHeight: 1.5 }}>
             Abrí ese link en la compu y tu nido aparece ahí.{" "}
-            <strong style={{ color: "#b45309" }}>No se lo pases a nadie: ese link ES tu nido</strong>
+            <strong style={{ color: "#fbbf24" }}>No se lo pases a nadie: ese link ES tu nido</strong>
             , no es tu código.
           </p>
         )}

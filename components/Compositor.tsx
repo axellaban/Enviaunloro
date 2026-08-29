@@ -81,7 +81,7 @@ export function Compositor({
         position: "fixed",
         inset: 0,
         zIndex: 900,
-        background: "rgba(0, 0, 0, 0.45)",
+        background: "rgba(3, 8, 7, 0.72)",
         backdropFilter: "blur(6px)",
         display: "flex",
         alignItems: "flex-end",
@@ -142,7 +142,7 @@ export function Compositor({
                       fontSize: 14,
                       fontWeight: 650,
                       background: activo ? "var(--esmeralda)" : "var(--panel)",
-                      color: activo ? "#ffffff" : "var(--texto)",
+                      color: activo ? "#04120e" : "var(--texto)",
                       border: `1px solid ${activo ? "var(--esmeralda)" : "var(--borde)"}`,
                     }}
                   >
@@ -265,7 +265,7 @@ export function Compositor({
             </p>
 
             {error && (
-              <p style={{ color: "#b91c1c", fontSize: 13.5, marginBottom: 12 }}>{error}</p>
+              <p style={{ color: "#fca5a5", fontSize: 13.5, marginBottom: 12 }}>{error}</p>
             )}
 
             <button

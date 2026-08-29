@@ -40,7 +40,7 @@ export default function Portada() {
             <br />
             <span
               style={{
-                background: "linear-gradient(100deg, #4d7c0f, #047857 45%, #0e7490)",
+                background: "linear-gradient(100deg, #a3e635, #10b981 45%, #22d3ee)",
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
                 color: "transparent",

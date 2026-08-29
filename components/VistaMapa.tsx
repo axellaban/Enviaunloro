@@ -50,7 +50,7 @@ export function VistaMapa({
               fontWeight: 700,
               whiteSpace: "nowrap",
               background: activa ? "var(--esmeralda)" : "transparent",
-              color: activa ? "#ffffff" : "var(--suave)",
+              color: activa ? "#04120e" : "var(--suave)",
               transition: "background .15s ease, color .15s ease",
             }}
           >

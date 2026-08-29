@@ -23,31 +23,65 @@
 // Cambiar el color de alguien solo puede pasar si entra otra persona que choca
 // con él, que es lo mínimo posible.
 
-/** El verde del perico, que es el de la app y el de TU nido. Queda fuera de la
- *  paleta a propósito: si un amigo puede sacar el mismo color que vos, el
- *  único choque que de verdad confunde es el que puede pasar. */
-export const MI_COLOR = "#4d7c0f";
+import { TEMA, type Tema } from "./tema";
 
-/** Los 15 para los demás, todos medidos: el peor da 5,02:1 sobre blanco, así
- *  que el punto y su nombre se leen sobre un mapa claro. Ordenados por tono
- *  para que dos vecinos de la lista no sean dos azules casi iguales. */
-export const PALETA = [
-  "#be123c", // rojo
-  "#c2410c", // naranja
-  "#b45309", // ámbar
-  "#15803d", // verde
-  "#047857", // esmeralda
-  "#0f766e", // teal
-  "#0e7490", // cian
-  "#0369a1", // celeste
-  "#1d4ed8", // azul
-  "#4338ca", // índigo
-  "#6d28d9", // violeta
-  "#7e22ce", // púrpura
-  "#a21caf", // fucsia
-  "#be185d", // rosa
-  "#78350f", // marrón
-];
+/** El verde de la app, que es el de TU nido. Queda fuera de la paleta a
+ *  propósito: si un amigo puede sacar el mismo color que vos, el único choque
+ *  que de verdad confunde es el que puede pasar. */
+export const MI_COLOR_POR_TEMA: Record<Tema, string> = {
+  oscuro: "#10b981",
+  claro: "#4d7c0f",
+};
+export const MI_COLOR = MI_COLOR_POR_TEMA[TEMA];
+
+/**
+ * Los 15 para los demás, en los dos temas. Cada uno medido contra el fondo de
+ * SU tema, y no son intercambiables: los claros dan entre 2,2:1 y 3,9:1 sobre
+ * el fondo oscuro, o sea que media bandada sería invisible. Los oscuros van de
+ * 6,58:1 a 13,01:1 sobre #060d0c; los claros, de 5,02:1 a 9,07:1 sobre blanco.
+ *
+ * Ordenados por tono para que dos vecinos de la lista no sean dos azules casi
+ * iguales, y los dos ordenados IGUAL: así una persona conserva su tono al
+ * cambiar de tema aunque cambie el valor.
+ */
+export const PALETAS: Record<Tema, string[]> = {
+  oscuro: [
+    "#fb7185", // rojo
+    "#fb923c", // naranja
+    "#fbbf24", // ámbar
+    "#a3e635", // lima
+    "#4ade80", // verde
+    "#34d399", // esmeralda
+    "#2dd4bf", // teal
+    "#22d3ee", // cian
+    "#38bdf8", // celeste
+    "#60a5fa", // azul
+    "#818cf8", // índigo
+    "#a78bfa", // violeta
+    "#c084fc", // púrpura
+    "#e879f9", // fucsia
+    "#f472b6", // rosa
+  ],
+  claro: [
+    "#be123c", // rojo
+    "#c2410c", // naranja
+    "#b45309", // ámbar
+    "#78350f", // marrón
+    "#15803d", // verde
+    "#047857", // esmeralda
+    "#0f766e", // teal
+    "#0e7490", // cian
+    "#0369a1", // celeste
+    "#1d4ed8", // azul
+    "#4338ca", // índigo
+    "#6d28d9", // violeta
+    "#7e22ce", // púrpura
+    "#a21caf", // fucsia
+    "#be185d", // rosa
+  ],
+};
+
+export const PALETA = PALETAS[TEMA];
 
 /** Hash chico y estable. No hace falta que sea criptográfico —acá solo reparte
  *  colores— pero sí que dé lo mismo en todos los dispositivos y para siempre. */
@@ -61,8 +95,9 @@ function semilla(id: string): number {
 }
 
 /** El color que le toca a alguien por su id, sin mirar a nadie más. */
-export function colorDeNido(id: string): string {
-  return PALETA[semilla(id) % PALETA.length];
+export function colorDeNido(id: string, tema: Tema = TEMA): string {
+  const p = PALETAS[tema];
+  return p[semilla(id) % p.length];
 }
 
 /**
@@ -72,15 +107,16 @@ export function colorDeNido(id: string): string {
  * ya no alcanza para identificar y lo que sirve es el nombre. Antes que
  * inventar tonos indistinguibles, se repite.
  */
-export function coloresDeBandada(ids: string[]): Map<string, string> {
+export function coloresDeBandada(ids: string[], tema: Tema = TEMA): Map<string, string> {
+  const paleta = PALETAS[tema];
   const salida = new Map<string, string>();
   const tomados = new Set<string>();
   for (const id of [...ids].sort()) {
-    const primero = semilla(id) % PALETA.length;
-    let color = PALETA[primero];
-    if (tomados.size < PALETA.length) {
-      for (let i = 0; i < PALETA.length && tomados.has(color); i++) {
-        color = PALETA[(primero + i + 1) % PALETA.length];
+    const primero = semilla(id) % paleta.length;
+    let color = paleta[primero];
+    if (tomados.size < paleta.length) {
+      for (let i = 0; i < paleta.length && tomados.has(color); i++) {
+        color = paleta[(primero + i + 1) % paleta.length];
       }
     }
     tomados.add(color);

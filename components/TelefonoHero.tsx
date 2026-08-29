@@ -74,13 +74,13 @@ function TarjetaVuelo({
 }) {
   return (
     <g>
-      <rect x="26" y={y} width="248" height="60" rx="14" fill="#ffffff" stroke={`${color}55`} />
+      <rect x="26" y={y} width="248" height="60" rx="14" fill="rgba(8,20,19,.94)" stroke={`${color}66`} />
       {/* 11 y no 12,5: "Ciudad de México → Lisboa" con el reloj al lado no
           entra en 216 unidades, y se montaban uno arriba del otro. */}
-      <text x="42" y={y + 22} fill="#111827" fontSize="11" fontWeight="700" fontFamily="ui-sans-serif, system-ui">
+      <text x="42" y={y + 22} fill="#e9f3f0" fontSize="11" fontWeight="700" fontFamily="ui-sans-serif, system-ui">
         {titulo}
       </text>
-      <text x="42" y={y + 39} fill="#737373" fontSize="10" fontFamily="ui-sans-serif, system-ui">
+      <text x="42" y={y + 39} fill="#8ba39d" fontSize="10" fontFamily="ui-sans-serif, system-ui">
         {detalle}
       </text>
       <text x="258" y={y + 24} fill={color} fontSize="11.5" fontWeight="700" textAnchor="end" fontFamily="ui-monospace, monospace">
@@ -92,11 +92,11 @@ function TarjetaVuelo({
   );
 }
 
-function Nido({ x, y, color = "#047857" }: { x: number; y: number; color?: string }) {
+function Nido({ x, y, color = "#10b981" }: { x: number; y: number; color?: string }) {
   return (
     <g>
       <circle cx={x} cy={y} r="9" fill={color} opacity="0.16" />
-      <circle cx={x} cy={y} r="4.2" fill={color} stroke="#ffffff" strokeWidth="1.5" />
+      <circle cx={x} cy={y} r="4.2" fill={color} stroke="#04100e" strokeWidth="1.5" />
     </g>
   );
 }
@@ -147,7 +147,7 @@ function Mundo() {
     for (let c = 0; c < MUNDO[f].length; c++) {
       if (MUNDO[f][c] !== "#") continue;
       const { x, y } = celda(c, f);
-      puntos.push(<circle key={`${f}-${c}`} cx={x} cy={y} r="2.6" fill="#c7c7c7" />);
+      puntos.push(<circle key={`${f}-${c}`} cx={x} cy={y} r="2.6" fill="#1d6154" />);
     }
   }
   return <g>{puntos}</g>;
@@ -182,8 +182,8 @@ export function TelefonoHero() {
           </clipPath>
 
           <linearGradient id="oceano" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="100%" stopColor="#f2f2f2" />
+            <stop offset="0%" stopColor="#08201f" />
+            <stop offset="100%" stopColor="#040f10" />
           </linearGradient>
         </defs>
 
@@ -194,8 +194,8 @@ export function TelefonoHero() {
           width="300"
           height="610"
           rx="44"
-          fill="#1c1c1e"
-          stroke="rgba(0,0,0,.12)"
+          fill="#0a1413"
+          stroke="rgba(255,255,255,.14)"
           strokeWidth="2"
         />
 
@@ -239,9 +239,9 @@ export function TelefonoHero() {
 
           {/* Chapa de arriba */}
           <g>
-            <rect x="26" y="30" width="112" height="30" rx="15" fill="rgba(255,255,255,.94)" stroke="var(--borde)" />
-            <circle cx="45" cy="45" r="4" fill="#047857" />
-            <text x="57" y="49" fill="#111827" fontSize="12" fontWeight="700" fontFamily="ui-sans-serif, system-ui">
+            <rect x="26" y="30" width="112" height="30" rx="15" fill="rgba(8,20,19,.9)" stroke="rgba(255,255,255,.14)" />
+            <circle cx="45" cy="45" r="4" fill="#10b981" />
+            <text x="57" y="49" fill="#e9f3f0" fontSize="12" fontWeight="700" fontFamily="ui-sans-serif, system-ui">
               6 en el aire
             </text>
           </g>
@@ -266,9 +266,9 @@ export function TelefonoHero() {
           />
 
           {/* Barra de abajo */}
-          <g fill="#8e8e8e" fontSize="9.5" textAnchor="middle" fontFamily="ui-sans-serif, system-ui">
+          <g fill="#5d7873" fontSize="9.5" textAnchor="middle" fontFamily="ui-sans-serif, system-ui">
             <rect x="12" y="556" width="276" height="42" fill="rgba(6,13,12,.92)" />
-            <text x="63" y="582" fill="#047857">Mapa</text>
+            <text x="63" y="582" fill="#10b981">Mapa</text>
             <text x="121" y="582">Buzón</text>
             <text x="179" y="582">Bandada</text>
             <text x="237" y="582">Nido</text>
@@ -276,7 +276,7 @@ export function TelefonoHero() {
         </g>
 
         {/* Muesca */}
-        <rect x="112" y="12" width="76" height="20" rx="10" fill="#efefef" />
+        <rect x="112" y="12" width="76" height="20" rx="10" fill="#0a1413" />
       </svg>
     </div>
   );
