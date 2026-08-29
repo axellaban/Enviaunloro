@@ -86,7 +86,10 @@ p { margin: 0; }
 }
 .boton:hover:not(:disabled) { filter: brightness(1.08); }
 .boton:active:not(:disabled) { transform: scale(0.975); }
-.boton:disabled { opacity: 0.4; cursor: not-allowed; }
+/* 0.4 dejaba el texto del botón por debajo del contraste mínimo contra su
+   propio fondo — y el caso más visible era "Buscando…", que es exactamente
+   cuando la persona necesita leerlo. */
+.boton:disabled { opacity: 0.62; cursor: not-allowed; }
 
 .boton.fantasma {
   background: transparent;
@@ -119,7 +122,9 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--tenue);
+  /* --suave y no --tenue: a 11 px el gris tenue quedaba en 4,1:1 contra el
+     fondo, abajo del 4,5:1 que pide WCAG AA para texto chico. */
+  color: var(--suave);
 }
 
 .pastilla {
@@ -299,6 +304,25 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 .leaflet-container .leaflet-bottom {
   z-index: 450;
 }
+
+/* Las chapas de abajo a la izquierda, apiladas en columna. Estaban las dos
+   posicionadas a mano en la misma esquina y se montaban cuando aparecían
+   juntas. */
+.pila-mapa {
+  position: absolute;
+  z-index: 500;
+  left: 12px;
+  bottom: 34px;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+}
+.pila-mapa .flotante { position: static; }
+/* La de "sin mosaicos" la dibuja el mapa, que no está adentro de la pila: se
+   la manda al mismo rincón, arriba de la cuenta. */
+.sin-mosaicos { bottom: 78px; left: 12px; max-width: calc(100% - 24px); }
 
 .flotante {
   position: absolute;

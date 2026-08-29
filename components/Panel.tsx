@@ -22,6 +22,26 @@ import type { LoroVista, NidoVista } from "../lib/vista";
 import { Ave } from "./Ave";
 import { Fiesta } from "./Fiesta";
 
+/**
+ * Compartir tu nido. El código va DENTRO del link, no suelto al lado: pedirle a
+ * alguien que copie seis caracteres de un mensaje de WhatsApp y después adivine
+ * dónde pegarlos era donde se caía la invitación.
+ */
+export async function compartirNido(codigo: string): Promise<boolean> {
+  const url = typeof window !== "undefined" ? `${window.location.origin}/?n=${codigo}` : "";
+  const texto = "Mandame un lorito 🦜 Tocá el link y quedamos conectados:";
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "Loros", text: texto, url });
+    } else {
+      await navigator.clipboard.writeText(`${texto} ${url}`);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 type Props = {
   yo: NidoVista;
   codigo: string;
@@ -53,6 +73,11 @@ export function Panel(p: Props) {
   const sinLeer = llegados.filter((l) => l.direccion === "recibido" && !l.leido).length;
 
   useTic(enVuelo.length + volviendo.length > 0);
+
+  // Toda la bandada es el bot: el producto todavía no pasó nada. Es el momento
+  // exacto para pedir que traiga a alguien de verdad — sobre todo mientras hay
+  // un loro en el aire, que son minutos de espera sin nada que hacer.
+  const soloLaVecina = p.amigos.every((a) => a.bot);
 
   const pestañas = [
     { id: "vuelo" as const, texto: "En vuelo", contador: enVuelo.length + volviendo.length },
@@ -115,6 +140,7 @@ export function Panel(p: Props) {
       <div className="scroll" style={{ flex: 1, minHeight: 0, padding: "0 14px 90px" }}>
         {pestaña === "vuelo" && (
           <>
+            {soloLaVecina && <TraeAAlguien codigo={p.codigo} hayVuelo={enVuelo.length > 0} />}
             {enVuelo.length + volviendo.length === 0 ? (
               <Vacio
                 titulo="No hay nada en el aire"
@@ -206,6 +232,50 @@ function Cabecera({ yo }: { yo: NidoVista }) {
           {yo.lugar || `${yo.lat.toFixed(3)}, ${yo.lng.toFixed(3)}`}
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * “Traé a alguien de verdad.”
+ *
+ * Es el arreglo del agujero más grande que tenía el producto: la app entretenía
+ * bien y no invitaba nunca. Mandás tu primer loro —a un bot— y te quedabas tres
+ * minutos mirando una barra de progreso, con el botón de compartir escondido a
+ * dos toques en la cuarta pestaña. Esa espera es el mejor momento de invitación
+ * que hay: acabás de entender la mecánica y no tenés nada que hacer.
+ */
+function TraeAAlguien({ codigo, hayVuelo }: { codigo: string; hayVuelo: boolean }) {
+  const [listo, setListo] = useState(false);
+  return (
+    <div
+      className="tarjeta"
+      style={{
+        padding: 16,
+        marginBottom: 12,
+        borderColor: "var(--esmeralda)",
+        background: "rgba(16,185,129,.07)",
+      }}
+    >
+      <p style={{ fontSize: 15, fontWeight: 750, marginBottom: 5 }}>
+        {hayVuelo ? "Mientras tanto…" : "Doña Cotorra es de mentira"}
+      </p>
+      <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--suave)" }}>
+        Un loro recién significa algo cuando cruza distancia de verdad. Traé a
+        alguien que esté lejos.
+      </p>
+      <button
+        className="boton"
+        style={{ width: "100%", marginTop: 12 }}
+        onClick={async () => {
+          if (await compartirNido(codigo)) {
+            setListo(true);
+            setTimeout(() => setListo(false), 2200);
+          }
+        }}
+      >
+        {listo ? "✓ Link copiado" : "Invitar a alguien"}
+      </button>
     </div>
   );
 }
@@ -943,21 +1013,10 @@ function MiNido({
   }
 
   async function compartir() {
-    // El código va DENTRO del link, no suelto al lado. Pedirle a alguien que
-    // copie seis caracteres de un mensaje de WhatsApp y después adivine dónde
-    // pegarlos es donde se caía la invitación: ahora toca el link, ve de quién
-    // viene, y al armar su nido queda conectado solo.
-    const url = typeof window !== "undefined" ? `${window.location.origin}/?n=${codigo}` : "";
-    const texto = "Mandame un lorito 🦜 Tocá el link y quedamos conectados:";
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "Loros", text: texto, url });
-      } else {
-        await navigator.clipboard.writeText(`${texto} ${url}`);
-      }
+    if (await compartirNido(codigo)) {
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
-    } catch {}
+    }
   }
 
   async function usarGps() {
@@ -1169,7 +1228,12 @@ function MiNido({
         )}
       </div>
 
-      {/* --- las reglas --- */}
+      {/* --- las reglas ---
+          Dos, no seis. La app explica cada regla en el momento exacto en que
+          ocurre —el tiempo al elegir el ave, el olvido al abrir el mensaje, la
+          zona al mirar el mapa— que es la razón por la que se entiende sin
+          manual. Ciento cincuenta palabras acá arriba competían con eso, en una
+          pestaña que se abre para copiar un código. */}
       <details className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
           Cómo funciona
@@ -1178,27 +1242,11 @@ function MiNido({
           {[
             [
               "El mensaje vuela de verdad",
-              "Elegís un ave, escribís, y el bicho sale. Hasta que no cruza los kilómetros que hay entre los dos, tu mensaje no existe del otro lado. Un guacamayo a Madrid tarda dos semanas. Sí, en serio.",
-            ],
-            [
-              "Rápida y bruta, o lenta y elegante",
-              "Cuanto más vuela, menos le entra en la cabeza: al perico 120 caracteres, al guacamayo 2000. Elegir el ave ya es parte del mensaje.",
-            ],
-            [
-              "Ninguna es de fiar del todo",
-              "La cotorra repite tu mensaje todo el viaje hasta mezclarlo. El perico se enamora en el camino y llega tarde y retocado. La paloma explota en confeti y el cuervo trae malas noticias. Y 2 de cada 1000 aves no llegan nunca.",
-            ],
-            [
-              "El ave queda del otro lado",
-              "Cuando aterriza, quien la recibió decide: la suelta y la ves volver por el mapa, la enjaula, o la manda al puchero. Vos te enterás sin que te escriba una palabra.",
+              "Hasta que el ave no cruza los kilómetros que hay entre los dos, tu mensaje no existe del otro lado. Un guacamayo a Madrid tarda dos semanas. Sí, en serio.",
             ],
             [
               "Nadie ve dónde vivís",
               "De cada nido ajeno se dibuja una zona de 300 metros, nunca un punto. Los kilómetros y los tiempos sí son exactos.",
-            ],
-            [
-              "Doña Cotorra",
-              "La vecina que aparece sola a 2,2 km cuando armás el nido, para que tengas a quién escribirle el primer día. Contesta con la misma ave que le mandaste.",
             ],
           ].map(([titulo, texto]) => (
             <div key={titulo}>

@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   // historial o pegado a mano, y en todos esos casos el pedido no nace acá.
   // Lo que lo protege no es el origen sino la llave, que son 96 bits al azar
   // más una firma HMAC.
-  if (!freno(req, "entrar", 20, 10 * 60_000)) {
+  if (!(await freno(req, "entrar", 20, 10 * 60_000))) {
     return error("Demasiados intentos. Esperá unos minutos.", 429);
   }
 

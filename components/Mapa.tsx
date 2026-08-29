@@ -277,9 +277,6 @@ export default function Mapa({
       alElegirRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng });
     });
     mapa.current = m;
-    // Una manija al mapa desde la consola. Sirve para las pruebas de navegador
-    // y para depurar en el celular; no expone nada que no esté ya en pantalla.
-    (window as unknown as { __loros_mapa?: L.Map }).__loros_mapa = m;
 
     // Si el contenedor cambia de tamaño (rotar el celular, abrir el panel),
     // Leaflet no se entera solo y quedan mosaicos grises.
@@ -658,10 +655,8 @@ export default function Mapa({
 
       {sinMosaicos && (
         <div
-          className="flotante"
-          // bottom 74 y no 34: abajo del todo va la cuenta de lo que hay en
-          // pantalla, y las dos chapas se pisaban.
-          style={{ bottom: 74, left: 12, color: "var(--suave)", cursor: "default" }}
+          className="flotante sin-mosaicos"
+          style={{ color: "var(--suave)", cursor: "default" }}
         >
           🗺 Sin mosaicos del mapa — los vuelos se siguen viendo
         </div>

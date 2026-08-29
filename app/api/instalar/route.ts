@@ -39,7 +39,7 @@ function cadena(): string | null {
 }
 
 export async function GET(req: Request) {
-  if (!freno(req, "instalar", 10, 10 * 60_000)) {
+  if (!(await freno(req, "instalar", 10, 10 * 60_000))) {
     return error("Demasiados intentos. Esperá unos minutos.", 429);
   }
   if (new URL(req.url).searchParams.get("confirmar") !== "si") {

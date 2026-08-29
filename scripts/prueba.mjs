@@ -347,13 +347,83 @@ if (MODO_ROMANCE) {
   chequear(retocado.texto.startsWith("Che"), "quien lo mandó sigue viendo su propio texto");
 }
 
+// --- carreras: lo que se rompía solo con gente de verdad ---
+//
+// Estos cuatro no fallaban nunca de a uno. Fallaban cuando dos pedidos caían
+// en el mismo instante, que es lo que pasa apenas hay tráfico — y fallaban en
+// silencio, sin un error que mirar. Van acá para que no vuelvan.
+console.log("\n— concurrencia —");
+{
+  const popular = cliente("Popular");
+  await popular.llamar("/api/nido", { nombre: "Popular", lat: -34.55, lng: -58.5 });
+  const suCodigo = (await popular.llamar("/api/estado")).codigo;
+
+  const fans = [];
+  for (let i = 0; i < 6; i++) {
+    const f = cliente(`Fan${i}`);
+    await f.llamar("/api/nido", { nombre: `Fan${i}`, lat: -34.5 + i * 0.01, lng: -58.5 });
+    fans.push(f);
+  }
+  // Seis personas tocando el mismo link de invitación a la vez. Antes quedaba
+  // UNA: la bandada era un documento y cada uno pisaba al anterior.
+  await Promise.all(fans.map((f) => f.llamar("/api/amigos", { codigo: suCodigo })));
+  const bandada = (await popular.llamar("/api/estado")).amigos.filter((a) => !a.bot);
+  chequear(bandada.length === 6, `seis personas te agregan a la vez y quedan las seis (${bandada.length})`);
+
+  let deUnLado = 0;
+  for (const f of fans) {
+    if (!(await f.llamar("/api/estado")).amigos.some((a) => a.nombre === "Popular")) deUnLado++;
+  }
+  chequear(deUnLado === 0, "y la amistad queda de los dos lados en todos los casos");
+}
+
+{
+  // Doña Cotorra contestaba cuatro veces el mismo loro si cuatro consultas de
+  // estado caían encimadas — la app abierta en dos pestañas alcanza.
+  const solo = cliente("Sola");
+  await solo.llamar("/api/nido", { nombre: "Sola", lat: 19.43, lng: -99.13 });
+  const vecina = (await solo.llamar("/api/estado")).amigos.find((a) => a.bot);
+  const aVecina = (await solo.llamar("/api/loros", { para: vecina.id, ave: "perico", texto: "hola" })).loro;
+  await new Promise((r) => setTimeout(r, aVecina.llegada - aVecina.salida + 1500));
+  await Promise.all([1, 2, 3, 4].map(() => solo.llamar("/api/estado")));
+  await new Promise((r) => setTimeout(r, 500));
+  const respuestas = (await solo.llamar("/api/estado")).loros.filter(
+    (l) => l.direccion === "recibido" && l.otro.bot
+  );
+  chequear(respuestas.length === 1, `Doña Cotorra contesta UNA vez, no cuatro (${respuestas.length})`);
+}
+
+{
+  // Doble toque en el destino del ave: las dos respuestas tienen que coincidir
+  // con lo que quedó guardado. Antes una decía "soltado" y el ave terminaba en
+  // el puchero.
+  const doble = (await ana.llamar("/api/loros", { para: idBeto, ave: "cuervo", texto: "doble toque" })).loro;
+  await new Promise((r) => setTimeout(r, doble.llegada - doble.salida + 2000));
+  const dos = await Promise.all([
+    beto.llamar("/api/loros/suerte", { id: doble.id, suerte: "soltado" }).catch(() => ({})),
+    beto.llamar("/api/loros/suerte", { id: doble.id, suerte: "puchero" }).catch(() => ({})),
+  ]);
+  const guardado = (await beto.llamar("/api/estado")).loros.find((l) => l.id === doble.id).suerte;
+  chequear(
+    dos.every((d) => !d.loro || d.loro.suerte === guardado),
+    `un doble toque no puede dar dos destinos distintos (${dos.map((d) => d.loro?.suerte).join("/")} · guardado ${guardado})`
+  );
+
+  // Y quien lo mandó tiene que poder enterarse: el destino viaja en su vista.
+  const deAna = (await ana.llamar("/api/estado")).loros.find((l) => l.id === doble.id);
+  chequear(deAna.suerte === guardado, "quien lo mandó ve qué hicieron con su ave");
+}
+
 // --- la vista del resto ---
 //
 // Lo que se chequea acá no es que la lista tenga cosas: es que lo que tiene NO
 // alcance para saber de quién son. Un mapa del mundo que filtra nombres o
 // coordenadas de verdad es peor que no tener mapa del mundo.
+// Un vuelo largo recién soltado, para tener algo garantizado en el aire: los
+// de más arriba ya aterrizaron mientras corrían las pruebas de concurrencia.
+await ana.llamar("/api/loros", { para: idBeto, ave: "guacamayo", texto: "para mirar desde arriba" });
 const carlaVe = await carla.llamar("/api/mundo");
-const mio = carlaVe.vuelos.find((v) => v.ave === "paloma" || v.ave === "cuervo");
+const mio = carlaVe.vuelos.find((v) => v.ave === "guacamayo");
 chequear(carlaVe.vuelos.length > 0, `Carla ve vuelos ajenos en el mundo (${carlaVe.vuelos.length})`);
 chequear(!!mio, "entre ellos, aves que ella no mandó");
 

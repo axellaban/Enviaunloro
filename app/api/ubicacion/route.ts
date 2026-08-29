@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   if (!mismoOrigen(req)) return error("Origen no permitido.", 403);
-  if (!freno(req, "ubicacion", 120, 10 * 60_000)) return error("Demasiados pedidos.", 429);
+  if (!(await freno(req, "ubicacion", 120, 10 * 60_000))) return error("Demasiados pedidos.", 429);
 
   const yo = await nidoDeRequest(req);
   if (!yo) return error("Todavía no tenés nido.", 401);

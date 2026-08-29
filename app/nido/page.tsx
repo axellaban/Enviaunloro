@@ -28,9 +28,26 @@ import { distanciaKm, formatearDuracion } from "../../lib/geo";
 import { AVES, type AveId } from "../../lib/aves";
 import type { LoroVista } from "../../lib/vista";
 
-type EstadoLoro = "vuelo" | "llego" | "perdido";
+/**
+ * En qué punto de su historia está un loro. Se compara contra la vuelta
+ * anterior para saber QUÉ cambió y avisar solo de eso.
+ *
+ * El destino del ave forma parte del estado: sin él, quien mandó el loro no se
+ * entera nunca de que del otro lado lo soltaron, lo enjaularon o lo mandaron al
+ * puchero — que es la única respuesta que la app permite dar sin escribir una
+ * palabra, y se estaba perdiendo.
+ */
+type EstadoLoro = string;
 const estadoDe = (l: LoroVista): EstadoLoro =>
-  l.perdido ? "perdido" : l.llego ? "llego" : "vuelo";
+  l.perdido ? "perdido" : l.llego ? `llego${l.suerte ? `:${l.suerte}` : ""}` : "vuelo";
+
+/** Cómo se le cuenta a quien lo mandó lo que hicieron con su ave. */
+const NOTICIA_SUERTE: Record<string, (quien: string, ave: string, vuelve: string) => string> = {
+  soltado: (quien, ave, vuelve) =>
+    `${quien} soltó tu ${ave}. Vuelve a tu nido${vuelve ? `, llega en ${vuelve}` : ""}.`,
+  enjaulado: (quien, ave) => `${quien} se quedó con tu ${ave}. Ese no vuelve más.`,
+  puchero: (quien, ave) => `Tu ${ave} no volvió de lo de ${quien}. Mejor no preguntes.`,
+};
 
 const Mapa = dynamic(() => import("../../components/Mapa"), {
   ssr: false,
@@ -110,6 +127,21 @@ export default function Nido() {
         continue;
       }
 
+      // Qué hicieron con tu ave del otro lado. Es el único aviso que le
+      // corresponde a quien MANDÓ: la decisión la tomó el otro, y sin esto no
+      // se enteraba salvo que se le ocurriera volver a mirar la tarjeta.
+      if (mio && l.suerte && antes && !antes.includes(":")) {
+        const vuelve =
+          l.vuelta && l.vuelta.llegada > ahoraServidor()
+            ? formatearDuracion(l.vuelta.llegada - ahoraServidor())
+            : "";
+        const texto = NOTICIA_SUERTE[l.suerte](l.otro.nombre, a.nombre.toLowerCase(), vuelve);
+        const icono = l.suerte === "soltado" ? "🕊" : l.suerte === "enjaulado" ? "🔒" : "🍲";
+        mostrarAviso(`${icono} ${texto}`);
+        avisar(`${icono} Novedades de tu ${a.nombre.toLowerCase()}`, texto);
+        continue;
+      }
+
       // Los avisos de despegue y aterrizaje son solo para lo que viene hacia
       // vos: de lo que mandás ya te enteraste al mandarlo.
       if (mio) continue;
@@ -119,7 +151,7 @@ export default function Nido() {
         const texto = `${a.nombre} de ${l.otro.nombre} viene en camino. Llega en ${falta}.`;
         mostrarAviso(`🪶 ${texto}`);
         avisar("Viene un loro en camino 🦜", texto);
-      } else if (ahora === "llego" && (antes === "vuelo" || reciente)) {
+      } else if (ahora.startsWith("llego") && (antes === "vuelo" || reciente)) {
         const texto = `${a.nombre} de ${l.otro.nombre} aterrizó en tu nido.`;
         mostrarAviso(`🪶 ${texto}`);
         avisar("Aterrizó un loro 🦜", texto);
@@ -272,10 +304,13 @@ export default function Nido() {
 
         {/* La cuenta de lo que hay en pantalla. Abajo y no arriba: arriba ya
             están el zoom, el interruptor, la brújula y "Mi nido", y en 390 px
-            no entra nada más sin que se pisen. */}
+            no entra nada más sin que se pisen. Va adentro de `.pila-mapa`, que
+            apila esta chapa y la de "sin mosaicos" en columna: antes las dos
+            salían posicionadas a mano en la misma esquina y se montaban. */}
+        <div className="pila-mapa">
         <div
           className="flotante"
-          style={{ bottom: 34, left: 12, pointerEvents: "none", maxWidth: "calc(100% - 24px)" }}
+          style={{ pointerEvents: "none", maxWidth: "100%" }}
         >
           {vista === "resto" ? (
             <>
@@ -298,6 +333,7 @@ export default function Nido() {
               </span>
             </>
           )}
+        </div>
         </div>
 
         <button

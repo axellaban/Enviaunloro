@@ -173,7 +173,9 @@ la que le diste tu código, es el canje razonable.
    mitad del producto.
 6. **Decidí qué hacer con el ave**: quedó posada de tu lado. La soltás y vuelve
    volando —quien te escribió la ve venir en el mapa—, la enjaulás, o al
-   puchero. Una sola vez, sin vuelta atrás.
+   puchero. Una sola vez, sin vuelta atrás. **A la otra persona le llega el
+   aviso**: es la única respuesta que la app permite dar sin escribir nada, y
+   sin notificarla se perdía.
 
 **Doña Cotorra** es una vecina automática que aparece sola a 2,2 km de tu nido
 cuando te registrás, y contesta con la misma ave que le mandaste. Existe para
@@ -254,6 +256,62 @@ Tres detalles que no son obvios:
 Los vuelos de Doña Cotorra no entran: es una vecina de práctica, y hacerla pasar
 por gente sería inflar el mapa con vuelos que no existen. Cuando no hay nadie
 volando, lo dice.
+
+## Lo que aprendimos rompiéndola
+
+Una auditoría con concurrencia real encontró cuatro bugs que no fallaban nunca
+de a uno y fallaban siempre de a dos, en silencio. Los cuatro eran la misma
+forma —leer, modificar y escribir sin candado— y quedan documentados acá porque
+cualquier cosa que se agregue después puede repetirlos.
+
+| Se rompía | Con qué | Ahora |
+|---|---|---|
+| **Seis personas te agregan a la vez y queda una.** La bandada era un documento con un array. | 2 simultáneas ya perdían una | Cada amistad es una fila propia (`loros_conjunto`) y choca en la base, no en el código |
+| **Doña Cotorra contesta cuatro veces el mismo loro.** | La app abierta en dos pestañas | Un turno único por loro (`reservar`) |
+| **Doble toque en el destino del ave da dos respuestas distintas.** | Un doble toque | El mismo turno único |
+| **Un loro perdido deja el sondeo en 4 s para siempre.** `!l.llego` nunca vuelve a ser falso en un extravío. | 2 de cada 1000 envíos | `!l.llego && !l.perdido` |
+
+Y dos que no eran carreras pero se llevaban gente puesta:
+
+- **El freno castigaba el éxito.** Contaba por IP, y en el celular una IP son
+  miles de personas (CGNAT): un link moviéndose dentro de una misma red dejaba
+  a los siguientes sin poder crear su nido, a partir del número 15. Ahora quien
+  ya tiene nido se cuenta por su nido, y el tope del alta subió a 200.
+- **"Buscando…" se colgaba para siempre.** El `timeout` de `getCurrentPosition`
+  no corre mientras el navegador muestra el cartel de permiso: si la persona no
+  contestaba, la promesa no se resolvía nunca. Ahora hay un reloj de pared.
+
+### El costo por persona
+
+Medido con el almacenamiento instrumentado, sobre el build de producción:
+
+| | Antes | Ahora |
+|---|---|---|
+| `/api/estado` (el que más se llama) | 7 viajes | **5** |
+| `/api/mundo` | 4 viajes | **1** (caché de 3 s) |
+| Por persona con la app abierta | 1,8 ops/s | **1,3** |
+| 100 personas a la vez | 630.000/hora | **450.000** |
+
+Tres cosas lo explican:
+
+- **Doña Cotorra ya no se consulta si no hay nada que contestar.** Antes salía a
+  leer su nido, su lista y sus loros en cada sondeo —tres de los siete viajes—
+  para descubrir en el 99 % de los casos que no había nada que hacer. Ahora eso
+  se decide con el buzón que la misma consulta ya cargó.
+- **El freno tiene dos velocidades.** Cuenta en memoria, que es gratis, y recién
+  consulta Redis cuando alguien pasa un cuarto del límite. El usuario común no
+  toca la base; el que se pasa, sí — y ahí la cuenta es de verdad, compartida
+  entre instancias.
+- **La vista del resto se reparte.** Todos los que miran piden lo mismo, así que
+  la respuesta se guarda tres segundos. Cien personas mirando comparten el 97 %
+  de las respuestas. Tres y no diez porque apagar *Aparecer en «Del resto»* no
+  puede quedar en cola: además, cambiar el interruptor tira la caché.
+
+La portada también dejó de ser dinámica. Resolvía el código de invitación en el
+servidor (`searchParams` + una consulta), y eso hacía que la única página que
+tiene que aguantar un pico —la que se comparte por WhatsApp— fuera la única que
+el CDN no podía guardar. Ahora sale estática y el saludo lo resuelve el
+navegador contra `/api/invitacion`.
 
 ## ¿Y el login con Google?
 

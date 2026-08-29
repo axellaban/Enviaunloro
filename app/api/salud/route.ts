@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   // La prueba escribe en la base, así que no puede quedar abierta a repetición.
-  if (!freno(req, "salud", 20, 10 * 60_000)) {
+  if (!(await freno(req, "salud", 20, 10 * 60_000))) {
     return error("Demasiadas consultas de salud. Esperá unos minutos.", 429);
   }
 

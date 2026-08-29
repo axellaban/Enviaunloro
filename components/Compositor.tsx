@@ -119,13 +119,10 @@ export function Compositor({
           </button>
         </div>
 
-        {amigos.length === 0 ? (
-          <p style={{ color: "var(--suave)", fontSize: 14.5, lineHeight: 1.6 }}>
-            Todavía no tenés a nadie en la bandada. Compartí tu código de nido y
-            volvé cuando alguien te agregue.
-          </p>
-        ) : (
-          <>
+        {/* No hay rama de "bandada vacía": Doña Cotorra se crea junto con el
+            nido y queda de amiga, así que nunca hay cero. La había, con su
+            texto, y era una pantalla que ningún usuario podía ver. */}
+        <>
             <p className="etiqueta">Para</p>
             <div
               className="scroll"
@@ -283,8 +280,7 @@ export function Compositor({
                     duracion
                   )}${a.rareza === "romance" ? "+" : ""}`}
             </button>
-          </>
-        )}
+        </>
       </div>
     </div>
   );

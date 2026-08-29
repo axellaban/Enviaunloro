@@ -145,7 +145,13 @@ export function useEstado() {
 
   const ahoraServidor = useCallback(() => Date.now() + desfase.current, []);
 
-  const hayVuelos = estado.loros.some((l) => !l.llego);
+  // `!l.llego` a secas no alcanza: un loro extraviado nunca llega, así que
+  // quedaba en `false` de por vida y el sondeo rápido no se apagaba más. El
+  // buzón guarda ochenta loros, o sea que un solo extravío —2 de cada mil—
+  // dejaba a esa persona consultando cada cuatro segundos para siempre.
+  const hayVuelos = estado.loros.some(
+    (l) => (!l.llego && !l.perdido) || (l.vuelta && ahoraServidor() < l.vuelta.llegada)
+  );
 
   useEffect(() => {
     refrescar();
@@ -203,10 +209,31 @@ export function pedirUbicacion(): Promise<ResultadoUbicacion> {
       });
       return;
     }
+    // El `timeout` de getCurrentPosition NO corre mientras el navegador muestra
+    // el cartel de permiso: arranca recién cuando lo aceptás. Si la persona
+    // duda, cambia de app, o simplemente no toca nada, la promesa no se
+    // resuelve nunca y el botón queda clavado en "Buscando…" sin salida. Este
+    // reloj es de pared y sí corre siempre.
+    let resuelto = false;
+    const terminar = (r: ResultadoUbicacion) => {
+      if (resuelto) return;
+      resuelto = true;
+      listo(r);
+    };
+    setTimeout(
+      () =>
+        terminar({
+          ok: false,
+          denegado: false,
+          motivo: "No llegó la ubicación. Probá de nuevo o poné tu nido a mano.",
+        }),
+      15_000
+    );
+
     navigator.geolocation.getCurrentPosition(
-      (p) => listo({ ok: true, punto: { lat: p.coords.latitude, lng: p.coords.longitude } }),
+      (p) => terminar({ ok: true, punto: { lat: p.coords.latitude, lng: p.coords.longitude } }),
       (err) =>
-        listo({
+        terminar({
           ok: false,
           denegado: err.code === err.PERMISSION_DENIED,
           motivo:
@@ -230,7 +257,7 @@ export async function pedirPermisoAvisos(): Promise<void> {
 export function avisar(titulo: string, cuerpo: string): void {
   try {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    new Notification(titulo, { body: cuerpo, icon: "/icono.svg", tag: titulo });
+    new Notification(titulo, { body: cuerpo, icon: "/icon.svg", tag: titulo });
   } catch {}
 }
 

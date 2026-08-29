@@ -50,7 +50,39 @@ export interface Backend {
   leerVarios(claves: string[]): Promise<(string | null)[]>;
   /** Agrega al principio de una lista y la recorta. Atómico donde importa. */
   agregarALista(clave: string, valor: string, max: number): Promise<void>;
-  leerLista(clave: string): Promise<string[]>;
+  leerLista(clave: string, max?: number): Promise<string[]>;
+
+  /**
+   * Agrega a un conjunto, sin repetidos y sin leerlo antes.
+   *
+   * Existe por un bug que costaba amistades: la bandada era un documento con
+   * un array, y sumar a alguien era leer-modificar-escribir. Dos personas
+   * tocando tu link de invitación al mismo tiempo leían la misma lista y la
+   * segunda pisaba a la primera. Con dos ya se perdía una; con seis quedaba
+   * una sola. Acá la base resuelve el choque y no hay nada que pisar.
+   */
+  agregarAConjunto(clave: string, valor: string): Promise<void>;
+  leerConjunto(clave: string): Promise<string[]>;
+
+  /**
+   * Pedir un turno único. Devuelve true solo al PRIMERO que lo pide.
+   *
+   * Es lo que convierte "comprobar y después escribir" en una sola operación.
+   * Sin esto, dos consultas encimadas hacían que Doña Cotorra contestara el
+   * mismo loro cuatro veces, y que un doble toque en el destino del ave
+   * devolviera dos respuestas distintas.
+   *
+   * `segundos` 0 = para siempre, que es lo correcto cuando el turno representa
+   * una decisión que tampoco se deshace.
+   */
+  reservar(clave: string, segundos: number): Promise<boolean>;
+
+  /**
+   * Suma uno y devuelve el total de la ventana, o null si este backend no
+   * puede hacerlo de forma atómica (y entonces el freno cae al de memoria).
+   */
+  contador(clave: string, segundos: number): Promise<number | null>;
+
   nombre: string;
 }
 
@@ -113,9 +145,32 @@ function backendUpstash(c: { url: string; token: string }): Backend {
       await cmd(["LPUSH", clave, valor]);
       await cmd(["LTRIM", clave, 0, max - 1]);
     },
-    async leerLista(clave) {
-      const r = await cmd(["LRANGE", clave, 0, -1]);
+    async leerLista(clave, max) {
+      const r = await cmd(["LRANGE", clave, 0, max ? max - 1 : -1]);
       return Array.isArray(r) ? r.map(String) : [];
+    },
+    async agregarAConjunto(clave, valor) {
+      await cmd(["SADD", clave, valor]);
+    },
+    async leerConjunto(clave) {
+      const r = await cmd(["SMEMBERS", clave]);
+      return Array.isArray(r) ? r.map(String) : [];
+    },
+    async reservar(clave, segundos) {
+      // NX: solo escribe si la clave NO existe. La respuesta distingue al
+      // primero de todos los demás, en una sola operación. Sin EX cuando el
+      // turno no vence: Redis rechaza `EX 0`.
+      const args =
+        segundos > 0 ? ["SET", clave, "1", "NX", "EX", segundos] : ["SET", clave, "1", "NX"];
+      return (await cmd(args)) === "OK";
+    },
+    async contador(clave, segundos) {
+      const n = await cmd(["INCR", clave]);
+      if (typeof n !== "number") return null;
+      // Solo el primero pone el vencimiento; si no, la ventana no terminaría
+      // nunca de correrse hacia adelante.
+      if (n === 1) await cmd(["EXPIRE", clave, segundos]);
+      return n;
     },
   };
 }
@@ -193,7 +248,14 @@ function backendSupabase(c: { url: string; key: string }): Backend {
 
   async function pedir(
     ruta: string,
-    opciones: { metodo?: string; cuerpo?: unknown; extra?: Record<string, string> } = {}
+    opciones: {
+      metodo?: string;
+      cuerpo?: unknown;
+      extra?: Record<string, string>;
+      /** Devolver el código en vez de tratarlo como falla. Lo usa `reservar`:
+       *  ahí un 409 no es un error, es la respuesta "llegaste segundo". */
+      estado?: (n: number) => boolean;
+    } = {}
   ): Promise<any> {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 6000);
@@ -205,6 +267,7 @@ function backendSupabase(c: { url: string; key: string }): Backend {
         cache: "no-store",
         signal: ctrl.signal,
       });
+      if (opciones.estado?.(r.status)) return { estado: r.status };
       if (!r.ok) {
         const detalle = await r.text().catch(() => "");
         anotarError(`supabase ${ruta.split("?")[0]} devolvió ${r.status}: ${detalle.slice(0, 300)}`);
@@ -289,16 +352,47 @@ function backendSupabase(c: { url: string; key: string }): Backend {
       await pedir("loros_lista", { metodo: "POST", cuerpo: [{ clave, valor }] });
       await recortar(clave, max);
     },
-    async leerLista(clave) {
+    async leerLista(clave, max) {
       const r = await pedir(
         `loros_lista?${consulta({
           select: "valor",
           clave: `eq.${clave}`,
           order: "id.desc",
-          limit: "200",
+          // El tope venía fijo en 200 mientras el índice del mundo guardaba
+          // 300: la misma app mostraba distinto según dónde estuviera guardando.
+          limit: String(max ?? 200),
         })}`
       );
       return Array.isArray(r) ? r.map((f) => String(f.valor)) : [];
+    },
+    async agregarAConjunto(clave, valor) {
+      // ignore-duplicates: la clave primaria (clave, valor) hace el trabajo.
+      await pedir("loros_conjunto", {
+        metodo: "POST",
+        cuerpo: [{ clave, valor }],
+        extra: { Prefer: "resolution=ignore-duplicates" },
+      });
+    },
+    async leerConjunto(clave) {
+      const r = await pedir(
+        `loros_conjunto?${consulta({ select: "valor", clave: `eq.${clave}` })}`
+      );
+      return Array.isArray(r) ? r.map((f) => String(f.valor)) : [];
+    },
+    async reservar(clave) {
+      // Sin `ignore-duplicates` a propósito: acá el choque es la respuesta.
+      // 409 = la clave primaria ya existía = alguien reservó antes.
+      const r = await pedir("loros_conjunto", {
+        metodo: "POST",
+        cuerpo: [{ clave, valor: "1" }],
+        estado: (n) => n === 409,
+      });
+      return Array.isArray(r);
+    },
+    async contador() {
+      // PostgREST no tiene un INCR atómico. El freno cae al de memoria y lo
+      // dice en /api/salud, en vez de aparentar un límite que no cumple.
+      return null;
     },
   };
 }
@@ -406,9 +500,44 @@ function backendArchivo(): Backend {
         d[clave] = lista.slice(0, max);
       });
     },
-    async leerLista(clave) {
+    async leerLista(clave, max) {
+      const v = (await leerTodo())[clave];
+      const lista = Array.isArray(v) ? [...v] : [];
+      return max ? lista.slice(0, max) : lista;
+    },
+    async agregarAConjunto(clave, valor) {
+      // La lectura va ADENTRO de la mutación, que es lo que la hace atómica:
+      // la cola serializa leer-modificar-escribir enteros. Leyendo afuera
+      // —como hacía la bandada— dos pedidos leen lo mismo y el segundo pisa.
+      await mutar((d) => {
+        const actual = d[clave];
+        const lista = Array.isArray(actual) ? actual : [];
+        if (!lista.includes(valor)) d[clave] = [...lista, valor];
+      });
+    },
+    async leerConjunto(clave) {
       const v = (await leerTodo())[clave];
       return Array.isArray(v) ? [...v] : [];
+    },
+    async reservar(clave, segundos) {
+      let gane = false;
+      await mutar((d) => {
+        const previo = d[clave];
+        if (typeof previo === "string") {
+          const vence = Number(previo);
+          // 0 = sin vencimiento. Un turno vencido se puede volver a tomar.
+          if (vence === 0 || Date.now() < vence) return;
+        }
+        d[clave] = String(segundos > 0 ? Date.now() + segundos * 1000 : 0);
+        gane = true;
+      });
+      return gane;
+    },
+    async contador() {
+      // Null a propósito: el freno cae al contador en memoria, que acá es
+      // exactamente equivalente —este backend es de un solo proceso— y no
+      // cuesta una escritura a disco en cada pedido.
+      return null;
     },
   };
 }

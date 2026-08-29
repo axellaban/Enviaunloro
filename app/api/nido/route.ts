@@ -7,6 +7,7 @@ import {
   crearNido,
   guardarNido,
   nombreValido,
+  olvidarMundo,
   puntoDe,
 } from "../../../lib/datos";
 import { verNido } from "../../../lib/vista";
@@ -21,7 +22,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!mismoOrigen(req)) return error("Origen no permitido.", 403);
-  if (!freno(req, "nido", 20, 10 * 60_000)) {
+  // 200 y no 20: quien todavía no tiene nido se cuenta por IP, y en el celular
+  // una IP son miles de personas (CGNAT). Con el número viejo, un link que se
+  // movía dentro de una misma red dejaba afuera a los siguientes — el freno
+  // castigaba exactamente el caso de éxito.
+  if (!(await freno(req, "nido", 200, 10 * 60_000))) {
     return error("Demasiados nidos en poco tiempo. Esperá un momento.", 429);
   }
 
@@ -48,6 +53,11 @@ export async function POST(req: Request) {
       ...(punto ? { lat: punto.lat, lng: punto.lng } : {}),
     };
     await guardarNido(actualizado);
+    // Si cambió si aparece o no en la vista del resto, la foto guardada de esa
+    // vista ya no sirve: una decisión de privacidad no espera a que venza nada.
+    if (typeof b?.publico === "boolean" && b.publico !== (existente.publico !== false)) {
+      olvidarMundo();
+    }
     return ok({ ok: true, yo: verNido(actualizado, actualizado), codigo: existente.codigo });
   }
 

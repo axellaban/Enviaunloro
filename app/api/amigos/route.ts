@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   if (!mismoOrigen(req)) return error("Origen no permitido.", 403);
   // Sin freno, el código de 6 caracteres se puede probar a fuerza bruta hasta
   // caer en el nido de un desconocido.
-  if (!freno(req, "amigos", 20, 10 * 60_000)) {
+  if (!(await freno(req, "amigos", 20, 10 * 60_000))) {
     return error("Probaste demasiados códigos. Esperá unos minutos.", 429);
   }
 

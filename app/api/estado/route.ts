@@ -9,7 +9,15 @@
 // —y suele estarlo— el cliente lo compensa en vez de mostrar un ETA falso.
 
 import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
-import { amigos, atenderVecina, buzon, escalaGlobal, type Nido } from "../../../lib/datos";
+import {
+  amigos,
+  asegurarLugar,
+  atenderVecina,
+  buzon,
+  escalaGlobal,
+  vecinaTienePendiente,
+  type Nido,
+} from "../../../lib/datos";
 import { verLoro, verNido } from "../../../lib/vista";
 import { store } from "../../../lib/store";
 
@@ -17,7 +25,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  if (!freno(req, "estado", 900, 5 * 60_000)) {
+  if (!(await freno(req, "estado", 900, 5 * 60_000))) {
     return error("Estás consultando demasiado seguido.", 429);
   }
 
@@ -36,15 +44,27 @@ export async function GET(req: Request) {
     });
   }
 
-  // Doña Cotorra contesta acá: sin worker ni cron, cuando mirás ya está.
-  await atenderVecina(yo.id);
-
-  const bandada = await amigos(yo.id);
-  const nidos = new Map<string, Nido>([[yo.id, yo]]);
-  for (const a of bandada) nidos.set(a.id, a);
+  // Si al crear el nido no llegó a resolverse la ciudad —en serverless la
+  // función se congela apenas responde— se vuelve a intentar acá.
+  asegurarLugar(yo);
 
   const ahora = Date.now();
-  const loros = (await buzon(yo.id)).map((l) => verLoro(l, yo.id, nidos, ahora));
+  // Las dos consultas que hacen falta siempre, en paralelo.
+  const [bandada, propio] = await Promise.all([amigos(yo.id), buzon(yo.id)]);
+
+  // Doña Cotorra contesta acá: sin worker ni cron, cuando mirás ya está. Pero
+  // solo se la llama si el buzón que acabamos de leer dice que hay algo sin
+  // contestar — si no, son tres viajes a la base para descubrir que no hay
+  // nada que hacer.
+  let loros = propio;
+  if (vecinaTienePendiente(yo.id, propio, ahora)) {
+    await atenderVecina(yo.id);
+    loros = await buzon(yo.id);
+  }
+
+  const nidos = new Map<string, Nido>([[yo.id, yo]]);
+  for (const a of bandada) nidos.set(a.id, a);
+  const vistas = loros.map((l) => verLoro(l, yo.id, nidos, ahora));
 
   return ok({
     ahora,
@@ -53,6 +73,6 @@ export async function GET(req: Request) {
     yo: verNido(yo, yo),
     codigo: yo.codigo,
     amigos: bandada.map((a) => verNido(a, yo)),
-    loros,
+    loros: vistas,
   });
 }

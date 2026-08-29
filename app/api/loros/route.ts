@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   if (!mismoOrigen(req)) return error("Origen no permitido.", 403);
-  if (!freno(req, "enviar", 40, 10 * 60_000)) {
+  if (!(await freno(req, "enviar", 40, 10 * 60_000))) {
     return error("Se te cansaron las aves. Probá de nuevo en un rato.", 429);
   }
 

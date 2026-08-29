@@ -6,49 +6,27 @@
 // ve al escribir, y la zona de privacidad se ve en el mapa. Acá alcanza con el
 // teléfono de la derecha, donde las aves cruzan el Atlántico de verdad.
 
-import Link from "next/link";
-import { Ave } from "../components/Ave";
 import { TelefonoHero } from "../components/TelefonoHero";
-import { Cta } from "../components/Cta";
 import { Trayectoria } from "../components/Trayectoria";
-import { nidoPorCodigo } from "../lib/datos";
+import { Invitacion } from "../components/Invitacion";
+import { PortadaCta } from "../components/PortadaCta";
 
 /**
- * La portada, y también la pantalla de invitación.
+ * La portada.
  *
- * Cuando alguien comparte su nido, el link lleva el código adentro (`/?n=XXXXXX`)
- * en vez de pedirle a la otra persona que copie seis caracteres a mano y
- * después adivine dónde pegarlos. Acá se resuelve a quién pertenece ese código
- * y se lo saluda por su nombre: quien abre el link ve de quién es la invitación
- * antes de decidir nada.
- *
- * El nombre se expone solo a quien ya tiene el código, que es algo que se
- * comparte a propósito. Recorrer los 32^6 códigos posibles para juntar apodos
- * no lleva a ningún lado: no dan acceso a nada por sí solos, hay que aceptar
- * la amistad igual, y el envío exige que el otro esté en tu bandada.
+ * Es ESTÁTICA, y eso es una decisión de escala más que de estilo: es la página
+ * que se comparte por WhatsApp, o sea la única que tiene que aguantar un pico
+ * de gente entrando toda junta. Mientras resolvía el código de invitación en el
+ * servidor (`searchParams` + una consulta a la base) Next la marcaba dinámica y
+ * cada click terminaba pegándole al servidor. Ahora sale del CDN y el saludo
+ * —"Fulana te quiere mandar un loro"— lo resuelve el navegador aparte.
  */
-export default async function Portada({
-  searchParams,
-}: {
-  searchParams: Promise<{ n?: string }>;
-}) {
-  const { n } = await searchParams;
-  const codigo = String(n || "").trim().toUpperCase();
-  const invita = /^[A-Z0-9]{6}$/.test(codigo) ? await nidoPorCodigo(codigo) : null;
-
+export default function Portada() {
   return (
     <main className="portada">
       <section className="hero">
         <div className="hero-texto">
-          {invita && (
-            <div className="invitacion">
-              <Ave especie={invita.ave} size={44} aletea />
-              <p>
-                <strong>{invita.nombre}</strong> te quiere mandar un loro
-                {invita.lugar ? ` desde ${invita.lugar}` : ""}.
-              </p>
-            </div>
-          )}
+          <Invitacion />
 
           <h1
             style={{
@@ -87,15 +65,7 @@ export default async function Portada({
           </p>
 
           <div style={{ marginTop: 34 }}>
-            <Cta>
-              <Link
-                href={invita ? `/nido?n=${codigo}` : "/nido"}
-                className="boton"
-                style={{ padding: "15px 28px", fontSize: 16 }}
-              >
-                {invita ? `Armar mi nido y sumar a ${invita.nombre}` : "Soltar mi primer loro"}
-              </Link>
-            </Cta>
+            <PortadaCta />
           </div>
 
           <Trayectoria />

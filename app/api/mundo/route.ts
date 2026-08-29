@@ -11,7 +11,7 @@
 // mapa de dónde vive la gente, aunque cada punto esté corrido.
 
 import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
-import { enElAire, nidos } from "../../../lib/datos";
+import { enElAire, guardarMundo, mundoCacheado, nidos } from "../../../lib/datos";
 import { apareceEnElMundo, verVueloMundial } from "../../../lib/vista";
 
 export const runtime = "nodejs";
@@ -21,13 +21,18 @@ export const dynamic = "force-dynamic";
 const MAXIMO = 80;
 
 export async function GET(req: Request) {
-  if (!freno(req, "mundo", 400, 5 * 60_000)) {
+  if (!(await freno(req, "mundo", 400, 5 * 60_000))) {
     return error("Estás consultando demasiado seguido.", 429);
   }
   const yo = await nidoDeRequest(req);
   if (!yo) return error("Todavía no tenés nido.", 401);
 
   const ahora = Date.now();
+  // La foto de hace un momento sirve igual: todos ven lo mismo, y las aves se
+  // mueven solas en el navegador entre una consulta y la siguiente.
+  const guardado = mundoCacheado(ahora);
+  if (guardado) return ok(guardado);
+
   const enVuelo = await enElAire(ahora);
 
   // Quién aceptó aparecer. Todos los nidos involucrados se leen de una sola
@@ -44,5 +49,7 @@ export async function GET(req: Request) {
     if (vuelos.length >= MAXIMO) break;
   }
 
-  return ok({ ahora, vuelos });
+  const cuerpo = { ahora, vuelos };
+  guardarMundo(cuerpo, ahora);
+  return ok(cuerpo);
 }

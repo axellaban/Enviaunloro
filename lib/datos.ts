@@ -156,9 +156,13 @@ function codigoNuevo(): string {
 
 export const claveNido = (id: string) => `nido:${id}`;
 const claveCodigo = (c: string) => `codigo:${c.toUpperCase()}`;
-const claveAmigos = (id: string) => `amigos:${id}`;
+const claveAmigos = (id: string) => `bandada:${id}`;
+/** La bandada de antes, como documento. Solo se lee, nunca se escribe. */
+const claveAmigosViejo = (id: string) => `amigos:${id}`;
 const claveBuzon = (id: string) => `buzon:${id}`;
 const claveLoro = (id: string) => `loro:${id}`;
+/** Turnos únicos. Ver `reservar` en lib/store.ts. */
+const claveTurno = (que: string, id: string) => `turno:${que}:${id}`;
 /**
  * El índice de la vista del resto: los últimos loros soltados, de todo el
  * mundo. Una lista y no una consulta sobre todos los loros porque el store es
@@ -192,6 +196,12 @@ export async function nidoPorCodigo(codigo: string): Promise<Nido | null> {
  * Busca el lugar y lo guarda cuando llega, sin hacer esperar a nadie. Si
  * Nominatim tarda cuatro segundos, el nido igual ya está creado y el mapa ya
  * se está dibujando.
+ *
+ * Ojo con dónde se llama: en serverless la función se puede congelar apenas
+ * responde, así que una promesa suelta después de la respuesta no tiene
+ * garantía de terminar. Por eso además se reintenta desde la consulta de
+ * estado (`asegurarLugar`): el nido tiene muchas oportunidades de conseguir su
+ * ciudad, no una sola. Nominatim está cacheado, así que reintentar es barato.
  */
 function completarLugar(id: string, lat: number, lng: number): void {
   lugarDe(lat, lng)
@@ -238,6 +248,21 @@ export async function crearNido(datos: {
   return n;
 }
 
+/**
+ * Si el nido todavía no tiene ciudad, volver a intentarlo. Se llama desde la
+ * consulta de estado, que corre muchas veces: alcanza con que una sola de esas
+ * ejecuciones viva lo suficiente.
+ */
+const reintentos = new Map<string, number>();
+export function asegurarLugar(n: Nido): void {
+  if (n.lugar || n.bot) return;
+  const ultimo = reintentos.get(n.id) ?? 0;
+  if (Date.now() - ultimo < 60_000) return;
+  if (reintentos.size > 2000) reintentos.clear();
+  reintentos.set(n.id, Date.now());
+  completarLugar(n.id, n.lat, n.lng);
+}
+
 export async function actualizarUbicacion(id: string, punto: Punto): Promise<Nido | null> {
   const n = await nido(id);
   if (!n) return null;
@@ -253,8 +278,41 @@ export async function actualizarUbicacion(id: string, punto: Punto): Promise<Nid
 
 // ---------- amistades ----------
 
+/**
+ * Con quién estás conectado.
+ *
+ * Lee el conjunto nuevo Y el documento viejo, y los une. La bandada era un
+ * documento con un array hasta que se descubrió que agregar a alguien era
+ * leer-modificar-escribir: dos personas tocando tu link al mismo tiempo leían
+ * la misma lista y la segunda pisaba a la primera. Ahora se escribe siempre en
+ * el conjunto, pero los nidos que ya existían tienen su bandada en el
+ * documento, y perderla al actualizar sería cambiar un bug por otro peor.
+ */
+/** Nidos que ya sabemos que no tienen bandada del formato viejo. Evita
+ *  preguntar por un documento que no está, en el endpoint más consultado. */
+const sinBandadaVieja = new Set<string>();
+
 export async function idsAmigos(id: string): Promise<string[]> {
-  return (await leerDoc<string[]>(claveAmigos(id))) || [];
+  if (sinBandadaVieja.has(id)) return store().leerConjunto(claveAmigos(id));
+
+  const [nuevos, viejos] = await Promise.all([
+    store().leerConjunto(claveAmigos(id)),
+    leerDoc<string[]>(claveAmigosViejo(id)),
+  ]);
+  if (!viejos?.length) {
+    if (sinBandadaVieja.size > 5000) sinBandadaVieja.clear();
+    sinBandadaVieja.add(id);
+    return nuevos;
+  }
+
+  // Encontró una bandada del formato viejo: la pasa al conjunto y borra el
+  // documento. Pasa una sola vez por nido, y de ahí en más esta lectura
+  // devuelve vacío. Cuando no queden documentos viejos —unas semanas— se puede
+  // borrar esta rama y la consulta de más.
+  await Promise.all(viejos.map((otro) => store().agregarAConjunto(claveAmigos(id), otro)));
+  await store().borrar(claveAmigosViejo(id));
+  sinBandadaVieja.add(id);
+  return [...new Set([...nuevos, ...viejos])];
 }
 
 /** Varios nidos de una, por id. Una sola ida a la base y no una por nido. */
@@ -287,17 +345,18 @@ export async function amigos(id: string): Promise<Nido[]> {
   return lista;
 }
 
-/** La amistad es de a dos: agregar por código te agrega también del otro lado. */
+/**
+ * La amistad es de a dos: agregar por código te agrega también del otro lado.
+ *
+ * Dos escrituras a conjuntos, sin leer nada antes. Ahí está todo el arreglo:
+ * la base resuelve el choque, así que seis personas tocando el mismo link en
+ * el mismo segundo quedan las seis.
+ */
 export async function emparejar(a: string, b: string): Promise<void> {
-  for (const [uno, otro] of [
-    [a, b],
-    [b, a],
-  ]) {
-    const lista = await idsAmigos(uno);
-    if (!lista.includes(otro)) {
-      await escribirDoc(claveAmigos(uno), [...lista, otro]);
-    }
-  }
+  await Promise.all([
+    store().agregarAConjunto(claveAmigos(a), b),
+    store().agregarAConjunto(claveAmigos(b), a),
+  ]);
 }
 
 // ---------- loros ----------
@@ -425,7 +484,7 @@ export async function buzon(id: string): Promise<Loro[]> {
  * lib/vista.ts, que es donde vive esa regla para todo lo demás.
  */
 export async function enElAire(ahora: number): Promise<Loro[]> {
-  const ids = await store().leerLista(CLAVE_MUNDO);
+  const ids = await store().leerLista(CLAVE_MUNDO, MAX_MUNDO);
   if (ids.length === 0) return [];
   const crudos = await store().leerVarios(ids.map(claveLoro));
   const lista: Loro[] = [];
@@ -440,6 +499,36 @@ export async function enElAire(ahora: number): Promise<Loro[]> {
     } catch {}
   }
   return lista;
+}
+
+/**
+ * La respuesta de la vista del resto, guardada unos segundos.
+ *
+ * Es el endpoint más caro —la lista global, más los loros, más los nidos de las
+ * dos puntas de cada uno— y todos los que están mirando piden exactamente lo
+ * mismo, así que repartir una sola respuesta cambia el orden de magnitud.
+ *
+ * Tres segundos y no diez, y el motivo es el interruptor de privacidad: con
+ * diez, apagar "Aparecer en «Del resto»" tardaba diez segundos en surtir
+ * efecto, y una decisión sobre dónde te ven no puede quedar en cola. Con tres
+ * la caché sigue absorbiendo casi todo —cien personas mirando comparten el 97 %
+ * de las respuestas— y además se tira a la basura en cuanto alguien cambia el
+ * interruptor.
+ */
+const CACHE_MUNDO_MS = 3000;
+let cacheMundo: { hasta: number; cuerpo: string } | null = null;
+
+export function mundoCacheado(ahora: number): unknown | null {
+  return cacheMundo && ahora < cacheMundo.hasta ? JSON.parse(cacheMundo.cuerpo) : null;
+}
+
+export function guardarMundo(cuerpo: unknown, ahora: number): void {
+  cacheMundo = { hasta: ahora + CACHE_MUNDO_MS, cuerpo: JSON.stringify(cuerpo) };
+}
+
+/** Alguien cambió si aparece o no. La foto vieja ya no sirve. */
+export function olvidarMundo(): void {
+  cacheMundo = null;
 }
 
 /** Abrir un loro. Solo cuenta si ya aterrizó y si lo abre su destinatario. */
@@ -475,6 +564,22 @@ export async function decidirSuerte(
   if (l.extravio !== null && ahora >= l.extravio) return null;
   if (ahora < l.llegada) return null;
   if (l.suerte) return l;
+
+  // Un solo destino por ave. Sin este turno, dos toques rápidos pasaban los dos
+  // el `if (l.suerte)` de arriba y cada uno recibía una respuesta distinta:
+  // a quien tocó primero le decía "lo soltaste" y el ave terminaba en el
+  // puchero. El turno no vence nunca: la decisión tampoco.
+  if (!(await store().reservar(claveTurno("suerte", loroId), 0))) {
+    // Perdió el turno: quien ganó está escribiendo justo ahora. Se espera un
+    // momento a que aparezca su decisión, para no contestar "todavía no se
+    // decidió nada" cuando en realidad ya se decidió.
+    for (let i = 0; i < 4; i++) {
+      const actual = await loro(loroId);
+      if (actual?.suerte) return actual;
+      await new Promise((r) => setTimeout(r, 70));
+    }
+    return (await loro(loroId)) ?? l;
+  }
 
   const actualizado: Loro = {
     ...l,
@@ -525,8 +630,28 @@ const RESPUESTAS_POR_AVE: Partial<Record<AveId, string>> = {
     "Tu cotorra llegó hablando sola y me entregó esto medio mezclado, pero se entendió. {km} de chusmerío bien invertidos.",
 };
 
-function idVecina(idUsuario: string): string {
+export function idVecina(idUsuario: string): string {
   return `vecina-${idUsuario}`;
+}
+
+/**
+ * ¿Hay algo que la vecina tenga que contestar?
+ *
+ * Se responde con el buzón que la consulta de estado YA cargó, sin tocar la
+ * base. Antes `atenderVecina` salía a leer su nido, su lista y sus loros en
+ * cada sondeo —tres viajes de los siete que costaba `/api/estado`— y en el
+ * 99 % de las veces no había nada que hacer. Casi la mitad del costo del
+ * endpoint más llamado se iba en preguntar si había que hacer algo.
+ */
+export function vecinaTienePendiente(idUsuario: string, buzonPropio: Loro[], ahora: number): boolean {
+  const vecina = idVecina(idUsuario);
+  return buzonPropio.some(
+    (l) =>
+      l.para === vecina &&
+      !l.respondido &&
+      l.llegada <= ahora &&
+      !(l.extravio !== null && ahora >= l.extravio)
+  );
 }
 
 /** Le planta una vecina a quien recién se registra, y los hace amigos. */
@@ -569,6 +694,11 @@ export async function atenderVecina(idUsuario: string): Promise<void> {
     if (l.para !== id || l.respondido || l.llegada > ahora) continue;
     // A la vecina tampoco le llegan los que se pierden.
     if (l.extravio !== null && ahora >= l.extravio) continue;
+    // Una sola respuesta por loro. Con la app abierta en dos pestañas —o con
+    // el reintento pendiente del cliente— dos consultas de estado entraban acá
+    // a la vez, las dos veían `respondido` en falso, y Doña Cotorra contestaba
+    // el mismo loro cuatro veces.
+    if (!(await store().reservar(claveTurno("vecina", l.id), 0))) continue;
     await escribirDoc(claveLoro(l.id), { ...l, respondido: true, leido: l.leido || ahora });
 
     // Doña Cotorra siempre suelta el ave. Es la manera de que alguien que
