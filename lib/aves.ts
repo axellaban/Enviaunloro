@@ -48,9 +48,15 @@ export type Ave = {
   lema: string;
   rareza?: Rareza;
   /**
-   * Una línea —una sola— en la pantalla de escribir, avisando la rareza ANTES
-   * de mandar. Eran párrafos de treinta palabras: nadie los leía, y sumaban
-   * cuatro bloques de texto justo en el momento de decidir.
+   * Una línea —una sola— en la pantalla de escribir, ANTES de mandar. Eran
+   * párrafos de treinta palabras: nadie los leía, y sumaban cuatro bloques de
+   * texto justo en el momento de decidir.
+   *
+   * En las cuatro con rareza avisa lo que va a pasar. En las dos que no tienen
+   * —loro y guacamayo— dice justamente eso: que no pasa nada raro, que es la
+   * información que hacía falta para elegirlas. El recuadro se dibuja distinto
+   * según el caso (ver Compositor): si todas avisaran igual, el punteado
+   * dejaría de significar "ojo".
    */
   aviso?: string;
 };
@@ -88,6 +94,7 @@ export const AVES: Record<AveId, Ave> = {
     maxCaracteres: 1000,
     color: "#10b981",
     lema: "El clásico",
+    aviso: "El bueno conocido: no hace nada raro. Llega tal cual lo escribiste, cuando dice.",
   },
   guacamayo: {
     id: "guacamayo",
@@ -97,6 +104,7 @@ export const AVES: Record<AveId, Ave> = {
     maxCaracteres: 2000,
     color: "#fbbf24",
     lema: "El ceremonioso",
+    aviso: "El más grande y el más lento de todos. Con este, la espera es parte del mensaje.",
   },
   paloma: {
     id: "paloma",

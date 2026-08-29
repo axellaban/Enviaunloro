@@ -212,15 +212,21 @@ export function Compositor({
             {/* Cuatro de las seis aves hacen algo raro con el mensaje o con la
                 pantalla del otro lado. Avisarlo DESPUÉS de mandar sería una
                 trampa: va acá, pegado a la elección, y sale de la misma tabla
-                que las velocidades. */}
+                que las velocidades.
+
+                Las otras dos también dicen su línea, pero dibujada distinto: el
+                punteado avisa "ojo, este hace algo", y si las seis se vieran
+                igual dejaría de avisar nada. Con rareza, punteado; sin rareza,
+                una línea al costado y listo. */}
             {a.aviso && (
               <p
                 style={{
                   margin: "-6px 0 14px",
-                  padding: "9px 12px",
-                  borderRadius: 10,
-                  background: `${a.color}14`,
-                  border: `1px dashed ${a.color}55`,
+                  padding: a.rareza ? "9px 12px" : "2px 0 2px 11px",
+                  borderRadius: a.rareza ? 10 : 0,
+                  background: a.rareza ? `${a.color}14` : "none",
+                  border: a.rareza ? `1px dashed ${a.color}55` : "none",
+                  borderLeft: a.rareza ? `1px dashed ${a.color}55` : `2px solid ${a.color}55`,
                   fontSize: 12.5,
                   lineHeight: 1.5,
                   color: "var(--suave)",
