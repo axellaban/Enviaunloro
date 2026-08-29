@@ -178,7 +178,12 @@ export function HojaInferior({ children }: { children: ReactNode }) {
     const corrido = gesto.current.y - e.clientY;
     if (Math.abs(corrido) > 6) arrastró.current = true;
     const crudo = gesto.current.alto + corrido;
-    setAlto(Math.min(t.alta, Math.max(t.baja, crudo)));
+    // El piso es `oculta`, no `baja`: si el arrastre se topa en `baja`, el
+    // fondo del todo —donde el mapa se ve entero— solo se alcanza tocando el
+    // asa, y arrastrar hasta abajo no llega nunca. Que es justo lo que se
+    // espera de una hoja que se arrastra. Lo que sobra se recorta solo
+    // (`overflow: hidden` en .app-panel).
+    setAlto(Math.min(t.alta, Math.max(t.oculta, crudo)));
   }
 
   function alTerminar(e: React.PointerEvent) {
