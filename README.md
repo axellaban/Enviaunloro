@@ -309,53 +309,86 @@ que no haya nada**.
 | ¿Y **conjuntos**? | Viven en otra tabla. Sin ellos la bandada queda vacía, y con solo lo de arriba el diagnóstico decía "todo bien". Pasó, y borró amistades. |
 | ¿Cómo está **tu** bandada? | Cuántas guardadas, cuántas en formato viejo, cuántas personas hay en tu historial. Desde afuera, una bandada vacía y una base que no escribe se ven igual. |
 | ¿Anda **Nominatim**? | Hace una consulta de verdad —las coordenadas del Obelisco— y espera "Buenos Aires, Argentina". Si falla dice por qué: un 403, un timeout, un bloqueo. Sin esto, "vivís en un descampado sin nombre" y "nos bloquearon" se ven los dos como un nido sin lugar. |
+| ¿Están los avisos prendidos? | Si faltan las claves VAPID o el secreto del despertador, lo dice: sin eso nadie se entera de que aterrizó un ave. |
 | ¿El secreto de sesión es largo? | Uno corto se adivina sin conexión, probando contra la cookie propia. |
 
 Ninguna de estas preguntas estaba el primer día. Cada una se agregó después de
 que su ausencia costara algo.
 
-## Las notificaciones (lo que hay, y lo que falta)
+## Las notificaciones
 
-Hoy el aviso de que un ave aterrizó es esto:
+Andan con la app cerrada. Es la única pieza que puede hablarle a alguien que no
+está mirando, y sin ella la promesa de la app —"tu guacamayo llega en 1 día
+6 h"— no tiene quién la cumpla: nadie deja una pestaña abierta un día.
 
-```ts
-new Notification(titulo, { body: cuerpo, icon: "/icon.svg", tag: titulo });
+**Cómo se prende.** Tres pasos, una vez:
+
+```bash
+npm run vapid          # genera el par de claves
 ```
 
-Y eso tiene tres límites que chocan de frente con lo que la app promete:
+Cargar `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CONTACTO` y
+`LOROS_CRON_SECRET` como variables de entorno, redeployar, y correr la sección
+del despertador de `supabase.sql` (pide habilitar `pg_cron` y `pg_net` en
+Supabase → Database → Extensions).
 
-1. **Necesita la pestaña viva.** Cerrás el navegador y no llega nada. La app
-   dice "tu guacamayo llega en 1 día 6 h": nadie deja una pestaña abierta un
-   día.
-2. **En iPhone no existe.** El constructor `Notification` no está en Safari de
-   iOS. Quien usa iPhone no recibe un solo aviso, nunca.
-3. ~~No hay `manifest` ni service worker~~ — **ya están.** La app es
-   instalable (`app/manifest.ts`) y los avisos salen por el service worker
-   (`public/sw.js`) en vez de `new Notification()`. Eso arregla los puntos 1 y
-   2 a medias: ahora funcionan con la pestaña en segundo plano, y en iPhone
-   funcionan **si la agregaste a la pantalla de inicio**. Con la app cerrada
-   del todo, todavía no.
+**Sin nada de eso la app anda igual**: los avisos salen mientras la pestaña
+esté viva, como antes, y `/api/salud` avisa que están apagados. Prenderlo no
+migra nada.
 
-Para que anden con la app cerrada falta Web Push. De las cinco piezas, dos ya
-están: el `manifest` y el service worker —que además ya tiene escrito y
-funcionando el manejador de `push`—. Faltan tres: un par de claves VAPID, una
-tabla de suscripciones (una por dispositivo, no por persona) y **un
-despertador**.
+### El despertador
 
-El despertador es el problema de verdad, y no es de front: el ave aterriza en
-un momento futuro y en serverless no hay nadie ejecutando código en ese
-instante. La hora exacta se conoce al despegar, pero alguien tiene que
-levantarse a mirar. Estando en Supabase, lo natural es `pg_cron` + `pg_net`:
-un chequeo por minuto que busca loros aterrizados sin avisar y llama a un
-endpoint. Entra en el plan gratis y no agrega servicios. Las alternativas son
-Vercel Cron (en Hobby es una vez por día: inservible acá) o QStash, que
-programa una llamada para la hora exacta de cada vuelo.
+Es la parte que no es de front y por la que esto no existía. El ave aterriza en
+un momento futuro —a veces dentro de días— y en serverless no hay ningún
+proceso esperando ese instante. La hora se sabe al despegar, pero alguien tiene
+que levantarse a mirar. Eso hace `/api/despertador`, llamado cada minuto por
+`pg_cron` desde el mismo Postgres de la app.
 
-Y hay algo que ninguna implementación arregla: **en iPhone, si la persona no
-agrega la app a la pantalla de inicio, no hay notificación posible.** No es un
-detalle técnico, es un cambio de producto: aparece un momento de "agregala a
-tu inicio" que hoy no existe, y de él depende que la mitad de la gente reciba
-o no lo único que la app tiene para avisar.
+Recorre un índice de **vuelos pendientes**, que es un conjunto aparte y no el
+del mapa del mundo, por dos razones concretas: aquel descarta a Doña Cotorra
+—y un ave suya que aterriza igual merece aviso— y está recortado a 300, así
+que un guacamayo cruzando el Atlántico se le puede caer a mitad de viaje y
+nadie se enteraría de que llegó. Este se vacía solo: cada vuelo sale cuando ya
+no queda nada que contar de él.
+
+Tres momentos se avisan desde ahí, y los tres pasan cuando quien recibe **no
+está mirando**: aterrizó un ave, volvió la que soltaste, o se perdió una tuya.
+Lo que el otro hace con tu ave no: eso ocurre mientras esa persona usa la app,
+así que el aviso sale en ese mismo momento y no espera al minuto siguiente.
+
+**El texto nunca va en el aviso**, ni un pedazo. Abrirlo es la ceremonia de la
+app y adelantarlo en la pantalla de bloqueo la arruina.
+
+Dos detalles que no son de adorno:
+
+- **Cada aviso pide su turno** (`reservar`, la misma operación atómica que usa
+  el resto). El despertador corre cada minuto y puede solaparse consigo mismo:
+  sin eso, una corrida lenta y la siguiente arrancando mandarían el mismo aviso
+  dos veces.
+- **Las suscripciones muertas se borran solas.** Un teléfono que desinstaló la
+  app contesta 410, y sin limpiarlas la lista crece para siempre y cada aviso
+  paga el intento de hablarle a alguien que ya no está.
+
+**El despertador está cerrado sin `LOROS_CRON_SECRET`.** Es lo contrario de lo
+cómodo y es lo correcto: abierto, es un botón de mandar notificaciones que
+cualquiera puede apretar.
+
+### iPhone
+
+Hay algo que ninguna implementación arregla: **en iPhone, sin agregar la app a
+la pantalla de inicio, no hay notificación posible.** El Push API de Safari
+existe solo para web apps instaladas; una pestaña común no tiene acceso a
+`PushManager` y ni siquiera puede pedir el permiso. La app es instalable
+(`app/manifest.ts`) y eso lo desbloquea, pero el paso lo da la persona.
+
+### Por qué una dependencia
+
+`web-push` es la única que se sumó por algo que no es UI. Firmar el JWT de
+VAPID y cifrar el cuerpo con AES128GCM sobre ECDH+HKDF es criptografía, y es
+exactamente donde se esconden los errores que no se ven hasta que un navegador
+rechaza el envío en silencio. El resto de los servicios se hablan con `fetch`
+pelado —Upstash, Supabase, Nominatim— porque son HTTP y se pueden leer; esto
+no.
 
 ## El mapa
 
@@ -580,6 +613,7 @@ lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
 lib/colorNido.ts  un color por persona, estable y sin choques en tu bandada.
 lib/tema.ts       los dos temas. Lo que no es CSS: aves, mapa, confeti.
+lib/push.ts       los avisos con la app cerrada: VAPID, suscripciones, envío.
 lib/codigo.ts     el código de nido en palabras, y la compatibilidad con los
                   de seis caracteres de antes.
 lib/geocode.ts    coordenadas → "Palermo, Argentina" (Nominatim, best-effort).

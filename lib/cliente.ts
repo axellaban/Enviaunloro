@@ -262,12 +262,53 @@ function serviceWorker(): Promise<ServiceWorkerRegistration | null> {
   return registro;
 }
 
+/** Base64url → Uint8Array, que es como `subscribe` quiere la clave. */
+function deBase64(s: string): Uint8Array {
+  const relleno = "=".repeat((4 - (s.length % 4)) % 4);
+  const crudo = atob((s + relleno).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from([...crudo].map((c) => c.charCodeAt(0)));
+}
+
+/**
+ * Suscribe ESTE dispositivo a los avisos con la app cerrada.
+ *
+ * Se llama después de que den permiso, y no antes: pedirle al navegador una
+ * suscripción sin permiso tira, y pedir el permiso sin tener dónde mandar los
+ * avisos es gastar la única oportunidad que hay —si te lo niegan una vez,
+ * volver a pedirlo es casi imposible—.
+ *
+ * Si el servidor no tiene claves VAPID, no hace nada y la app sigue igual:
+ * los avisos andan mientras la pestaña esté viva, como antes.
+ */
+async function suscribirAlPush(): Promise<void> {
+  try {
+    const sw = await serviceWorker();
+    if (!sw || !("pushManager" in sw)) return;
+    const cfg = await fetch("/api/push").then((r) => r.json());
+    if (!cfg?.hay || !cfg?.clave) return;
+
+    // Si ya hay una, se reusa: cada `subscribe` nuevo invalida el anterior y
+    // dejaría al servidor con una suscripción muerta por cada visita.
+    const s =
+      (await sw.pushManager.getSubscription()) ??
+      (await sw.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: deBase64(cfg.clave),
+      }));
+    await pedir("/api/push", { datos: { suscripcion: s.toJSON() } });
+  } catch {
+    // Un navegador sin push, un permiso revocado, un servicio caído: nada de
+    // esto puede romper la app. Los avisos son un extra.
+  }
+}
+
 /** Aviso del sistema cuando un ave aterriza y la app no está adelante. */
 export async function pedirPermisoAvisos(): Promise<void> {
   try {
     void serviceWorker();
     if (typeof Notification === "undefined") return;
     if (Notification.permission === "default") await Notification.requestPermission();
+    if (Notification.permission === "granted") await suscribirAlPush();
   } catch {}
 }
 

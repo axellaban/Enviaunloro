@@ -217,7 +217,7 @@ const claveAmigosViejo = (id: string) => `amigos:${id}`;
 const claveBuzon = (id: string) => `buzon:${id}`;
 const claveLoro = (id: string) => `loro:${id}`;
 /** Turnos únicos. Ver `reservar` en lib/store.ts. */
-const claveTurno = (que: string, id: string) => `turno:${que}:${id}`;
+export const claveTurno = (que: string, id: string) => `turno:${que}:${id}`;
 /**
  * El índice de la vista del resto: los últimos loros soltados, de todo el
  * mundo. Una lista y no una consulta sobre todos los loros porque el store es
@@ -225,6 +225,20 @@ const claveTurno = (que: string, id: string) => `turno:${que}:${id}`;
  * base entera en cada consulta.
  */
 const CLAVE_MUNDO = "mundo";
+
+/**
+ * Los vuelos que todavía tienen algo por pasar, para el despertador de los
+ * avisos (lib/push.ts, app/api/despertador).
+ *
+ * Es un conjunto aparte y no el índice del mundo, por dos razones: aquel
+ * descarta a Doña Cotorra —y un ave suya que aterriza igual merece aviso— y
+ * está recortado a 300, así que un guacamayo cruzando el Atlántico se le puede
+ * caer a mitad de viaje y nadie se enteraría de que llegó.
+ *
+ * Se mantiene chico solo: cada vuelo sale de acá cuando ya no queda nada que
+ * avisar de él.
+ */
+const CLAVE_PENDIENTES = "pendientes";
 
 /**
  * Cuántos loros recordar en el índice. Los vuelos largos duran días, así que
@@ -240,6 +254,32 @@ export async function nido(id: string): Promise<Nido | null> {
 
 export async function guardarNido(n: Nido): Promise<void> {
   await escribirDoc(claveNido(n.id), n);
+}
+
+/** Los vuelos con algo por avisar. Solo lo usa el despertador. */
+export async function idsPendientes(): Promise<string[]> {
+  return store().leerConjunto(CLAVE_PENDIENTES);
+}
+
+/** Se saca de la lista cuando ya no queda nada que contar de ese vuelo. */
+export async function olvidarPendiente(id: string): Promise<void> {
+  await store().borrarDeConjunto(CLAVE_PENDIENTES, id);
+}
+
+/**
+ * ¿Este vuelo terminó del todo?
+ *
+ * Terminó cuando ya no puede generar un aviso más: se perdió, o el ave se
+ * quedó del otro lado, o volvió y ya aterrizó. El corte de los 30 días es la
+ * red: alguien que recibe un ave y nunca decide qué hacer con ella dejaría el
+ * vuelo pendiente para siempre, y la lista tiene que poder vaciarse.
+ */
+export function vueloTerminado(l: Loro, ahora: number): boolean {
+  if (l.extravio !== null && ahora >= l.extravio) return true;
+  if (ahora < l.llegada) return false;
+  if (l.suerte === "enjaulado" || l.suerte === "puchero") return true;
+  if (l.suerte === "soltado") return Boolean(l.regreso && ahora >= l.regreso);
+  return ahora > l.llegada + 30 * 24 * 60 * 60 * 1000;
 }
 
 export async function nidoPorCodigo(codigo: string): Promise<Nido | null> {
@@ -635,6 +675,8 @@ export async function enviarLoro(datos: {
   if (!datos.de.bot && !datos.para.bot) {
     await store().agregarALista(CLAVE_MUNDO, loro.id, MAX_MUNDO);
   }
+  // Este sí incluye a la vecina: su ave también aterriza.
+  await store().agregarAConjunto(CLAVE_PENDIENTES, loro.id);
 
   return { ok: true, loro };
 }

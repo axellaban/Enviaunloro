@@ -9,6 +9,8 @@
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../../lib/api";
 import { decidirSuerte, esSuerte, nido } from "../../../../lib/datos";
 import { verLoro } from "../../../../lib/vista";
+import { empujarUnaVez } from "../../../../lib/push";
+import { AVES } from "../../../../lib/aves";
 import type { Nido } from "../../../../lib/datos";
 
 export const runtime = "nodejs";
@@ -31,6 +33,27 @@ export async function POST(req: Request) {
   if (!l) return error("Esa ave no está posada en tu ventana.", 404);
 
   const otro = await nido(l.de);
+
+  // El aviso de la suerte sale ACÁ y no del despertador: esto pasa cuando esta
+  // persona está usando la app, así que el momento ya es ahora. El despertador
+  // solo se ocupa de lo que ocurre sin nadie mirando.
+  //
+  // Y no espera: quien decidió no tiene por qué mirar una rueda girando
+  // mientras se le habla al teléfono de otro.
+  const ave = AVES[l.ave].nombre.toLowerCase();
+  const texto =
+    suerte === "soltado"
+      ? l.respuesta
+        ? `${yo.nombre} lo soltó, y vuelve con una respuesta.`
+        : `${yo.nombre} lo soltó. Vuelve a tu nido.`
+      : suerte === "enjaulado"
+        ? `${yo.nombre} se quedó con tu ${ave}. Ese no vuelve más.`
+        : `Tu ${ave} no volvió de lo de ${yo.nombre}. Mejor no preguntes.`;
+  void empujarUnaVez(l.de, `suerte:${l.id}`, {
+    titulo: `Novedades de tu ${ave}`,
+    cuerpo: texto,
+    tag: `loro:${l.id}`,
+  }).catch(() => {});
   const nidos = new Map<string, Nido>([[yo.id, yo]]);
   if (otro) nidos.set(otro.id, otro);
   return ok({ ok: true, loro: verLoro(l, yo.id, nidos, Date.now()) });

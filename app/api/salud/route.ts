@@ -14,6 +14,7 @@ import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
 import { diagnosticar, rolDeClaveSupabase } from "../../../lib/store";
 import { estadoDeBandada } from "../../../lib/datos";
 import { probarGeocode } from "../../../lib/geocode";
+import { hayPush } from "../../../lib/push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,10 +81,28 @@ export async function GET(req: Request) {
     );
   }
 
+  // Los avisos con la app cerrada. Sin las claves no rompe nada —los avisos
+  // andan igual mientras la pestaña esté viva— pero la promesa de "tu
+  // guacamayo llega en 1 día 6 h" queda sin quien la cumpla.
+  const push = {
+    configurado: hayPush(),
+    despertador: Boolean(process.env.LOROS_CRON_SECRET),
+  };
+  if (!push.configurado) {
+    avisos.push(
+      "Los avisos con la app cerrada están apagados: faltan VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY. Generalas con `npm run vapid`."
+    );
+  } else if (!push.despertador) {
+    avisos.push(
+      "Hay claves de push pero falta LOROS_CRON_SECRET, así que el despertador está cerrado y nadie va a avisar cuando aterrice un ave. Ver la sección del despertador en supabase.sql."
+    );
+  }
+
   return ok({
     ...d,
     avisos,
     bandada,
+    push,
     geocode: geo,
     variables: {
       SUPABASE_URL: Boolean(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL),

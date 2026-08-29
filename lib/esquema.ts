@@ -58,3 +58,43 @@ alter table public.loros_doc      enable row level security;
 alter table public.loros_lista    enable row level security;
 alter table public.loros_conjunto enable row level security;
 `.trim();
+
+/**
+ * El despertador de los avisos, aparte.
+ *
+ * No va con lo de arriba y no lo corre /api/instalar, por dos razones: pide
+ * extensiones que hay que habilitar a mano en el panel de Supabase, y lleva
+ * adentro un secreto y la URL del sitio, que son distintos en cada instalación.
+ * Un instalador que pide datos deja de ser un instalador.
+ *
+ * Se corre una sola vez, a mano, en el SQL Editor.
+ */
+export const ESQUEMA_DESPERTADOR = `
+-- ---------------------------------------------------------------------------
+-- El despertador de los avisos. Solo hace falta si querés notificaciones con
+-- la app cerrada. Sin esto, todo lo demás anda igual.
+--
+-- ANTES: en Supabase → Database → Extensions, habilitar \`pg_cron\` y \`pg_net\`.
+--
+-- Y REEMPLAZAR las dos líneas de abajo por lo tuyo:
+--   TU-SITIO           el dominio donde está la app
+--   TU-SECRETO         el mismo valor que pusiste en LOROS_CRON_SECRET
+-- ---------------------------------------------------------------------------
+
+select cron.schedule(
+  'loros-despertador',
+  -- Cada minuto. Un ave que aterrizó hace 40 segundos y avisa ahora está bien;
+  -- una que aterrizó hace media hora, no: el aviso ES el momento.
+  '* * * * *',
+  $$
+  select net.http_get(
+    url    := 'https://TU-SITIO/api/despertador',
+    headers := jsonb_build_object('x-loros-cron', 'TU-SECRETO'),
+    timeout_milliseconds := 20000
+  );
+  $$
+);
+
+-- Para ver si corre:      select * from cron.job_run_details order by start_time desc limit 10;
+-- Para apagarlo:          select cron.unschedule('loros-despertador');
+`.trim();

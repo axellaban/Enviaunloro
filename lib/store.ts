@@ -63,6 +63,10 @@ export interface Backend {
    */
   agregarAConjunto(clave: string, valor: string): Promise<boolean>;
   leerConjunto(clave: string): Promise<string[]>;
+  /** Saca un valor de un conjunto. Lo usa el push para tirar las suscripciones
+   *  muertas —un teléfono que desinstaló la app contesta 410— porque si no la
+   *  lista crece para siempre y cada aviso paga hablarle a nadie. */
+  borrarDeConjunto(clave: string, valor: string): Promise<void>;
 
   /**
    * Pedir un turno único. Devuelve true solo al PRIMERO que lo pide.
@@ -158,6 +162,9 @@ function backendUpstash(c: { url: string; token: string }): Backend {
     async leerConjunto(clave) {
       const r = await cmd(["SMEMBERS", clave]);
       return Array.isArray(r) ? r.map(String) : [];
+    },
+    async borrarDeConjunto(clave, valor) {
+      await cmd(["SREM", clave, valor]);
     },
     async reservar(clave, segundos) {
       // NX: solo escribe si la clave NO existe. La respuesta distingue al
@@ -386,6 +393,11 @@ function backendSupabase(c: { url: string; key: string }): Backend {
       );
       return Array.isArray(r) ? r.map((f) => String(f.valor)) : [];
     },
+    async borrarDeConjunto(clave, valor) {
+      await pedir(`loros_conjunto?${consulta({ clave: `eq.${clave}`, valor: `eq.${valor}` })}`, {
+        metodo: "DELETE",
+      });
+    },
     async reservar(clave) {
       // Sin `ignore-duplicates` a propósito: acá el choque es la respuesta.
       // 409 = la clave primaria ya existía = alguien reservó antes.
@@ -523,6 +535,12 @@ function backendArchivo(): Backend {
       });
       // `mutar` propaga el error si el disco falla; llegar acá es que entró.
       return true;
+    },
+    async borrarDeConjunto(clave, valor) {
+      await mutar((d) => {
+        const actual = d[clave];
+        if (Array.isArray(actual)) d[clave] = actual.filter((x) => x !== valor);
+      });
     },
     async leerConjunto(clave) {
       const v = (await leerTodo())[clave];

@@ -670,6 +670,35 @@ for (const [suerte, como] of [["enjaulado", "enjaulada"], ["puchero", "al pucher
   );
 }
 
+// --- los avisos con la app cerrada ---
+//
+// No se puede probar la entrega de verdad —eso lo hace un servicio del
+// navegador, y desde acá no hay ninguno— pero sí todo lo que es nuestro: que
+// sin claves la app no ofrezca suscribirse, que una suscripción mal formada se
+// rechace, que una buena se guarde, y sobre todo que el DESPERTADOR esté
+// cerrado sin secreto. Un despertador abierto es un botón de mandar
+// notificaciones que cualquiera puede apretar.
+{
+  const cfg = await ana.llamar("/api/push");
+  chequear(typeof cfg.hay === "boolean", `la app dice si el push está configurado (hay: ${cfg.hay})`);
+  if (!cfg.hay) {
+    chequear(cfg.clave === "", "y sin claves no ofrece ninguna, así no se gasta el permiso al pedo");
+  }
+
+  try {
+    await ana.llamar("/api/push", { suscripcion: { endpoint: "https://x/y" } });
+    chequear(false, "rechaza una suscripción sin claves de cifrado");
+  } catch {
+    chequear(true, "rechaza una suscripción sin claves de cifrado");
+  }
+
+  // El despertador, cerrado.
+  const sinClave = await ana.abrir("/api/despertador");
+  chequear(sinClave.status === 401, `el despertador está cerrado sin secreto (${sinClave.status})`);
+  const conClaveMala = await ana.abrir("/api/despertador?clave=cualquiera");
+  chequear(conClaveMala.status === 401, `y con un secreto equivocado también (${conClaveMala.status})`);
+}
+
 // --- la bandada perdida vuelve ---
 //
 // Una versión anterior migraba la bandada al formato nuevo y borraba el
