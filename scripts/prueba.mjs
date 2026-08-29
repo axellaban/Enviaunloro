@@ -224,6 +224,53 @@ chequear(
   }
 }
 
+// --- qué le contesta el link de invitación a cada uno ---
+//
+// El mismo link lo abren cuatro personas distintas y la portada tiene que
+// decirles cosas distintas. Les decía a todas lo mismo —"Armar mi nido y sumar
+// a Fulana"— también a quien ya tenía nido, prometiéndole un trámite que no
+// existe, y a quien abría su propio link, ofreciéndole sumarse a sí mismo. Lo
+// que pasaba al tocar el botón siempre estuvo bien: el nido detecta que ya
+// está armado y solo suma al otro. Era el texto el que mentía.
+{
+  const deAna = `/api/invitacion?n=${encodeURIComponent(estAna.codigo)}`;
+
+  const afuera = cliente("Afuera");
+  const v1 = await afuera.llamar(deAna);
+  chequear(
+    v1.invita?.nombre === "Ana" && v1.tenesNido === false && v1.yaEsAmigo === false,
+    "sin nido: la portada ofrece armarlo y sumar a Ana"
+  );
+
+  const v2 = await beto.llamar(deAna);
+  chequear(
+    v2.tenesNido === true && v2.yaEsAmigo === true && v2.sosVos === false,
+    "con nido y ya en esa bandada: no le ofrece sumarla de nuevo"
+  );
+
+  const v3 = await ana.llamar(deAna);
+  chequear(v3.sosVos === true, "abriendo su propio link, a Ana no le ofrece sumarse a sí misma");
+
+  const dina = cliente("Dina");
+  await dina.llamar("/api/nido", { nombre: "Dina", lat: -31.42, lng: -64.18 });
+  const v4 = await dina.llamar(deAna);
+  chequear(
+    v4.tenesNido === true && v4.yaEsAmigo === false && v4.sosVos === false,
+    "con nido y sin ser de esa bandada: le ofrece sumar a Ana, no armar un nido"
+  );
+
+  // Y del que mira no sale NADA más que esos tres booleanos: es un endpoint
+  // público, y lo que se contesta de más no se recupera nunca.
+  chequear(
+    Object.keys(v4).sort().join(",") === "invita,sosVos,tenesNido,yaEsAmigo",
+    "y del que mira no sale nada más: ni su nombre ni su id"
+  );
+
+  await dina.llamar("/api/amigos", { codigo: estAna.codigo });
+  const v5 = await dina.llamar(deAna);
+  chequear(v5.yaEsAmigo === true, "apenas la suma, el mismo link deja de ofrecerlo");
+}
+
 // --- código inexistente y código propio ---
 for (const [codigo, motivo] of [["ZZZZZZ", "código inexistente"], [estBeto.codigo, "código propio"]]) {
   try { await beto.llamar("/api/amigos", { codigo }); chequear(false, `rechaza ${motivo}`); }
