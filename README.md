@@ -215,10 +215,16 @@ hay token. Dos cosas que no son de fábrica:
   mirando al norte de la pantalla mientras su línea se iba para otro lado.
 
 En el celular el panel de abajo se arrastra
-([`components/HojaInferior.tsx`](components/HojaInferior.tsx)) entre tres
-alturas: el mínimo que deja ver quién sos, las pestañas y el botón; el 58% de
-siempre; y casi toda la pantalla. La altura mínima se **mide**, no se fija:
-depende del tamaño de letra del sistema y de la barra de gestos del teléfono.
+([`components/HojaInferior.tsx`](components/HojaInferior.tsx)) entre cuatro
+alturas: **el fondo del todo** —solo el asa, y el mapa se queda con el 95 % de
+la pantalla—; el mínimo que deja ver quién sos, las pestañas y el botón; el 58 %
+de siempre; y casi toda la pantalla. Un toque en el asa alterna entre el default
+y el fondo, que son las dos cosas que se quieren hacer; las intermedias quedan
+para el arrastre, que es el control fino.
+
+Las dos alturas de abajo se **miden**, no se fijan: dependen del tamaño de letra
+del sistema y de la barra de gestos del teléfono. Y el asa nunca baja de 44 px,
+porque en el fondo es lo único tocable que queda en pantalla.
 
 ## Los tuyos, y del resto
 

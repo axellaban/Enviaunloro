@@ -25,19 +25,49 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
-type Altura = "baja" | "media" | "alta";
-const ORDEN: Altura[] = ["baja", "media", "alta"];
+type Altura = "oculta" | "baja" | "media" | "alta";
+const ORDEN: Altura[] = ["oculta", "baja", "media", "alta"];
 
 /** Arriba de esto el panel es una columna y no una hoja. */
 const ANCHA = "(min-width: 900px)";
 
-/** Cuánto de la pantalla ocupa cada tope. La baja se mide aparte. */
-const PROPORCION: Record<Exclude<Altura, "baja">, number> = { media: 0.58, alta: 0.8 };
+/** Cuánto de la pantalla ocupa cada tope. Los dos de abajo se miden aparte. */
+const PROPORCION: Record<"media" | "alta", number> = { media: 0.58, alta: 0.8 };
 
 /** Arriba de esta velocidad (px por ms) el gesto manda sobre la posición: un
  *  golpe corto y rápido hacia abajo baja el panel aunque no lo hayas movido
  *  ni la mitad del camino. */
 const VELOCIDAD_GOLPE = 0.45;
+
+/**
+ * Lo mínimo que puede medir el asa cuando el panel está en el fondo.
+ *
+ * Ahí es la única cosa tocable de toda la pantalla, y medida sola daba 18 px:
+ * un blanco al que hay que apuntar. 44 es el mínimo que recomiendan iOS y
+ * Android para algo que se toca con el dedo, y el mapa igual se queda con el
+ * 95 % de la pantalla.
+ */
+const AGARRE_MINIMO = 44;
+
+/**
+ * Cuánto mide la barra de gestos de abajo, en píxeles.
+ *
+ * Se mide con un elemento de mentira en vez de leer la variable CSS: `env()`
+ * adentro de una custom property no siempre llega resuelto a
+ * getComputedStyle, y acá un número equivocado deja el asa del panel justo
+ * debajo del dedo del sistema.
+ */
+let margenAbajo: number | null = null;
+function margenDeAbajo(): number {
+  if (margenAbajo !== null) return margenAbajo;
+  const sonda = document.createElement("div");
+  sonda.style.cssText =
+    "position:fixed;left:-9999px;bottom:0;width:1px;height:env(safe-area-inset-bottom,0px)";
+  document.body.appendChild(sonda);
+  margenAbajo = sonda.getBoundingClientRect().height;
+  sonda.remove();
+  return margenAbajo;
+}
 
 export function HojaInferior({ children }: { children: ReactNode }) {
   const caja = useRef<HTMLDivElement>(null);
@@ -49,13 +79,15 @@ export function HojaInferior({ children }: { children: ReactNode }) {
      teléfono cambia los tres topes —58% de una pantalla apaisada no son los
      mismos píxeles— y también el mínimo, que se mide. */
   const [medida, setMedida] = useState(0);
-  // El mínimo real, medido después de pintar. 196 es solo el valor con el que
-  // arranca hasta que se mide.
+  // Los dos de abajo, medidos después de pintar. Los números de acá son solo
+  // el punto de partida hasta que se miden.
   const minimo = useRef(196);
+  const soloAgarre = useRef(26);
 
   const topes = useCallback((): Record<Altura, number> => {
     const alto = window.innerHeight;
     return {
+      oculta: soloAgarre.current,
       baja: minimo.current,
       media: Math.round(alto * PROPORCION.media),
       alta: Math.round(alto * PROPORCION.alta),
@@ -82,17 +114,25 @@ export function HojaInferior({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // El tope de abajo: hasta dónde llega la fila de pestañas, más el botón. Se
-  // mide en vez de fijarlo porque depende del tamaño de letra del sistema y de
-  // la barra de gestos del teléfono.
+  // Los dos topes de abajo. Se miden en vez de fijarlos porque dependen del
+  // tamaño de letra del sistema y de la barra de gestos del teléfono, que
+  // cambian de aparato en aparato.
   useEffect(() => {
     const el = caja.current;
     if (!el || !hoja) return;
     const medir = () => {
       const pestañas = el.querySelector("[data-pestanas]");
       const pie = el.querySelector("[data-pie]");
-      if (!pestañas) return;
+      const agarre = el.querySelector("[data-agarre]");
       const arriba = el.getBoundingClientRect().top;
+
+      // Todo abajo: solo el agarre, más el hueco de la barra de gestos para
+      // que no quede el asa debajo del dedo del sistema.
+      if (agarre) {
+        const suyo = agarre.getBoundingClientRect().height;
+        soloAgarre.current = Math.round(Math.max(suyo, AGARRE_MINIMO) + margenDeAbajo());
+      }
+      if (!pestañas) return;
       const hasta = pestañas.getBoundingClientRect().bottom - arriba;
       minimo.current = Math.round(hasta + (pie?.getBoundingClientRect().height ?? 0) + 16);
     };
@@ -163,21 +203,31 @@ export function HojaInferior({ children }: { children: ReactNode }) {
     irA(destino);
   }
 
-  /** Tocar el agarre alterna entre el default y el mínimo: es lo que se quiere
-   *  hacer nueve de cada diez veces, y no obliga a arrastrar. */
+  /**
+   * Tocar el agarre: desde el default se va al fondo, y desde cualquier otro
+   * lado vuelve al default.
+   *
+   * O sea que un toque siempre significa "mostrame el mapa" o "traeme el panel
+   * de vuelta", que son las dos cosas que se quieren hacer. Las alturas
+   * intermedias quedan para el arrastre, que es el control fino.
+   */
   function alTocar() {
     // Un arrastre termina en un click; ese click no es un toque.
     if (!hoja || arrastró.current) {
       arrastró.current = false;
       return;
     }
-    irA(tope === "baja" ? "media" : "baja");
+    irA(tope === "media" ? "oculta" : "media");
   }
 
   return (
     <div
       ref={caja}
       className="app-panel"
+      /* Lo lee el CSS para esconder todo menos el asa cuando está en el fondo:
+         el botón de abajo está posicionado contra el borde inferior del panel
+         y, con la hoja de 26 px, se dibujaba encima del agarre. */
+      data-tope={hoja ? tope : undefined}
       style={
         hoja && alto !== null
           ? {
@@ -194,7 +244,7 @@ export function HojaInferior({ children }: { children: ReactNode }) {
           className="agarre"
           data-agarre
           aria-label={
-            tope === "baja" ? "Agrandar el panel" : "Achicar el panel para ver el mapa"
+            tope === "media" ? "Bajar el panel para ver el mapa entero" : "Subir el panel"
           }
           onPointerDown={alEmpezar}
           onPointerMove={alMover}

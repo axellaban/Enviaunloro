@@ -233,6 +233,26 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   /* Redondeada arriba: es lo que la lee como una hoja que se puede mover y no
      como el borde de abajo de la pantalla. */
   border-radius: 18px 18px 0 0;
+  /* Mientras la hoja baja, lo que sobra se recorta en vez de desbordar. */
+  overflow: hidden;
+}
+
+/* En el fondo del todo solo queda el asa, y el mapa se ve entero. El asa crece
+   a 44 px —el mínimo para el dedo— porque ahí es lo único tocable que queda.
+   El !important no es pereza: la raíz del panel trae `display:flex` en un
+   atributo `style`, y un estilo en línea le gana a cualquier hoja. Sin esto
+   seguía contando como caja flexible, se peleaba el espacio con el asa y la
+   dejaba en 4 px — el alto de la rayita. */
+.app-panel[data-tope="oculta"] > *:not(.agarre) { display: none !important; }
+.app-panel[data-tope="oculta"] .agarre {
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.app-panel[data-tope="oculta"] .agarre span {
+  width: 60px;
+  background: var(--suave);
 }
 
 /* El agarre. Ancho de lado a lado a propósito: el objetivo de toque es toda la
@@ -240,6 +260,8 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 .agarre {
   display: block;
   width: 100%;
+  /* Nunca se encoge: es el asa, y si se achica no hay de dónde agarrar. */
+  flex-shrink: 0;
   padding: 9px 0 5px;
   background: none;
   border: none;
