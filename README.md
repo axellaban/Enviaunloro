@@ -159,10 +159,10 @@ la que le diste tu código, es el canje razonable.
 1. **Armá tu nido**: nombre, ubicación y ave preferida. No hay registro ni
    contraseña — un id firmado en una cookie y listo.
 2. **Sumá gente**: tocá `Compartir` y mandá el link por WhatsApp. Lleva tu
-   código adentro (`/?n=XXXXXX`), así que quien lo abre ve de quién viene la
-   invitación y queda conectado apenas arma su nido — sin copiar ni pegar nada.
-   El código también está a la vista para quien prefiera tipearlo en
-   *Bandada → Agregar por código*.
+   código adentro (`/?n=loroparlanchin`), así que quien lo abre ve de quién
+   viene la invitación y queda conectado apenas arma su nido — sin copiar ni
+   pegar nada. El código también está a la vista para quien prefiera tipearlo
+   en *Bandada → Agregar por código*.
 3. **Soltá un loro**: elegís destinatario y ave. Antes de mandar ya ves cuánto
    tarda cada una hasta esa persona en particular.
 4. **Seguí el vuelo**: el ave cruza el mapa en vivo, con lo recorrido, lo que
@@ -190,6 +190,40 @@ sola—. Para una demo con distancias de verdad está
 `LOROS_ESCALA_TIEMPO` (el divisor global del tiempo de vuelo, 1 = tiempo real),
 que viaja al navegador en `/api/estado` para que el tiempo que se promete antes
 de mandar sea exactamente el que después se cumple.
+
+## El código de nido
+
+Dos palabras del mundo de la app —`loroparlanchin`, `zorzalgentil`,
+`pericocuentero`— y no seis caracteres al azar. El código se dicta por teléfono,
+se copia de un mensaje y se tipea a mano en un celular: `K7M2QX` cumplía y era
+imposible de recordar.
+
+Son 28 sustantivos × 145 adjetivos = **4.060 combinaciones**, todas sin acentos
+ni ñ porque el código viaja en una URL. Los adjetivos son todos amables o
+graciosos a propósito: es lo primero que una persona le manda a otra, y nadie
+tiene que llevarse un insulto por sorteo. Si el sorteo choca ocho veces seguidas
+—con miles de nidos— se numera en vez de pisar.
+
+**Los códigos viejos siguen andando, sin migrar nada.** La clave con la que un
+código vive en la base siempre fue su forma en MAYÚSCULAS, y eso no cambió:
+`ABC123` sigue en `codigo:ABC123` y `loroparlanchin` va a
+`codigo:LOROPARLANCHIN`. Los dos conviven, y quien ya repartió el suyo por ahí
+lo conserva. Lo único que cambió es lo que se genera de acá en adelante.
+Tampoco importa cómo se tipee: `K7M2QX`, `k7m2qx`, `k7m2-qx` y ` K7M2QX ` van
+todos al mismo lado.
+
+Y que un código nuevo no pueda caer encima de uno viejo tampoco depende de la
+suerte: los viejos miden seis caracteres exactos y el más corto que puede salir
+del sorteo mide siete (`alafiel`). Es imposible por longitud, no improbable por
+cantidad de combinaciones. La prueba lo verifica contra las listas de verdad,
+así que agregar mañana un adjetivo de tres letras se descubre ahí y no el día
+que alguien pierde su nido.
+
+De paso se arreglaron dos cosas que estaban mal en el generador viejo: si los
+cinco intentos chocaban usaba igual el último —**pisando el código de otra
+persona**, que quedaba sin forma de que la sumaran— y era comprobar-y-después-
+escribir, o sea la misma carrera que costaba amistades, en el alta. Ahora el
+código se reserva con la misma operación atómica que el resto.
 
 ## El mapa
 
@@ -262,6 +296,51 @@ Tres detalles que no son obvios:
 Los vuelos de Doña Cotorra no entran: es una vecina de práctica, y hacerla pasar
 por gente sería inflar el mapa con vuelos que no existen. Cuando no hay nadie
 volando, lo dice.
+
+## La bandada que se perdió (y cómo vuelve)
+
+El arreglo de la fila de arriba trajo el peor bug de todo el proyecto, y queda
+escrito acá entero porque es el que más caro salió.
+
+Al pasar la bandada de documento a conjunto quedó una migración: leer el
+documento viejo, escribirlo al conjunto nuevo, borrar el viejo. El problema era
+el orden moral de esas tres cosas:
+
+```ts
+await Promise.all(viejos.map((o) => store().agregarAConjunto(claveAmigos(id), o)));
+await store().borrar(claveAmigosViejo(id));   // ← se ejecutaba pasara lo que pasara
+```
+
+`agregarAConjunto` devolvía `void` y se tragaba cualquier falla. Si la escritura
+no entraba —la tabla `loros_conjunto` sin crear en Supabase, un timeout, un 429
+de Upstash— el borrado igual corría y **se borraba la única copia**. Las
+amistades no quedaban a medias: desaparecían.
+
+Tres cosas cambiaron:
+
+1. **`agregarAConjunto` devuelve si entró**, en los tres backends. Una escritura
+   que falla ya no puede pasar por exitosa.
+2. **El borrado ocurre solo si todas confirmaron.** Si una falla, el documento
+   viejo se queda donde está y se reintenta en la próxima consulta. Una consulta
+   de más es infinitamente más barato que una bandada.
+3. **`/api/salud` prueba también los conjuntos.** Antes probaba escribir y leer
+   un documento y decía "todo bien" mientras las amistades se caían: la tabla de
+   documentos existía y la de conjuntos no. Una prueba que no ejercita lo que la
+   app usa no es una prueba.
+
+Y para lo ya perdido, **el historial de loros es la copia de seguridad que no
+sabíamos que teníamos**: al soltar un loro se indexa en el buzón de los dos, así
+que ahí quedó con quién estuviste conectado aunque la bandada ya no lo diga. Un
+nido que aparece sin nadie se reconstruye solo desde ahí, una vez, y se rearma
+con `emparejar`, que escribe las dos puntas: con que **una** de las dos personas
+abra la app, la amistad vuelve para las dos.
+
+No recupera a alguien a quien agregaste por código y con quien nunca
+intercambiaste un loro. De eso no quedó rastro.
+
+La lección no es "probá la migración". Es más incómoda: **un borrado nunca debe
+depender de una escritura que no sabe fallar.** El bug no estuvo en la
+migración, estuvo en que la capa de abajo devolvía `void`.
 
 ## Lo que aprendimos rompiéndola
 
@@ -367,6 +446,8 @@ lib/vista.ts      qué ve el navegador. Acá se decide qué NO viaja: ni el text
 lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
                   mapa del mundo, con semillas separadas.
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
+lib/codigo.ts     el código de nido en palabras, y la compatibilidad con los
+                  de seis caracteres de antes.
 lib/geocode.ts    coordenadas → "Palermo, Argentina" (Nominatim, best-effort).
 
 app/page.tsx      la portada.

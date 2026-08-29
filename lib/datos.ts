@@ -14,6 +14,7 @@ import {
   type Punto,
 } from "./geo";
 import { lugarDe } from "./geocode";
+import { codigoNuevo, codigoNumerado, normalizarCodigo } from "./codigo";
 import { escribirDoc, leerDoc, store } from "./store";
 import {
   duracionVuelo,
@@ -143,19 +144,59 @@ export function escalaGlobal(): number {
 
 // ---------- nidos ----------
 
-/** Sin 0/O/1/I: este código se dicta por teléfono y se copia a mano. */
-const ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function codigoNuevo(): string {
-  let c = "";
-  for (let i = 0; i < 6; i++) {
-    c += ALFABETO[Math.floor(Math.random() * ALFABETO.length)];
+/**
+ * Un código libre, reservado de forma atómica.
+ *
+ * Dos cosas que antes estaban mal en las diez líneas que había acá:
+ *
+ *   Si los cinco intentos chocaban, se usaba igual el último —el que estaba
+ *   ocupado— y se pisaba el `codigo:` de otra persona. Su código pasaba a
+ *   apuntar al nido nuevo y quedaba sin forma de que la sumaran.
+ *
+ *   Y era comprobar-y-después-escribir: dos nidos creados en el mismo instante
+ *   veían libre el mismo código y los dos lo escribían. La misma carrera que
+ *   costaba amistades, en el alta.
+ *
+ * Ahora el turno se pide con `reservar`, que es una sola operación y solo la
+ * gana uno. Y si de verdad chocan todos los intentos, se numera en vez de
+ * pisar.
+ */
+async function codigoLibre(): Promise<string> {
+  /**
+   * Pide el turno, y si no lo consigue distingue las dos razones posibles:
+   * que el código esté ocupado, o que la base no pueda reservar nada. Sin esta
+   * distinción, una base rota convierte el alta en 500 viajes de ida y vuelta
+   * y un "Armando el nido…" que no termina nunca — y `reservar`, en Supabase,
+   * escribe en la MISMA tabla de conjuntos que se rompió y nos costó las
+   * bandadas.
+   */
+  async function tomar(c: string): Promise<boolean> {
+    if (await store().reservar(claveTurno("codigo", normalizarCodigo(c)), 0)) return true;
+    // No se pudo reservar y el código no está usado por nadie: no es un
+    // choque, es la base. Se usa igual, que es lo único que deja entrar.
+    return !(await store().leer(claveCodigo(c)));
   }
-  return c;
+
+  for (let i = 0; i < 8; i++) {
+    const c = codigoNuevo();
+    if (await tomar(c)) return c;
+  }
+  // Ocho choques seguidos: con cuatro mil combinaciones esto no pasa hasta
+  // tener miles de nidos, y aun ahí se resuelve numerando.
+  const base = codigoNuevo();
+  for (let n = 2; n < 500; n++) {
+    const c = codigoNumerado(base, n);
+    if (await tomar(c)) return c;
+  }
+  // Inalcanzable en la práctica; si pasara, un código único igual.
+  return codigoNumerado(base, Date.now() % 100000);
 }
 
 export const claveNido = (id: string) => `nido:${id}`;
-const claveCodigo = (c: string) => `codigo:${c.toUpperCase()}`;
+/** La clave con la que vive un código en la base. Siempre en mayúsculas: es lo
+ *  que hace que `ABC123` de antes y `loroparlanchin` de ahora convivan sin
+ *  migrar nada. */
+const claveCodigo = (c: string) => `codigo:${normalizarCodigo(c)}`;
 const claveAmigos = (id: string) => `bandada:${id}`;
 /** La bandada de antes, como documento. Solo se lee, nunca se escribe. */
 const claveAmigosViejo = (id: string) => `amigos:${id}`;
@@ -219,14 +260,7 @@ export async function crearNido(datos: {
   punto: Punto;
 }): Promise<Nido> {
   const id = nuevoId();
-  // Colisión de código: con 32^6 combinaciones es rarísimo, pero un choque
-  // silencioso haría que agregar a alguien por código te agregue a otra
-  // persona. Se reintenta y listo.
-  let codigo = codigoNuevo();
-  for (let i = 0; i < 5; i++) {
-    if (!(await store().leer(claveCodigo(codigo)))) break;
-    codigo = codigoNuevo();
-  }
+  const codigo = await codigoLibre();
 
   const ahora = Date.now();
   const n: Nido = {
@@ -292,27 +326,101 @@ export async function actualizarUbicacion(id: string, punto: Punto): Promise<Nid
  *  preguntar por un documento que no está, en el endpoint más consultado. */
 const sinBandadaVieja = new Set<string>();
 
+/** Nidos a los que ya se les intentó el rescate en esta instancia. */
+const yaRescatado = new Set<string>();
+
+/**
+ * Reconstruye una bandada perdida desde el historial de loros.
+ *
+ * Existe porque la migración de bandadas tenía un agujero que costó amistades
+ * de verdad: escribía el conjunto nuevo y borraba el documento viejo SIN
+ * fijarse si la escritura había entrado. Con la tabla `loros_conjunto` sin
+ * crear en Supabase —o con un timeout, o un 429 de Upstash— las escrituras no
+ * entraban, el borrado sí, y la bandada quedaba vacía para siempre.
+ *
+ * El buzón salva la situación: al soltar un loro se indexa en el buzón de LOS
+ * DOS, así que el historial guarda con quién estuviste conectado aunque la
+ * bandada ya no lo diga. Se rearma con `emparejar`, que escribe las dos
+ * puntas: con que una sola de las dos personas abra la app, la amistad vuelve
+ * para ambas.
+ *
+ * No recupera a alguien con quien nunca intercambiaste un loro. Para eso no
+ * quedó rastro, y prefiero decirlo a inventarlo.
+ */
+async function rescatarBandada(id: string): Promise<string[]> {
+  const enBuzon = await store().leerLista(claveBuzon(id));
+  if (enBuzon.length === 0) return [];
+  // Una sola vez por nido en toda la vida de la base, no una por instancia.
+  if (!(await store().reservar(claveTurno("rescate", id), 0))) return [];
+
+  const crudos = await store().leerVarios(enBuzon.map(claveLoro));
+  const otros = new Set<string>();
+  for (const c of crudos) {
+    if (!c) continue;
+    try {
+      const l = JSON.parse(c) as Loro;
+      const otro = l.de === id ? l.para : l.de;
+      if (otro && otro !== id) otros.add(otro);
+    } catch {}
+  }
+  if (otros.size === 0) return [];
+
+  await Promise.all([...otros].map((otro) => emparejar(id, otro)));
+  console.warn(`[bandada] rescatadas ${otros.size} amistades de ${id} desde el historial`);
+  return [...otros];
+}
+
 export async function idsAmigos(id: string): Promise<string[]> {
-  if (sinBandadaVieja.has(id)) return store().leerConjunto(claveAmigos(id));
+  if (sinBandadaVieja.has(id)) {
+    const actuales = await store().leerConjunto(claveAmigos(id));
+    if (actuales.length > 0 || yaRescatado.has(id)) return actuales;
+    // Marcar ANTES de intentar: si no, un nido sin nadie se paga una lectura
+    // del buzón en cada sondeo, que es el endpoint más consultado de la app.
+    if (yaRescatado.size > 5000) yaRescatado.clear();
+    yaRescatado.add(id);
+    const rescatados = await rescatarBandada(id);
+    return rescatados.length ? rescatados : actuales;
+  }
 
   const [nuevos, viejos] = await Promise.all([
     store().leerConjunto(claveAmigos(id)),
     leerDoc<string[]>(claveAmigosViejo(id)),
   ]);
-  if (!viejos?.length) {
-    if (sinBandadaVieja.size > 5000) sinBandadaVieja.clear();
-    sinBandadaVieja.add(id);
-    return nuevos;
+
+  if (viejos?.length) {
+    // Migración del formato viejo. El documento se borra SOLO si todas las
+    // escrituras confirmaron. Antes se borraba pase lo que pase, y ahí estuvo
+    // el daño: una escritura que fallaba en silencio y un borrado que igual
+    // se ejecutaba. Si algo falla, el documento se queda donde está y se
+    // reintenta en la próxima consulta — costará una consulta de más, que es
+    // infinitamente más barato que perder una bandada.
+    const entraron = await Promise.all(
+      viejos.map((otro) => store().agregarAConjunto(claveAmigos(id), otro))
+    );
+    if (entraron.every(Boolean)) {
+      await store().borrar(claveAmigosViejo(id));
+      sinBandadaVieja.add(id);
+    } else {
+      console.error(
+        `[bandada] no se pudo migrar la de ${id}: el documento viejo queda intacto`
+      );
+    }
+    return [...new Set([...nuevos, ...viejos])];
   }
 
-  // Encontró una bandada del formato viejo: la pasa al conjunto y borra el
-  // documento. Pasa una sola vez por nido, y de ahí en más esta lectura
-  // devuelve vacío. Cuando no queden documentos viejos —unas semanas— se puede
-  // borrar esta rama y la consulta de más.
-  await Promise.all(viejos.map((otro) => store().agregarAConjunto(claveAmigos(id), otro)));
-  await store().borrar(claveAmigosViejo(id));
+  if (sinBandadaVieja.size > 5000) sinBandadaVieja.clear();
   sinBandadaVieja.add(id);
-  return [...new Set([...nuevos, ...viejos])];
+
+  // Bandada vacía y sin documento viejo: puede ser un nido recién hecho, o uno
+  // al que la migración rota le borró todo. El rescate distingue mirando el
+  // historial, y no cuesta nada para quien de verdad no tiene a nadie.
+  if (nuevos.length === 0 && !yaRescatado.has(id)) {
+    if (yaRescatado.size > 5000) yaRescatado.clear();
+    yaRescatado.add(id);
+    const rescatados = await rescatarBandada(id);
+    if (rescatados.length) return rescatados;
+  }
+  return nuevos;
 }
 
 /** Varios nidos de una, por id. Una sola ida a la base y no una por nido. */

@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { Ave } from "./Ave";
 import type { AveId } from "../lib/aves";
+import { esCodigo } from "../lib/codigo";
 
 type Invita = { nombre: string; lugar: string; ave: AveId };
 
@@ -17,7 +18,7 @@ export function Invitacion({ alSaber }: { alSaber?: (nombre: string, codigo: str
 
   useEffect(() => {
     const n = new URLSearchParams(window.location.search).get("n") || "";
-    if (!/^[a-zA-Z0-9]{6}$/.test(n)) return;
+    if (!esCodigo(n)) return;
     let vivo = true;
     fetch(`/api/invitacion?n=${encodeURIComponent(n)}`)
       .then((r) => r.json())

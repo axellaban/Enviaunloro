@@ -14,6 +14,7 @@ import { Panel } from "../../components/Panel";
 import { Compositor } from "../../components/Compositor";
 import { HojaInferior } from "../../components/HojaInferior";
 import { VistaMapa, type Vista } from "../../components/VistaMapa";
+import { esCodigo, normalizarCodigo } from "../../lib/codigo";
 import { Ave } from "../../components/Ave";
 import { Cta } from "../../components/Cta";
 import {
@@ -168,7 +169,7 @@ export default function Nido() {
   useEffect(() => {
     if (invitacion.current === null) {
       const n = new URLSearchParams(window.location.search).get("n") || "";
-      invitacion.current = /^[a-zA-Z0-9]{6}$/.test(n) ? n.toUpperCase() : "";
+      invitacion.current = esCodigo(n) ? normalizarCodigo(n) : "";
       if (invitacion.current) {
         // Fuera de la URL: si no, recargar la página lo reintenta para siempre.
         window.history.replaceState({}, "", "/nido");

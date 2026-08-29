@@ -61,7 +61,7 @@ export interface Backend {
    * segunda pisaba a la primera. Con dos ya se perdía una; con seis quedaba
    * una sola. Acá la base resuelve el choque y no hay nada que pisar.
    */
-  agregarAConjunto(clave: string, valor: string): Promise<void>;
+  agregarAConjunto(clave: string, valor: string): Promise<boolean>;
   leerConjunto(clave: string): Promise<string[]>;
 
   /**
@@ -150,7 +150,10 @@ function backendUpstash(c: { url: string; token: string }): Backend {
       return Array.isArray(r) ? r.map(String) : [];
     },
     async agregarAConjunto(clave, valor) {
-      await cmd(["SADD", clave, valor]);
+      // SADD devuelve 0 o 1. Cualquier otra cosa —undefined— es que la
+      // operación NO entró, y quien llama tiene que enterarse: hay un lugar
+      // donde de esto depende un borrado.
+      return typeof (await cmd(["SADD", clave, valor])) === "number";
     },
     async leerConjunto(clave) {
       const r = await cmd(["SMEMBERS", clave]);
@@ -367,11 +370,15 @@ function backendSupabase(c: { url: string; key: string }): Backend {
     },
     async agregarAConjunto(clave, valor) {
       // ignore-duplicates: la clave primaria (clave, valor) hace el trabajo.
-      await pedir("loros_conjunto", {
+      // `pedir` devuelve undefined si falló —tabla que no existe, permiso,
+      // timeout—, y eso tiene que salir de acá como `false`: sin la tabla
+      // `loros_conjunto` creada, esto fallaba en silencio.
+      const r = await pedir("loros_conjunto", {
         metodo: "POST",
         cuerpo: [{ clave, valor }],
         extra: { Prefer: "resolution=ignore-duplicates" },
       });
+      return Array.isArray(r);
     },
     async leerConjunto(clave) {
       const r = await pedir(
@@ -514,6 +521,8 @@ function backendArchivo(): Backend {
         const lista = Array.isArray(actual) ? actual : [];
         if (!lista.includes(valor)) d[clave] = [...lista, valor];
       });
+      // `mutar` propaga el error si el disco falla; llegar acá es que entró.
+      return true;
     },
     async leerConjunto(clave) {
       const v = (await leerTodo())[clave];
@@ -583,7 +592,29 @@ export async function diagnosticar(): Promise<Diagnostico> {
     anotarError(`la prueba falló: ${err?.message || err}`);
   }
 
-  const detalle = ok ? "" : errorDeStore() || "se escribió y al leer no estaba.";
+  // Los conjuntos, aparte. Viven en OTRA tabla (`loros_conjunto`) y de ellos
+  // depende la bandada entera. Una base con la tabla de documentos creada y
+  // esta no daba "todo bien" mientras las amistades se caían en silencio: pasó,
+  // y por eso ahora se prueba lo que la app realmente usa, no una parte.
+  let conjuntos = false;
+  try {
+    // Clave FIJA a propósito: en Supabase los conjuntos viven en otra tabla y
+    // `borrar` no los alcanza, así que una clave nueva por consulta dejaría una
+    // fila de basura cada vez. Con una fija queda una sola, para siempre.
+    const cc = "salud:conjunto";
+    conjuntos =
+      (await b.agregarAConjunto(cc, "ping")) && (await b.leerConjunto(cc)).includes("ping");
+  } catch (err: any) {
+    anotarError(`la prueba de conjuntos falló: ${err?.message || err}`);
+  }
+
+  const detalle = ok
+    ? conjuntos
+      ? ""
+      : errorDeStore() ||
+        "los documentos andan pero los conjuntos no: sin eso la bandada queda vacía."
+    : errorDeStore() || "se escribió y al leer no estaba.";
+  ok = ok && conjuntos;
   // El backend de archivo pasa la prueba aunque no sirva: escribir y leer
   // dentro del MISMO proceso siempre funciona, incluso cuando cayó al modo
   // memoria. Lo que ahí falla es lo que esta prueba no puede ver — la instancia

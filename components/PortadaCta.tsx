@@ -9,18 +9,21 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Cta } from "./Cta";
+import { esCodigo, normalizarCodigo } from "../lib/codigo";
 
 export function PortadaCta() {
   const [invita, setInvita] = useState<{ nombre: string; codigo: string } | null>(null);
 
   useEffect(() => {
     const n = new URLSearchParams(window.location.search).get("n") || "";
-    if (!/^[a-zA-Z0-9]{6}$/.test(n)) return;
+    if (!esCodigo(n)) return;
     let vivo = true;
     fetch(`/api/invitacion?n=${encodeURIComponent(n)}`)
       .then((r) => r.json())
       .then((j) => {
-        if (vivo && j?.invita) setInvita({ nombre: j.invita.nombre, codigo: n.toUpperCase() });
+        // Normalizado: `n` puede venir con un guion o un espacio y de acá sale
+        // armado un href.
+        if (vivo && j?.invita) setInvita({ nombre: j.invita.nombre, codigo: normalizarCodigo(n) });
       })
       .catch(() => {});
     return () => {

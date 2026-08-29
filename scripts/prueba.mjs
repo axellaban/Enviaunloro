@@ -9,6 +9,13 @@
 //
 // Deja tres nidos de mentira en .data/loros.json. Para limpiar: rm -rf .data
 
+import { readFile, writeFile } from "node:fs/promises";
+
+// Node avisa por consola cada vez que lee un .ts sin "type": "module".
+// Es ruido en una salida que se lee a mano.
+process.removeAllListeners("warning");
+process.on("warning", () => {});
+
 const BASE = process.env.LOROS_URL || "http://localhost:3000";
 
 // Con el servidor arrancado con LOROS_PROB_EXTRAVIO=1 (todos los loros se
@@ -85,7 +92,10 @@ const alta = await ana.llamar("/api/nido", { nombre: "Ana", ave: "loro", lat: -3
 // El alta tiene que traer TODO lo necesario para entrar al mapa. Si el código
 // no viniera acá, la app dependería de una segunda consulta para arrancar — que
 // es exactamente lo que la dejaba clavada en "Armando el nido…".
-chequear(!!alta.yo && /^[A-Z0-9]{6}$/.test(alta.codigo || ""), "crear el nido devuelve el nido y su código");
+chequear(
+  !!alta.yo && /^[a-z]{3,}[a-z0-9]*$/.test(alta.codigo || ""),
+  `crear el nido devuelve el nido y su código de dos palabras (${alta.codigo})`
+);
 await beto.llamar("/api/nido", { nombre: "Beto", ave: "cotorra", lat: -34.9011, lng: -56.1645 }); // Montevideo
 
 const estAna = await ana.llamar("/api/estado");
@@ -130,6 +140,89 @@ chequear(
   otraVez.lat === anaSegunBeto.lat && otraVez.lng === anaSegunBeto.lng,
   "el punto corrido es SIEMPRE el mismo (si bailara, se promedia y se recupera el real)"
 );
+
+// --- los códigos: los de ahora y los de antes ---
+//
+// El código pasó de seis caracteres al azar a dos palabras, y lo importante no
+// es que las palabras anden: es que los códigos VIEJOS sigan andando. Quien ya
+// repartió el suyo por WhatsApp no puede quedarse sin que lo sumen.
+{
+  const antigua = cliente("Antigua");
+  await antigua.llamar("/api/nido", { nombre: "Antigua", lat: 41.39, lng: 2.16 });
+  const suyo = (await antigua.llamar("/api/estado")).codigo;
+  chequear(suyo.length > 6, `los códigos nuevos son palabras, no seis caracteres (${suyo})`);
+
+  // Da igual cómo lo tipeen: con mayúsculas, con espacios o con un guion.
+  for (const forma of [suyo, suyo.toUpperCase(), ` ${suyo} `]) {
+    const quien = cliente("Suma");
+    await quien.llamar("/api/nido", { nombre: "Suma", lat: 41.4, lng: 2.17 });
+    try {
+      const r = await quien.llamar("/api/amigos", { codigo: forma });
+      chequear(r.amigo.nombre === "Antigua", `se puede tipear "${forma}" y encuentra el nido`);
+    } catch (e) {
+      chequear(false, `se puede tipear "${forma}" (${e.message})`);
+    }
+  }
+
+  const inv = await antigua.llamar(`/api/invitacion?n=${encodeURIComponent(suyo)}`);
+  chequear(inv.invita?.nombre === "Antigua", "el link de invitación resuelve un código de palabras");
+
+  // Y ahora lo que de verdad importa: un código del formato de ANTES. Se planta
+  // a mano en el archivo —tal cual lo habría dejado la versión anterior— y se
+  // pide por la API como lo pediría alguien que lo tiene anotado en un papel.
+  // Solo corre contra el backend de archivo; con Upstash o Supabase de por
+  // medio no hay dónde plantarlo desde acá.
+  const archivo = new URL("../.data/loros.json", import.meta.url);
+  let plantado = false;
+  try {
+    const datos = JSON.parse(await readFile(archivo, "utf8"));
+    const id = datos[`codigo:${suyo.toUpperCase()}`];
+    if (id) {
+      datos["codigo:K7M2QX"] = id;
+      await writeFile(archivo, JSON.stringify(datos), "utf8");
+      plantado = true;
+    }
+  } catch {}
+
+  if (!plantado) {
+    console.log("   (sin backend de archivo: no se puede plantar un código viejo)");
+  } else {
+    for (const forma of ["K7M2QX", "k7m2qx", " K7M2QX ", "k7m2-qx"]) {
+      const quien = cliente("Vieja");
+      await quien.llamar("/api/nido", { nombre: "Vieja", lat: 41.41, lng: 2.18 });
+      try {
+        const r = await quien.llamar("/api/amigos", { codigo: forma });
+        chequear(r.amigo.nombre === "Antigua", `un código VIEJO tipeado "${forma}" sigue abriendo su nido`);
+      } catch (e) {
+        chequear(false, `un código VIEJO tipeado "${forma}" (${e.message})`);
+      }
+    }
+    const invVieja = await antigua.llamar("/api/invitacion?n=K7M2QX");
+    chequear(invVieja.invita?.nombre === "Antigua", "y su link de invitación de siempre también");
+
+    // Que un código nuevo NO pueda pisar a uno viejo no es cuestión de tener
+    // muchas combinaciones: los viejos miden seis caracteres exactos y el más
+    // corto que puede salir del sorteo mide siete. Se verifica contra las
+    // listas de verdad, no con una muestra — cubre las 4.060 de una.
+    let minimo = null;
+    try {
+      minimo = (await import("../lib/codigo.ts")).LARGO_MINIMO_NUEVO;
+    } catch {
+      console.log("   (este Node no lee TypeScript: sin chequeo del largo mínimo)");
+    }
+    if (minimo !== null) {
+      chequear(minimo >= 7, `ningún código nuevo puede medir seis, así que ninguno pisa a uno viejo (mínimo ${minimo})`);
+    }
+
+    // Y con nidos nuevos entrando, el viejo sigue apuntando a donde apuntaba.
+    for (let i = 0; i < 5; i++) {
+      const otro = cliente("Nuevo");
+      await otro.llamar("/api/nido", { nombre: "Nuevo", lat: 41.42, lng: 2.19 });
+    }
+    const deNuevo = await antigua.llamar("/api/invitacion?n=K7M2QX");
+    chequear(deNuevo.invita?.nombre === "Antigua", "y con nidos nuevos entrando, el viejo sigue en su lugar");
+  }
+}
 
 // --- código inexistente y código propio ---
 for (const [codigo, motivo] of [["ZZZZZZ", "código inexistente"], [estBeto.codigo, "código propio"]]) {
@@ -490,6 +583,47 @@ try {
   await nadie.llamar("/api/mundo");
   chequear(false, "sin nido no se puede mirar el mundo");
 } catch (e) { chequear(String(e).includes("401"), "sin nido no se puede mirar el mundo"); }
+
+// --- la bandada perdida vuelve ---
+//
+// Una versión anterior migraba la bandada al formato nuevo y borraba el
+// documento viejo SIN mirar si la escritura había entrado. Con la tabla de
+// conjuntos sin crear —o con un timeout— las amistades desaparecían de verdad.
+// Acá se reproduce el daño a mano y se verifica que la app las reconstruye
+// sola desde el historial de loros, que es lo que quedó.
+{
+  const archivo = new URL("../.data/loros.json", import.meta.url);
+  let dañado = false;
+  let idAna = null;
+  try {
+    const datos = JSON.parse(await readFile(archivo, "utf8"));
+    idAna = datos[`codigo:${estAna.codigo.toUpperCase()}`];
+    if (idAna && Array.isArray(datos[`bandada:${idAna}`])) {
+      // El daño exacto: la bandada vacía y ningún documento viejo del que tirar.
+      delete datos[`bandada:${idAna}`];
+      delete datos[`amigos:${idAna}`];
+      await writeFile(archivo, JSON.stringify(datos), "utf8");
+      dañado = true;
+    }
+  } catch {}
+
+  if (!dañado) {
+    console.log("   (sin backend de archivo: no se puede simular la pérdida)");
+  } else {
+    const rota = await ana.llamar("/api/estado");
+    const vuelta = rota.amigos.map((a) => a.nombre);
+    chequear(
+      vuelta.includes("Beto"),
+      `la bandada borrada se reconstruye desde el historial (${vuelta.join(", ") || "vacía"})`
+    );
+    // Y del otro lado también: `emparejar` escribe las dos puntas, así que con
+    // que UNA de las dos personas abra la app, la amistad vuelve para ambas.
+    chequear(
+      (await beto.llamar("/api/estado")).amigos.some((a) => a.nombre === "Ana"),
+      "y Beto también recupera a Ana sin tocar nada"
+    );
+  }
+}
 
 // --- la llave: el mismo nido en otro dispositivo ---
 const { llave } = await ana.llamar("/api/sesion");

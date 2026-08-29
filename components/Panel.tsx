@@ -21,6 +21,7 @@ import type { Suerte } from "../lib/datos";
 import type { LoroVista, NidoVista } from "../lib/vista";
 import { Ave } from "./Ave";
 import { Fiesta } from "./Fiesta";
+import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
 
 /**
  * Compartir tu nido. El código va DENTRO del link, no suelto al lado: pedirle a
@@ -866,7 +867,7 @@ function Bandada({
     setMensaje("");
     try {
       const r = await pedir<{ amigo: NidoVista }>("/api/amigos", {
-        datos: { codigo: codigo.trim().toUpperCase() },
+        datos: { codigo },
       });
       setMensaje(`${r.amigo.nombre} entró a tu bandada.`);
       setCodigo("");
@@ -883,26 +884,24 @@ function Bandada({
       <div className="tarjeta" style={{ padding: 14, marginBottom: 14 }}>
         <p className="etiqueta">Agregar por código</p>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          {/* Sin mayúsculas forzadas ni letras separadas: eso se veía bien con
+              seis caracteres al azar y se lee pésimo con dos palabras. El
+              servidor normaliza igual, así que da lo mismo cómo se tipee. */}
           <input
             className="campo"
-            style={{
-              fontFamily: "var(--mono)",
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-            }}
-            placeholder="ABC123"
-            maxLength={6}
+            style={{ fontFamily: "var(--mono)" }}
+            placeholder="loroparlanchin"
+            maxLength={LARGO_MAXIMO}
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={codigo}
-            onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+            onChange={(e) => setCodigo(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && codigo.length === 6) agregar();
+              if (e.key === "Enter" && esCodigo(codigo)) agregar();
             }}
           />
-          <button
-            className="boton"
-            onClick={agregar}
-            disabled={codigo.trim().length !== 6 || ocupado}
-          >
+          <button className="boton" onClick={agregar} disabled={!esCodigo(codigo) || ocupado}>
             Sumar
           </button>
         </div>
@@ -1091,10 +1090,15 @@ function MiNido({
             style={{
               flex: 1,
               fontFamily: "var(--mono)",
-              fontSize: 20,
+              // Los códigos de antes son seis caracteres y aguantan letras
+              // separadas y grandes; los de ahora son dos palabras de hasta
+              // veinte. El tamaño sale del largo para que ninguno se corte.
+              fontSize: codigo.length > 14 ? 16 : codigo.length > 8 ? 18 : 20,
               fontWeight: 700,
-              letterSpacing: "0.18em",
+              letterSpacing: codigo.length > 8 ? "0.02em" : "0.18em",
               color: "var(--esmeralda-alto)",
+              wordBreak: "break-all",
+              lineHeight: 1.25,
             }}
           >
             {codigo}
