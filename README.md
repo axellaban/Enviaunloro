@@ -189,6 +189,35 @@ sola—. Para una demo con distancias de verdad está
 que viaja al navegador en `/api/estado` para que el tiempo que se promete antes
 de mandar sea exactamente el que después se cumple.
 
+## El mapa
+
+Leaflet, con mosaicos de CARTO sobre OpenStreetMap (sin API key) o de Mapbox si
+hay token. Dos cosas que no son de fábrica:
+
+- **La posición de las aves no viene del servidor.** Sale de la fórmula: con la
+  hora de salida, la de llegada y los dos puntos alcanza. El servidor se
+  consulta cada varios segundos y el ave igual se mueve a 60 cuadros por
+  segundo, porque cada cuadro se recalcula en el navegador.
+- **El mapa gira con dos dedos**, como Google Maps, vía
+  [`leaflet-rotate`](https://github.com/Raruto/leaflet-rotate) (`shift` +
+  arrastrar en la compu). Leaflet no sabe girar solo: el plugin le cambia la
+  matemática de coordenadas para que un toque siga cayendo donde uno lo ve con
+  el mapa torcido. Cuando hay algo que enderezar aparece una brújula arriba a
+  la derecha.
+
+  Los marcadores **no** giran con el mapa —por eso los nombres de los nidos se
+  siguen leyendo derechos— pero las rutas sí, porque viven adentro del panel que
+  Leaflet rota. Las aves son marcadores y tienen que seguir a su propia línea,
+  así que se les suma el rumbo del mapa a mano (`orientar`, en
+  `components/Mapa.tsx`). Sin esa suma, al girar el mapa el ave se quedaba
+  mirando al norte de la pantalla mientras su línea se iba para otro lado.
+
+En el celular el panel de abajo se arrastra
+([`components/HojaInferior.tsx`](components/HojaInferior.tsx)) entre tres
+alturas: el mínimo que deja ver quién sos, las pestañas y el botón; el 58% de
+siempre; y casi toda la pantalla. La altura mínima se **mide**, no se fija:
+depende del tamaño de letra del sistema y de la barra de gestos del teléfono.
+
 ## ¿Y el login con Google?
 
 Las apps de este tipo (Roost, Carrier Pigeon) piden login con Gmail. Acá no, y
@@ -215,10 +244,10 @@ de dónde sale el id.
 
 ## Cómo está hecho
 
-Next.js 16 (App Router), React 19, TypeScript, Leaflet. Sin base de datos
-obligatoria, sin login, sin dependencias de UI. `npm audit` da cero
-vulnerabilidades — vale la pena mantenerlo así, porque esto se deploya público.
-Requiere Node 20.9 o más.
+Next.js 16 (App Router), React 19, TypeScript, Leaflet y `leaflet-rotate`. Sin
+base de datos obligatoria, sin login, sin dependencias de UI. `npm audit` da
+cero vulnerabilidades — vale la pena mantenerlo así, porque esto se deploya
+público. Requiere Node 20.9 o más.
 
 ```
 lib/aves.ts       la tabla de las seis especies. Todo sale de acá.
@@ -247,6 +276,8 @@ app/entrar/       canjea la llave del nido y redirige al mapa.
 components/Mapa.tsx        Leaflet: nidos, rutas y aves animadas.
 components/Compositor.tsx  elegir ave y escribir. La pantalla clave.
 components/Panel.tsx       en vuelo / buzón / bandada / nido.
+components/HojaInferior.tsx  el panel de abajo, arrastrable a tres alturas.
+components/Trayectoria.tsx   el arco de la portada: sale, entrega, vuelve.
 components/Onboarding.tsx  los tres pasos para tener nido.
 components/Ave.tsx         las seis aves dibujadas, una pose y seis siluetas.
 components/Fiesta.tsx      el confeti de la paloma y las plumas del cuervo.

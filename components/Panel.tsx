@@ -65,10 +65,12 @@ export function Panel(p: Props) {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0 }}>
       <Cabecera yo={p.yo} />
 
-      <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+      {/* data-pestanas: la hoja de abajo mide hasta acá para saber cuál es su
+          altura mínima — la que deja ver quién sos, las pestañas y el botón. */}
+      <div data-pestanas style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
         {pestañas.map((t) => {
           const activa = pestaña === t.id;
           return (
@@ -945,7 +947,7 @@ function MiNido({
     // pegarlos es donde se caía la invitación: ahora toca el link, ve de quién
     // viene, y al armar su nido queda conectado solo.
     const url = typeof window !== "undefined" ? `${window.location.origin}/?n=${codigo}` : "";
-    const texto = "Mandame un loro 🦜 Tocá el link y quedamos conectados:";
+    const texto = "Mandame un lorito 🦜 Tocá el link y quedamos conectados:";
     try {
       if (navigator.share) {
         await navigator.share({ title: "Loros", text: texto, url });

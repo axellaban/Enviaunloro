@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Ave } from "../components/Ave";
 import { TelefonoHero } from "../components/TelefonoHero";
 import { Cta } from "../components/Cta";
+import { Trayectoria } from "../components/Trayectoria";
 import { nidoPorCodigo } from "../lib/datos";
 
 /**
@@ -105,39 +106,5 @@ export default async function Portada({
         </div>
       </section>
     </main>
-  );
-}
-
-/** El arco: la ruta punteada con el ave a media distancia. */
-function Trayectoria() {
-  return (
-    <div style={{ position: "relative", maxWidth: 520, margin: "44px auto 0", height: 120 }}>
-      <svg viewBox="0 0 640 120" style={{ width: "100%", height: "100%" }} aria-hidden="true">
-        <path
-          d="M40 96 Q320 -18 600 96"
-          fill="none"
-          stroke="#10b981"
-          strokeOpacity="0.4"
-          strokeWidth="2"
-          strokeDasharray="3 10"
-          strokeLinecap="round"
-        />
-        <circle cx="40" cy="96" r="6" fill="#10b981" />
-        <circle cx="600" cy="96" r="6" fill="#22d3ee" />
-        <text x="40" y="118" fill="#5d7873" fontSize="12" textAnchor="middle">
-          tu nido
-        </text>
-        <text x="600" y="118" fill="#5d7873" fontSize="12" textAnchor="middle">
-          el suyo
-        </text>
-      </svg>
-      {/* Va y viene despacio sobre el arco. Sin rotarlo: el ave mira siempre a
-          la derecha, y girarla en la vuelta la dejaría volando de cola. A esta
-          velocidad y con este recorrido corto, la deriva se lee como aletear en
-          el lugar. */}
-      <div className="hero-ave">
-        <Ave especie="perico" size={54} aletea />
-      </div>
-    </div>
   );
 }

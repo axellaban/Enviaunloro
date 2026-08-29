@@ -12,6 +12,7 @@ import dynamic from "next/dynamic";
 import { Onboarding } from "../../components/Onboarding";
 import { Panel } from "../../components/Panel";
 import { Compositor } from "../../components/Compositor";
+import { HojaInferior } from "../../components/HojaInferior";
 import { Ave } from "../../components/Ave";
 import { Cta } from "../../components/Cta";
 import {
@@ -293,7 +294,7 @@ export default function Nido() {
         )}
       </div>
 
-      <div className="app-panel">
+      <HojaInferior>
         <Panel
           yo={est.yo}
           codigo={est.codigo}
@@ -314,14 +315,14 @@ export default function Nido() {
           }
           refrescar={est.refrescar}
         />
-        <div className="pie-panel">
+        <div className="pie-panel" data-pie>
           <Cta ancho>
             <button className="boton" onClick={() => setCompositor({ abierto: true })}>
               🦜 Soltar un loro
             </button>
           </Cta>
         </div>
-      </div>
+      </HojaInferior>
 
       {compositor.abierto && (
         <Compositor

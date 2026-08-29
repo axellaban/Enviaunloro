@@ -14,12 +14,22 @@
 //    id, y después solo se mueven. Cuando un vuelo desaparece de la lista, se
 //    saca su capa.
 //
+// 3. El mapa gira con dos dedos, como Google Maps (leaflet-rotate). Leaflet no
+//    sabe girar solo: el plugin le cambia la matemática de coordenadas para que
+//    un toque siga cayendo donde uno lo ve, con el mapa torcido. Todo lo que
+//    dibujamos —rutas, zonas, nidos— gira con el mapa; las aves necesitan una
+//    corrección, y está explicada abajo, en `orientar`.
+//
 // Sin API key: los mosaicos salen de CARTO sobre OpenStreetMap. Si hay un token
 // de Mapbox cargado, se usa ese en su lugar.
 
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+// Parchea L para que el mapa pueda girar. Va después de leaflet y antes de
+// crear el mapa: lo que hace es reemplazar métodos de L.Map, así que un mapa
+// creado antes de esta línea no giraría.
+import "leaflet-rotate";
 import { AVES, type AveId } from "../lib/aves";
 import { desplazar, puntoEnRuta, rumbo, ruta, type Punto } from "../lib/geo";
 import { avanceVuelo } from "../lib/vuelo";
@@ -137,6 +147,12 @@ const GIRO_MS = 6000;
  * este. Al oeste no: rotar media vuelta deja al bicho volando panza arriba.
  * Entonces, en vez de seguir rotando, se lo espeja sobre su propio eje largo —
  * la nariz apunta igual y la panza vuelve abajo, que es como vuelan los pájaros.
+ *
+ * `grados` ya viene con el rumbo del mapa sumado, y eso hace falta: las rutas y
+ * las zonas viven adentro del panel que Leaflet gira, pero los marcadores no
+ * —por eso los nombres de los nidos se siguen leyendo derechos con el mapa
+ * torcido—. Sin esa suma, al girar el mapa el ave se quedaba mirando al norte
+ * de la pantalla mientras su propia línea se iba para otro lado.
  */
 function orientar(grados: number): string {
   const giro = grados - 90;
@@ -196,6 +212,11 @@ export default function Mapa({
   const ahoraRef = useRef(ahoraServidor);
   ahoraRef.current = ahoraServidor;
   const [sinMosaicos, setSinMosaicos] = useState(false);
+  /** Hacia dónde mira el mapa. 0 = norte arriba. */
+  const [rumboMapa, setRumboMapa] = useState(0);
+  // El mismo dato, en un ref, para el bucle de animación: si dependiera del
+  // estado, girar el mapa recrearía el bucle sesenta veces por segundo.
+  const rumboRef = useRef(0);
 
   // ---- crear el mapa una sola vez ----
   useEffect(() => {
@@ -206,6 +227,13 @@ export default function Mapa({
       // El zoom con la rueda sin modificador secuestra el scroll de la página
       // en mobile; con el mapa a pantalla completa no molesta.
       scrollWheelZoom: true,
+      // Girar con dos dedos en el celular y con shift + arrastrar en la compu.
+      // La brújula la dibuja la app (abajo): la del plugin no se parece a nada
+      // más de esta pantalla.
+      rotate: true,
+      touchRotate: true,
+      shiftKeyRotate: true,
+      rotateControl: false,
     }).setView([-34.6, -58.44], 11);
 
     // Los mosaicos vienen de un proveedor externo. Si no llegan —sin internet,
@@ -223,10 +251,18 @@ export default function Mapa({
       if (!alguno && fallos > 4) setSinMosaicos(true);
     });
     base.addTo(m);
+    m.on("rotate", () => {
+      const r = m.getBearing() || 0;
+      rumboRef.current = r;
+      setRumboMapa(r);
+    });
     m.on("click", (e: L.LeafletMouseEvent) => {
       alElegirRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng });
     });
     mapa.current = m;
+    // Una manija al mapa desde la consola. Sirve para las pruebas de navegador
+    // y para depurar en el celular; no expone nada que no esté ya en pantalla.
+    (window as unknown as { __loros_mapa?: L.Map }).__loros_mapa = m;
 
     // Si el contenedor cambia de tamaño (rotar el celular, abrir el panel),
     // Leaflet no se entera solo y quedan mosaicos grises.
@@ -485,7 +521,7 @@ export default function Mapa({
         capa.recorrida.setLatLngs(trozo);
 
         const el = capa.ave.getElement()?.querySelector("[data-rot]") as HTMLElement | null;
-        if (el) el.style.transform = orientar(grados);
+        if (el) el.style.transform = orientar(grados + rumboRef.current);
 
         // Las flores aparecen cuando la paloma ya pasó por encima.
         for (let i = 0; i < capa.flores.length; i++) {
@@ -533,9 +569,34 @@ export default function Mapa({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [foco]);
 
+  /** Volver a poner el norte arriba. Solo aparece cuando hay algo que enderezar. */
+  const torcido = Math.abs(((rumboMapa % 360) + 360) % 360) > 0.5;
+
   return (
     <>
       <div ref={contenedor} style={{ position: "absolute", inset: 0 }} />
+
+      {/* La brújula. Aparece recién cuando el mapa está girado: un botón para
+          "poner el norte arriba" cuando el norte YA está arriba es ruido.
+          Arriba a la derecha, al lado de "Mi nido", y no bajo el zoom: ahí la
+          tapaban los avisos, que arrancan a 58 px y ocupan todo el ancho. */}
+      {torcido && (
+        <button
+          className="flotante entra"
+          style={{ top: 12, right: 120, padding: 8 }}
+          onClick={() => mapa.current?.setBearing(0)}
+          title="Poner el norte arriba"
+          aria-label="Poner el norte arriba"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <g transform={`rotate(${-rumboMapa} 12 12)`}>
+              <path d="M12 3 L16 13 L12 11 Z" fill="#f87171" />
+              <path d="M12 21 L8 11 L12 13 Z" fill="#e9f3f0" />
+            </g>
+          </svg>
+        </button>
+      )}
+
       {sinMosaicos && (
         <div
           className="flotante"

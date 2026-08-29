@@ -211,14 +211,57 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 }
 .app-panel {
   position: relative;
+  /* Columna: arriba el agarre, abajo el panel, que se queda con lo que sobre.
+     Con el panel en height:100% se pasaba de largo justo lo que mide el
+     agarre y el botón de abajo quedaba tapado. */
+  display: flex;
+  flex-direction: column;
   /* En el celular el panel es la app: acá vive todo lo que se lee. Con 46dvh,
      descontando cabecera, pestañas y el botón de abajo, quedaban unos 90 px de
-     lista útil. */
+     lista útil. 58dvh es el punto de partida: desde acá se arrastra
+     (components/HojaInferior.tsx), y el alto pasa a mandarlo el dedo. */
   height: 58dvh;
   flex: 0 0 auto;
   background: rgba(8, 17, 16, 0.92);
   border-top: 1px solid var(--borde);
   backdrop-filter: blur(16px);
+  /* Redondeada arriba: es lo que la lee como una hoja que se puede mover y no
+     como el borde de abajo de la pantalla. */
+  border-radius: 18px 18px 0 0;
+}
+
+/* El agarre. Ancho de lado a lado a propósito: el objetivo de toque es toda la
+   franja, no la pastillita de 40 px que se ve. */
+.agarre {
+  display: block;
+  width: 100%;
+  padding: 9px 0 5px;
+  background: none;
+  border: none;
+  cursor: grab;
+  /* Sin esto el navegador se queda con el gesto vertical para hacer scroll y
+     el panel no se entera de que lo están arrastrando. */
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.agarre:active { cursor: grabbing; }
+.agarre span {
+  display: block;
+  width: 42px;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 99px;
+  background: var(--borde-alto);
+  transition: background 0.15s ease, width 0.15s ease;
+}
+.agarre:hover span,
+.agarre:active span {
+  background: var(--suave);
+  width: 54px;
+}
+.agarre:focus-visible span {
+  background: var(--esmeralda);
+  width: 54px;
 }
 
 /* En pantalla ancha el mapa y el panel conviven; en el celular se apilan. */
@@ -229,6 +272,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
     height: 100dvh;
     border-top: none;
     border-left: 1px solid var(--borde);
+    border-radius: 0;
   }
 }
 
@@ -405,20 +449,6 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 
 /* El ave del arco: deriva lenta de un lado al otro, más alta en el medio para
    acompañar la curva. */
-.hero-ave {
-  position: absolute;
-  left: 50%;
-  top: 8px;
-  margin-left: -27px;
-  animation: derivar 11s ease-in-out infinite;
-}
-@keyframes derivar {
-  0%, 100% { transform: translate(-72px, 3px); }
-  25% { transform: translate(0, -2px); }
-  50% { transform: translate(72px, 3px); }
-  75% { transform: translate(0, -2px); }
-}
-
 /* ---------- halo de los CTA ---------- */
 
 .cta {
