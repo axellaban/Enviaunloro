@@ -13,7 +13,11 @@
   --borde-alto: rgba(255, 255, 255, 0.18);
   --texto: #e9f3f0;
   --suave: #8ba39d;
-  --tenue: #5d7873;
+  /* #6b8a84 y no el #5d7873 de antes: aquel daba 4,00:1 contra el panel y el
+     mínimo es 4,5. Se notó auditando —doce textos por debajo, entre ellos los
+     km/h y los caracteres de cada ave, que son con lo que se decide qué
+     mandar—. El tema claro ya tenía el suyo corregido por lo mismo. */
+  --tenue: #6b8a84;
   /* El verde de acción ES el del perico. No un verde parecido: el mismo valor
      que usa el ave, para que el botón y el bicho sean la misma cosa. */
   --esmeralda: #a3e635;
@@ -275,6 +279,12 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 }
 /* Los controles de Leaflet vienen con look de 2011. */
 .leaflet-control-zoom a {
+  /* Leaflet los dibuja de 30 px. En un teléfono eso es dos tercios del mínimo
+     táctil, y están pegados uno al otro: errarle al "+" y darle al "−" es
+     alejarse cuando querías acercarte. */
+  width: 44px !important;
+  height: 44px !important;
+  line-height: 44px !important;
   background: rgba(10, 21, 20, 0.92) !important;
   color: var(--texto) !important;
   border-color: var(--borde) !important;
@@ -372,8 +382,8 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
      así que del borde del panel a la primera palabra había 59 px de nada, en
      una hoja de 490. El margen mete la zona tocable adentro de ese aire: se
      tocan los mismos 44 px, se ven 37. */
-  padding: 13px 0 27px;
-  margin-bottom: -12px;
+  padding: 10px 0 30px;
+  margin-bottom: -22px;
   background: none;
   border: none;
   cursor: grab;
@@ -467,6 +477,10 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   z-index: 500;
   display: flex;
   align-items: center;
+  /* Las chapas que flotan sobre el mapa también se tocan: "Mi nido" medía
+     33 px de alto. Sobre un mapa, errarle a un botón significa arrastrar el
+     mapa sin querer, que es peor que no pasar nada. */
+  min-height: 44px;
   gap: 8px;
   padding: 8px 13px;
   border-radius: 999px;

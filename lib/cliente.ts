@@ -246,19 +246,53 @@ export function pedirUbicacion(): Promise<ResultadoUbicacion> {
   });
 }
 
+/**
+ * El service worker, que es quien muestra los avisos.
+ *
+ * Se registra una sola vez y no bloquea nada: si falla, la app anda igual y
+ * los avisos caen al modo viejo.
+ */
+let registro: Promise<ServiceWorkerRegistration | null> | null = null;
+function serviceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (registro) return registro;
+  registro =
+    typeof navigator !== "undefined" && "serviceWorker" in navigator
+      ? navigator.serviceWorker.register("/sw.js").catch(() => null)
+      : Promise.resolve(null);
+  return registro;
+}
+
 /** Aviso del sistema cuando un ave aterriza y la app no está adelante. */
 export async function pedirPermisoAvisos(): Promise<void> {
   try {
+    void serviceWorker();
     if (typeof Notification === "undefined") return;
     if (Notification.permission === "default") await Notification.requestPermission();
   } catch {}
 }
 
+/**
+ * Muestra un aviso.
+ *
+ * Va por el service worker y no por `new Notification()`, por dos razones que
+ * no son de estilo: aquel solo funciona con la pestaña viva, y en iPhone
+ * directamente no existe —el constructor no está en Safari de iOS—. Además,
+ * así tocar el aviso trae la app al frente en vez de no hacer nada.
+ *
+ * Sigue sin funcionar con la app CERRADA: para eso hace falta Web Push, que
+ * necesita claves VAPID y un despertador del lado del servidor. Está escrito
+ * en el README.
+ */
 export function avisar(titulo: string, cuerpo: string): void {
-  try {
-    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    new Notification(titulo, { body: cuerpo, icon: "/icon.svg", tag: titulo });
-  } catch {}
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  serviceWorker()
+    .then((sw) => {
+      if (sw) return sw.showNotification(titulo, { body: cuerpo, icon: "/apple-icon.png", tag: titulo });
+      // Sin service worker —navegador viejo, o el registro falló— se usa lo de
+      // antes. En iOS no hay nada que hacer y esto tira, por eso el catch.
+      new Notification(titulo, { body: cuerpo, icon: "/icon.svg", tag: titulo });
+    })
+    .catch(() => {});
 }
 
 /**

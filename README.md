@@ -297,6 +297,23 @@ color con un amigo sería el único choque que de verdad confunde. Y el mismo
 punto aparece al lado del nombre en la bandada — sin eso, el color del mapa no
 se puede contestar: ves un punto violeta y no sabés de quién es.
 
+## Lo que /api/salud contesta
+
+Es la única pantalla de la app pensada para cuando algo no anda, y la lección
+que la fue armando siempre fue la misma: **un fallo silencioso se ve idéntico a
+que no haya nada**.
+
+| Pregunta | Por qué está |
+|---|---|
+| ¿Escribe y lee documentos? | Lo básico. |
+| ¿Y **conjuntos**? | Viven en otra tabla. Sin ellos la bandada queda vacía, y con solo lo de arriba el diagnóstico decía "todo bien". Pasó, y borró amistades. |
+| ¿Cómo está **tu** bandada? | Cuántas guardadas, cuántas en formato viejo, cuántas personas hay en tu historial. Desde afuera, una bandada vacía y una base que no escribe se ven igual. |
+| ¿Anda **Nominatim**? | Hace una consulta de verdad —las coordenadas del Obelisco— y espera "Buenos Aires, Argentina". Si falla dice por qué: un 403, un timeout, un bloqueo. Sin esto, "vivís en un descampado sin nombre" y "nos bloquearon" se ven los dos como un nido sin lugar. |
+| ¿El secreto de sesión es largo? | Uno corto se adivina sin conexión, probando contra la cookie propia. |
+
+Ninguna de estas preguntas estaba el primer día. Cada una se agregó después de
+que su ausencia costara algo.
+
 ## Las notificaciones (lo que hay, y lo que falta)
 
 Hoy el aviso de que un ave aterrizó es esto:
@@ -312,12 +329,18 @@ Y eso tiene tres límites que chocan de frente con lo que la app promete:
    día.
 2. **En iPhone no existe.** El constructor `Notification` no está en Safari de
    iOS. Quien usa iPhone no recibe un solo aviso, nunca.
-3. **No hay `manifest` ni service worker**, así que la app tampoco es
-   instalable — que es exactamente el requisito de iOS.
+3. ~~No hay `manifest` ni service worker~~ — **ya están.** La app es
+   instalable (`app/manifest.ts`) y los avisos salen por el service worker
+   (`public/sw.js`) en vez de `new Notification()`. Eso arregla los puntos 1 y
+   2 a medias: ahora funcionan con la pestaña en segundo plano, y en iPhone
+   funcionan **si la agregaste a la pantalla de inicio**. Con la app cerrada
+   del todo, todavía no.
 
-Para que anden de verdad hace falta Web Push: un `manifest`, un service worker
-que reciba el push con la app cerrada, un par de claves VAPID, una tabla de
-suscripciones (una por dispositivo, no por persona) y **un despertador**.
+Para que anden con la app cerrada falta Web Push. De las cinco piezas, dos ya
+están: el `manifest` y el service worker —que además ya tiene escrito y
+funcionando el manejador de `push`—. Faltan tres: un par de claves VAPID, una
+tabla de suscripciones (una por dispositivo, no por persona) y **un
+despertador**.
 
 El despertador es el problema de verdad, y no es de front: el ave aterriza en
 un momento futuro y en serverless no hay nadie ejecutando código en ese

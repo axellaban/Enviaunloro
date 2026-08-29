@@ -41,7 +41,13 @@ export function VistaMapa({
             onClick={() => alCambiar(o.id)}
             aria-pressed={activa}
             style={{
-              padding: "5px 10px",
+              // La chapa se ve chica —es una vista, no una sección— pero se
+              // toca entera: 24 px de alto era la mitad del mínimo táctil y
+              // con el pulgar se le erraba al mapa de atrás.
+              minHeight: 44,
+              display: "grid",
+              placeItems: "center",
+              padding: "5px 12px",
               borderRadius: 999,
               border: "none",
               cursor: "pointer",

@@ -44,7 +44,10 @@ async function consultar(lat: number, lng: number): Promise<string> {
       signal: ctrl.signal,
       cache: "no-store",
     });
-    if (!r.ok) return "";
+    if (!r.ok) {
+      ultimoFallo = `Nominatim devolvió ${r.status}`;
+      return "";
+    }
     const j: any = await r.json();
     const a = j?.address || {};
     const ciudad =
@@ -52,11 +55,34 @@ async function consultar(lat: number, lng: number): Promise<string> {
     const pais = a.country || "";
     if (ciudad && pais) return `${ciudad}, ${pais}`;
     return ciudad || pais || "";
-  } catch {
+  } catch (err: any) {
+    ultimoFallo = err?.name === "AbortError" ? "Nominatim tardó más de 6 s" : `Nominatim falló: ${err?.message || err}`;
     return "";
   } finally {
     clearTimeout(t);
   }
+}
+
+/**
+ * Por qué no hay nombre de lugar.
+ *
+ * Sin esto, "vivís en un descampado sin nombre" y "Nominatim nos bloqueó" se
+ * ven exactamente igual desde el teléfono: un nido sin lugar. Es el mismo
+ * punto ciego que tuvo /api/salud con los conjuntos, y costó caro.
+ */
+let ultimoFallo = "";
+
+/** Una consulta de verdad, para /api/salud. Nominatim permite una por segundo
+ *  y este endpoint tiene freno, así que preguntar es más barato que adivinar. */
+export async function probarGeocode(): Promise<{ ok: boolean; lugar: string; detalle: string }> {
+  ultimoFallo = "";
+  // El Obelisco. Si Nominatim anda, de acá sale "Buenos Aires, Argentina".
+  const lugar = await consultar(-34.6037, -58.3816);
+  return {
+    ok: Boolean(lugar),
+    lugar,
+    detalle: lugar ? "" : ultimoFallo || "respondió, pero sin nombre de lugar",
+  };
 }
 
 /**

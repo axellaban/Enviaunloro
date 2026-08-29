@@ -112,6 +112,9 @@ export function Panel(p: Props) {
               onClick={() => setPestaña(t.id)}
               style={{
                 flex: 1,
+                // 44 px de alto, el mínimo táctil. Medían 35: son la navegación
+                // principal de la app y se tocan más que ninguna otra cosa.
+                minHeight: 44,
                 padding: "9px 4px",
                 borderRadius: 10,
                 cursor: "pointer",
@@ -474,10 +477,14 @@ function TarjetaVuelta({
 // ---------- buzón ----------
 
 /**
- * Cuántos loros ya vistos alcanzan para tapar uno sin abrir. Con menos que
- * esto, una lista sola se recorre de un vistazo y cualquier separador es ruido.
+ * Cuántos loros ya vistos alcanzan para tapar uno sin abrir.
+ *
+ * Estaba en 5 y era demasiado: pedía SEIS vistos más uno sin abrir, a la vez,
+ * para que el buzón se partiera. En uso normal eso casi nunca pasa, así que la
+ * separación existía en el código y no se veía nunca. Con 2 aparece cuando
+ * empieza a hacer falta de verdad.
  */
-const HISTORIAL_LARGO = 5;
+const HISTORIAL_LARGO = 2;
 
 /**
  * El buzón, y por qué a veces se parte en dos.
@@ -524,8 +531,11 @@ function Buzon({
     <TarjetaBuzon key={l.id} loro={l} refrescar={refrescar} alReenviar={alReenviar} escala={escala} />
   );
 
+  // Debajo del umbral no se ponen títulos —dos renglones para separar tres
+  // cosas es ruido— pero lo sin abrir SÍ se sube arriba igual. Eso no cuesta
+  // nada y es la mitad del problema: que lo nuevo no quede enterrado.
   if (sinAbrir.length === 0 || vistos.length <= HISTORIAL_LARGO) {
-    return <>{llegados.map(tarjeta)}</>;
+    return <>{[...sinAbrir, ...vistos].map(tarjeta)}</>;
   }
 
   return (

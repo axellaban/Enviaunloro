@@ -65,6 +65,15 @@ function capaBase(): L.TileLayer {
   );
 }
 
+/**
+ * El punto de un nido en el mapa, con su nombre debajo.
+ *
+ * El punto mide 14 px y se queda así: agrandarlo a 44 significaría una caja
+ * invisible de 44 px por nido, y sobre un mapa esas cajas se comen el gesto de
+ * arrastrar — con la bandada junta, el mapa dejaría de moverse. Lo que sí se
+ * agranda es el NOMBRE de abajo, que además es donde la gente apunta: antes
+ * tenía `pointer-events:none` y no se podía tocar.
+ */
 function iconoNido(n: NidoVista, esMio: boolean, color: string): L.DivIcon {
   // Solo el nido propio late y es un punto lleno. El de los demás es apenas un
   // centro tenue adentro de su zona: el dato preciso no existe, y el dibujo no
@@ -79,7 +88,7 @@ function iconoNido(n: NidoVista, esMio: boolean, color: string): L.DivIcon {
     iconAnchor: [7, 7],
     html: `<div style="position:relative;width:14px;height:14px">
       ${cuerpo}
-      <span style="position:absolute;left:50%;top:17px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 ui-sans-serif,system-ui;color:${pintura.rotuloMapa};text-shadow:${pintura.rotuloHalo};pointer-events:none">${escapar(
+      <span style="position:absolute;left:50%;top:17px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 ui-sans-serif,system-ui;color:${pintura.rotuloMapa};text-shadow:${pintura.rotuloHalo};padding:4px 6px">${escapar(
         esMio ? "Tu nido" : n.nombre
       )}</span>
     </div>`,

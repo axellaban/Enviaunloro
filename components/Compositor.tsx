@@ -108,8 +108,13 @@ export function Compositor({
             style={{
               background: "var(--panel-alto)",
               border: "1px solid var(--borde)",
-              width: 32,
-              height: 32,
+              // 44 y no 32: es el único modo de salir del compositor sin
+              // mandar, y errarle significa mandar algo sin querer o quedarse
+              // encerrado tocando la pantalla.
+              width: 44,
+              height: 44,
+              display: "grid",
+              placeItems: "center",
               borderRadius: 99,
               cursor: "pointer",
               fontSize: 15,
@@ -136,6 +141,10 @@ export function Compositor({
                     onClick={() => setParaId(f.id)}
                     style={{
                       flexShrink: 0,
+                      minHeight: 44,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
                       padding: "8px 14px",
                       borderRadius: 999,
                       cursor: "pointer",
@@ -253,12 +262,22 @@ export function Compositor({
                 fontSize: 12.5,
               }}
             >
-              <span style={{ color: sobra < 20 ? a.color : "var(--tenue)", flex: 1 }}>
-                {sobra} caracteres para {a.articulo === "la" ? "la" : "el"}{" "}
-                {a.nombre.toLowerCase()}
-              </span>
+              {/* El contador aparece cuando falta poco, no siempre. Con el
+                  campo vacío decía "1000 caracteres para el loro", que es un
+                  renglón para informar que todavía no pasa nada — y el límite
+                  ya está escrito en la tarjeta del ave, arriba. */}
+              {sobra <= a.maxCaracteres * 0.2 && (
+                <span style={{ color: sobra < 20 ? a.color : "var(--tenue)", flex: 1 }}>
+                  {sobra} caracteres
+                </span>
+              )}
             </div>
 
+            {/* "2 de cada 1000 loros se pierden en el camino y no llegan
+                nunca": trece palabras, en cada envío, para siempre. Dice lo
+                mismo en cinco. Se queda porque avisar que un mensaje puede no
+                llegar antes de mandarlo es lo honesto; se acorta porque después
+                del tercer loro ya nadie la lee entera. */}
             <p
               style={{
                 fontSize: 11.5,
@@ -267,7 +286,7 @@ export function Compositor({
                 margin: "-6px 0 14px",
               }}
             >
-              2 de cada 1000 loros se pierden en el camino y no llegan nunca.
+              2 de cada 1000 no llegan.
             </p>
 
             {error && (

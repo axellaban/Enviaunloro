@@ -13,6 +13,7 @@
 import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
 import { diagnosticar, rolDeClaveSupabase } from "../../../lib/store";
 import { estadoDeBandada } from "../../../lib/datos";
+import { probarGeocode } from "../../../lib/geocode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,10 +69,22 @@ export async function GET(req: Request) {
     );
   }
 
+  // Nominatim, preguntándole a Nominatim. Es lo único de la app que depende de
+  // un servicio ajeno y gratuito, y cuando deja de andar el síntoma es un nido
+  // sin nombre de lugar — que también es lo que se ve si de verdad no hay
+  // nombre. Así se distinguen.
+  const geo = await probarGeocode().catch(() => ({ ok: false, lugar: "", detalle: "no se pudo probar" }));
+  if (!geo.ok) {
+    avisos.push(
+      `Los nidos van a quedar sin nombre de lugar: ${geo.detalle}. No rompe nada más —las distancias y los vuelos son exactos igual— pero en la bandada se ven coordenadas en vez de "Palermo, Argentina".`
+    );
+  }
+
   return ok({
     ...d,
     avisos,
     bandada,
+    geocode: geo,
     variables: {
       SUPABASE_URL: Boolean(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL),
       claveSupabase: claveSupabase ? rolDeClaveSupabase(claveSupabase) : "falta",
