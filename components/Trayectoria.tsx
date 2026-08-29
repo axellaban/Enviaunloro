@@ -69,7 +69,7 @@ export function Trayectoria() {
         <path
           d={CAMINO}
           fill="none"
-          stroke="#10b981"
+          stroke="#047857"
           strokeOpacity="0.22"
           strokeWidth="2"
           strokeDasharray="3 10"
@@ -83,7 +83,7 @@ export function Trayectoria() {
           d={CAMINO}
           pathLength="100"
           fill="none"
-          stroke="#10b981"
+          stroke="#047857"
           strokeOpacity="0.9"
           strokeWidth="2.5"
           strokeLinecap="round"
@@ -100,11 +100,11 @@ export function Trayectoria() {
           />
         </path>
 
-        <Nido x={44} y={126} color="#10b981" texto="tu nido" late />
-        <Nido x={516} y={126} color="#22d3ee" texto="el suyo" />
+        <Nido x={44} y={126} color="#047857" texto="tu nido" late />
+        <Nido x={516} y={126} color="#0e7490" texto="el suyo" />
 
         {/* El nido de destino se enciende cuando el ave toca tierra. */}
-        <circle cx="516" cy="126" r="6" fill="none" stroke="#22d3ee" strokeWidth="2" opacity="0">
+        <circle cx="516" cy="126" r="6" fill="none" stroke="#0e7490" strokeWidth="2" opacity="0">
           <animate
             attributeName="r"
             dur={CICLO}
@@ -146,12 +146,12 @@ export function Trayectoria() {
                 keyTimes="0;0.45;0.50;0.54;1"
                 values="0.5;0.5;1.12;1;1"
               />
-              <Globo ancho={104} color="#22d3ee" colaX={26}>
+              <Globo ancho={104} color="#0e7490" colaX={26}>
                 <text
                   x="0"
                   y="5"
                   textAnchor="middle"
-                  fill="#e9f3f0"
+                  fill="#111827"
                   fontSize="15"
                   fontWeight="700"
                   fontFamily="ui-sans-serif, system-ui"
@@ -186,13 +186,13 @@ export function Trayectoria() {
               keyTimes="0;0.44;0.49;0.97;1"
               values="1;1;0;0;1"
             />
-            <Globo ancho={98} color="#a3e635" colaX={4}>
+            <Globo ancho={98} color="#4d7c0f" colaX={4}>
               <g clipPath="url(#hero-globo)">
                 <text
                   x="0"
                   y="5"
                   textAnchor="middle"
-                  fill="#a3e635"
+                  fill="#4d7c0f"
                   fontSize="14"
                   fontWeight="700"
                   fontFamily="ui-sans-serif, system-ui"
@@ -267,7 +267,7 @@ function Nido({
       <text
         x={x}
         y={y + 26}
-        fill="#5d7873"
+        fill="#737373"
         fontSize="12.5"
         textAnchor="middle"
         fontFamily="ui-sans-serif, system-ui"
@@ -299,11 +299,11 @@ function Globo({
         width={ancho}
         height={30}
         rx={15}
-        fill="rgba(6, 15, 14, 0.94)"
+        fill="#ffffff"
         stroke={color}
-        strokeOpacity="0.5"
+        strokeOpacity="0.9"
       />
-      <path d={`M${colaX - 6} 13 L${colaX} 27 L${colaX + 6} 13 Z`} fill="rgba(6, 15, 14, 0.94)" />
+      <path d={`M${colaX - 6} 13 L${colaX} 27 L${colaX + 6} 13 Z`} fill="#ffffff" />
       {children}
     </g>
   );

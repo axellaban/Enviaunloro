@@ -28,7 +28,9 @@ type Particula = {
   texto: string;
 };
 
-const COLORES = ["#f472b6", "#fbbf24", "#22d3ee", "#a3e635", "#f43f5e", "#ffffff"];
+// Sin blanco: sobre fondo claro es confeti invisible. Y saturados, no
+// pasteles, que sobre blanco se lavan.
+const COLORES = ["#db2777", "#d97706", "#0891b2", "#65a30d", "#e11d48", "#7c3aed"];
 const REGALOS = ["🌹", "🍫", "💗", "🌷", "💐"];
 const PLUMAS = ["🖤", "🪶"];
 

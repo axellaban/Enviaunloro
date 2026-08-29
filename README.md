@@ -225,6 +225,86 @@ persona**, que quedaba sin forma de que la sumaran— y era comprobar-y-después
 escribir, o sea la misma carrera que costaba amistades, en el alta. Ahora el
 código se reserva con la misma operación atómica que el resto.
 
+## El color
+
+Claro, con los grises de Instagram: `#ffffff` de fondo, `#fafafa` para lo
+agrupado, `#efefef` para los botones secundarios, `#dbdbdb` para las
+separaciones y `#737373` para el texto de segundo orden. La fuente es la del
+sistema, que es también la que usa Instagram en web.
+
+Con una excepción, y es deliberada: para el tercer nivel de texto ellos usan
+`#a8a8a8`, que sobre blanco da **2,38:1** y no se lee. Acá va `#767676`. Sobre
+fondo claro no hay lugar para tres grises legibles, y que un valor esté
+"estudiado" no lo hace accesible.
+
+**Los colores de las aves no son los mismos con otro nombre.** Los de la
+versión oscura estaban elegidos para brillar contra un fondo casi negro, y
+sobre blanco daban entre 1,51:1 y 2,72:1 — todos ilegibles, cuando el mínimo es
+4,5:1. Los de ahora son la misma familia dos o tres pasos más oscura: el perico
+sigue siendo verde lima y el guacamayo sigue siendo ámbar, pero se leen. Van de
+4,99:1 a 7,10:1. El verde de los botones es exactamente el del perico, no un
+verde parecido: el botón y el bicho son la misma cosa.
+
+### Un color para cada persona
+
+En el mapa había tres colores: el tuyo, el de Doña Cotorra y un gris para todo
+el resto. Con tres amigos alcanza; con diez, "¿cuál de estos puntos es Jez?" se
+contesta leyendo etiquetas una por una.
+
+Ahora cada persona tiene el suyo, y tiene que cumplir dos cosas que tiran para
+lados opuestos. **Estable**: si Jez es violeta hoy y naranja mañana porque entró
+alguien más, el color no dice nada. Por eso sale del id del nido, no de la
+posición en una lista. **Distinto**: y aun así dos personas de tu bandada no
+pueden compartirlo, que es justo lo que el sorteo por id no puede prometer —con
+15 colores y 5 amigos, la probabilidad de que dos caigan en el mismo es del 50%
+(el problema del cumpleaños, mucho menos intuitivo de lo que parece).
+
+Se resuelven en ese orden: cada uno pide el color que le toca por id y, si está
+tomado, agarra el siguiente libre, recorriendo la bandada ordenada por id. El
+color de alguien solo cambia si entra otra persona que choca con él.
+
+El verde de la app queda fuera de la paleta: es el de **tu** nido, y compartir
+color con un amigo sería el único choque que de verdad confunde. Y el mismo
+punto aparece al lado del nombre en la bandada — sin eso, el color del mapa no
+se puede contestar: ves un punto violeta y no sabés de quién es.
+
+## Las notificaciones (lo que hay, y lo que falta)
+
+Hoy el aviso de que un ave aterrizó es esto:
+
+```ts
+new Notification(titulo, { body: cuerpo, icon: "/icon.svg", tag: titulo });
+```
+
+Y eso tiene tres límites que chocan de frente con lo que la app promete:
+
+1. **Necesita la pestaña viva.** Cerrás el navegador y no llega nada. La app
+   dice "tu guacamayo llega en 1 día 6 h": nadie deja una pestaña abierta un
+   día.
+2. **En iPhone no existe.** El constructor `Notification` no está en Safari de
+   iOS. Quien usa iPhone no recibe un solo aviso, nunca.
+3. **No hay `manifest` ni service worker**, así que la app tampoco es
+   instalable — que es exactamente el requisito de iOS.
+
+Para que anden de verdad hace falta Web Push: un `manifest`, un service worker
+que reciba el push con la app cerrada, un par de claves VAPID, una tabla de
+suscripciones (una por dispositivo, no por persona) y **un despertador**.
+
+El despertador es el problema de verdad, y no es de front: el ave aterriza en
+un momento futuro y en serverless no hay nadie ejecutando código en ese
+instante. La hora exacta se conoce al despegar, pero alguien tiene que
+levantarse a mirar. Estando en Supabase, lo natural es `pg_cron` + `pg_net`:
+un chequeo por minuto que busca loros aterrizados sin avisar y llama a un
+endpoint. Entra en el plan gratis y no agrega servicios. Las alternativas son
+Vercel Cron (en Hobby es una vez por día: inservible acá) o QStash, que
+programa una llamada para la hora exacta de cada vuelo.
+
+Y hay algo que ninguna implementación arregla: **en iPhone, si la persona no
+agrega la app a la pantalla de inicio, no hay notificación posible.** No es un
+detalle técnico, es un cambio de producto: aparece un momento de "agregala a
+tu inicio" que hoy no existe, y de él depende que la mitad de la gente reciba
+o no lo único que la app tiene para avisar.
+
 ## El mapa
 
 Leaflet, con mosaicos de CARTO sobre OpenStreetMap (sin API key) o de Mapbox si
@@ -446,6 +526,7 @@ lib/vista.ts      qué ve el navegador. Acá se decide qué NO viaja: ni el text
 lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
                   mapa del mundo, con semillas separadas.
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
+lib/colorNido.ts  un color por persona, estable y sin choques en tu bandada.
 lib/codigo.ts     el código de nido en palabras, y la compatibilidad con los
                   de seis caracteres de antes.
 lib/geocode.ts    coordenadas → "Palermo, Argentina" (Nominatim, best-effort).

@@ -22,6 +22,7 @@ import type { LoroVista, NidoVista } from "../lib/vista";
 import { Ave } from "./Ave";
 import { Fiesta } from "./Fiesta";
 import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
+import { coloresDeBandada } from "../lib/colorNido";
 
 /**
  * Compartir tu nido. El código va DENTRO del link, no suelto al lado: pedirle a
@@ -71,7 +72,13 @@ export function Panel(p: Props) {
     .sort((a, b) => a.vuelta!.llegada - b.vuelta!.llegada);
   // El buzón guarda lo que terminó, haya terminado bien o mal.
   const llegados = p.loros.filter((l) => l.llego || l.perdido);
-  const sinLeer = llegados.filter((l) => l.direccion === "recibido" && !l.leido).length;
+  // `llego` y no solo `!leido`: un ave que se perdió no trae nada que abrir y su
+  // tarjeta no tiene con qué marcarse leída, así que sin esto el contador de la
+  // pestaña se quedaba en 1 para siempre. Pasa 2 de cada 1000 envíos, y cuando
+  // pasa no se va nunca más.
+  const sinLeer = llegados.filter(
+    (l) => l.direccion === "recibido" && l.llego && !l.leido
+  ).length;
 
   useTic(enVuelo.length + volviendo.length > 0);
 
@@ -127,7 +134,7 @@ export function Panel(p: Props) {
                     borderRadius: 99,
                     fontSize: 11,
                     background: "var(--esmeralda)",
-                    color: "#04120e",
+                    color: "#ffffff",
                   }}
                 >
                   {t.contador}
@@ -171,23 +178,7 @@ export function Panel(p: Props) {
         )}
 
         {pestaña === "buzon" && (
-          <>
-            {llegados.length === 0 ? (
-              <Vacio
-                titulo="Buzón vacío"
-                texto="Acá aparecen los loros que ya aterrizaron, tuyos y de los demás."
-              />
-            ) : (
-              llegados.map((l) => (
-                <TarjetaBuzon
-                  key={l.id}
-                  loro={l}
-                  refrescar={p.refrescar}
-                  alReenviar={p.alReenviar}
-                />
-              ))
-            )}
-          </>
+          <Buzon llegados={llegados} refrescar={p.refrescar} alReenviar={p.alReenviar} />
         )}
 
         {pestaña === "bandada" && (
@@ -477,6 +468,73 @@ function TarjetaVuelta({
 
 // ---------- buzón ----------
 
+/**
+ * Cuántos loros ya vistos alcanzan para tapar uno sin abrir. Con menos que
+ * esto, una lista sola se recorre de un vistazo y cualquier separador es ruido.
+ */
+const HISTORIAL_LARGO = 5;
+
+/**
+ * El buzón, y por qué a veces se parte en dos.
+ *
+ * Acá vive todo lo que terminó: lo que recibiste, lo que mandaste y lo que se
+ * perdió, ordenado por fecha. Con pocos loros eso está perfecto. Pero en cuanto
+ * hay historial, un loro sin abrir de ayer queda enterrado debajo de tres que
+ * mandaste hoy — y era lo único que había para hacer.
+ *
+ * Se parte solo cuando hace falta, y no siempre: hace falta que haya algo sin
+ * abrir Y que el historial ya sea suficiente para taparlo. Un buzón con tres
+ * cosas se queda como estaba.
+ *
+ * Nada se esconde. Un plegado dejaría la lista más corta, pero el buzón es el
+ * recuerdo de lo que voló: esconderlo detrás de un toque es cobrarle peaje a lo
+ * único que la app guarda.
+ */
+function Buzon({
+  llegados,
+  refrescar,
+  alReenviar,
+}: {
+  llegados: LoroVista[];
+  refrescar: () => void;
+  alReenviar: (loro: LoroVista) => void;
+}) {
+  if (llegados.length === 0) {
+    return (
+      <Vacio
+        titulo="Buzón vacío"
+        texto="Acá aparecen los loros que ya aterrizaron, tuyos y de los demás."
+      />
+    );
+  }
+
+  // Mismo criterio que el contador de la pestaña, y por el mismo motivo: un ave
+  // perdida no se puede abrir, así que no puede estar "sin abrir".
+  const esSinAbrir = (l: LoroVista) => l.direccion === "recibido" && l.llego && !l.leido;
+  const sinAbrir = llegados.filter(esSinAbrir);
+  const vistos = llegados.filter((l) => !esSinAbrir(l));
+  const tarjeta = (l: LoroVista) => (
+    <TarjetaBuzon key={l.id} loro={l} refrescar={refrescar} alReenviar={alReenviar} />
+  );
+
+  if (sinAbrir.length === 0 || vistos.length <= HISTORIAL_LARGO) {
+    return <>{llegados.map(tarjeta)}</>;
+  }
+
+  return (
+    <>
+      <p className="etiqueta" style={{ margin: "2px 0 8px" }}>
+        Sin abrir · {sinAbrir.length}
+      </p>
+      {sinAbrir.map(tarjeta)}
+      <p className="etiqueta" style={{ margin: "18px 0 8px" }}>
+        Ya los viste · {vistos.length}
+      </p>
+      {vistos.map(tarjeta)}
+    </>
+  );
+}
+
 function TarjetaBuzon({
   loro,
   refrescar,
@@ -718,7 +776,7 @@ function QueHagoConElAve({ loro, refrescar }: { loro: LoroVista; refrescar: () =
           </button>
         ))}
       </div>
-      {error && <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>{error}</p>}
+      {error && <p style={{ color: "#b91c1c", fontSize: 12, marginTop: 8 }}>{error}</p>}
     </div>
   );
 }
@@ -808,7 +866,7 @@ function TarjetaPerdido({
               marginTop: 10,
               padding: "9px 11px",
               borderRadius: 9,
-              background: "rgba(0,0,0,.25)",
+              background: "var(--fondo-2)",
               fontSize: 13.5,
               lineHeight: 1.55,
               color: "var(--tenue)",
@@ -860,6 +918,9 @@ function Bandada({
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  // El mismo reparto que hace el mapa, con la misma entrada: así el punto de
+  // acá y el punto de allá son el mismo color sin tener que coordinarse.
+  const colores = coloresDeBandada(amigos.map((a) => a.id));
 
   async function agregar() {
     setOcupado(true);
@@ -908,7 +969,7 @@ function Bandada({
         {mensaje && (
           <p style={{ color: "var(--esmeralda-alto)", fontSize: 13, marginTop: 10 }}>{mensaje}</p>
         )}
-        {error && <p style={{ color: "#fca5a5", fontSize: 13, marginTop: 10 }}>{error}</p>}
+        {error && <p style={{ color: "#b91c1c", fontSize: 13, marginTop: 10 }}>{error}</p>}
       </div>
 
       <p
@@ -926,6 +987,10 @@ function Bandada({
 
       {amigos.map((f) => {
         const km = f.distanciaKm ?? 0;
+        const color = colores.get(f.id) ?? "var(--suave)";
+        const masRapido = Math.min(
+          ...AVES_LISTA.map((x) => duracionVuelo(km, x.id, escala))
+        );
         return (
           <div key={f.id} className="tarjeta" style={{ padding: 14, marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -941,7 +1006,20 @@ function Bandada({
                   textAlign: "left",
                 }}
               >
-                <p style={{ fontSize: 15, fontWeight: 700 }}>
+                <p style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
+                  {/* El mismo punto que en el mapa. Sin esto el color de allá
+                      no se puede contestar: ves uno violeta y no sabés de
+                      quién es. */}
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 9,
+                      height: 9,
+                      borderRadius: 99,
+                      background: color,
+                      flexShrink: 0,
+                    }}
+                  />
                   {f.bot ? "🪺 " : ""}
                   {f.nombre}
                 </p>
@@ -949,29 +1027,35 @@ function Bandada({
                   {formatearDistancia(km)}
                   {f.lugar ? ` · ${f.lugar}` : ""}
                 </p>
+                {/* Una sola línea, no las seis aves. Acá se elige A QUIÉN, no
+                    con qué: el ave se elige en el compositor, que además ya
+                    muestra los seis tiempos hasta esta persona. Repetirlos acá
+                    hacía que cada tarjeta ocupara media pantalla y que con
+                    cinco amigos la lista fuera impasable. Pero el tiempo no se
+                    va del todo: es lo que hace que 11.961 km signifique algo. */}
+                <p style={{ color: "var(--suave)", fontSize: 12.5, marginTop: 3 }}>
+                  el más rápido llega en {formatearDuracion(masRapido)}
+                </p>
                 {f.bot && (
                   <p style={{ color: "var(--tenue)", fontSize: 11.5, marginTop: 2 }}>
-                    Vecina de práctica: te contesta sola y siempre te devuelve
-                    el ave, para probar la app sin esperar a nadie.
+                    Te contesta sola, para probar sin esperar a nadie.
                   </p>
                 )}
               </button>
-              <button className="boton chico" onClick={() => alEscribir(f.id)}>
-                Escribirle
-              </button>
             </div>
-            <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-              {AVES_LISTA.map((x) => (
-                <span
-                  key={x.id}
-                  className="pastilla"
-                  style={{ color: x.color, borderColor: `${x.color}44` }}
-                >
-                  {x.nombre} {formatearDuracion(duracionVuelo(km, x.id, escala))}
-                  {x.rareza === "romance" ? "+" : ""}
-                </span>
-              ))}
-            </div>
+            {/* A lo ancho y debajo, no al costado: al costado, un botón con
+                texto de verdad le come la mitad a un nombre de lugar largo
+                —"Municipio de San Francisco del Monte de Oro"— y en las
+                tarjetas altas queda flotando en el medio de la nada. Acá el
+                objetivo de toque es toda la fila, que en un teléfono es lo que
+                importa. */}
+            <button
+              className="boton chico"
+              onClick={() => alEscribir(f.id)}
+              style={{ width: "100%", marginTop: 10 }}
+            >
+              Mandale un lorito
+            </button>
           </div>
         );
       })}
@@ -1207,13 +1291,13 @@ function MiNido({
           {llave && llave !== "no-se-pudo" ? "✓ Llave copiada" : "Copiar la llave de mi nido"}
         </button>
         {llave === "no-se-pudo" ? (
-          <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>
+          <p style={{ color: "#b91c1c", fontSize: 12, marginTop: 8 }}>
             No se pudo generar la llave. Probá de nuevo.
           </p>
         ) : (
           <p style={{ fontSize: 12, color: "var(--tenue)", marginTop: 9, lineHeight: 1.5 }}>
             Abrí ese link en la compu y tu nido aparece ahí.{" "}
-            <strong style={{ color: "#fbbf24" }}>No se lo pases a nadie: ese link ES tu nido</strong>
+            <strong style={{ color: "#b45309" }}>No se lo pases a nadie: ese link ES tu nido</strong>
             , no es tu código.
           </p>
         )}

@@ -1,34 +1,58 @@
 /* Sistema visual de Loros.
-   Selva de noche: fondo casi negro con verde adentro, y el color fuerte
-   reservado para una sola cosa — el ave. Cada especie tiene el suyo y ese
-   color es el mismo en la tarjeta, en la ruta del mapa y en el ave que vuela,
-   así se sigue un vuelo de un vistazo sin leer nada. */
+   Claro, con los grises de Instagram —que no son aproximaciones: #ffffff de
+   fondo, #fafafa para lo agrupado, #efefef para los botones secundarios,
+   #dbdbdb para las separaciones, #737373 para el texto de segundo orden—.
+   El color fuerte sigue reservado para una sola cosa: el ave. Cada especie
+   tiene el suyo y ese color es el mismo en la tarjeta, en la ruta del mapa y
+   en el ave que vuela, así se sigue un vuelo de un vistazo sin leer nada.
+
+   Los colores de las aves NO son los de antes con otro nombre. Los de la
+   versión oscura estaban elegidos para brillar contra un fondo casi negro y
+   sobre blanco daban entre 1,5:1 y 2,7:1 — ilegibles, el mínimo es 4,5:1.
+   Estos son la misma familia dos o tres pasos más oscura: el perico sigue
+   siendo verde lima y el guacamayo sigue siendo ámbar, pero ahora se leen.
+   Van de 4,99:1 a 7,10:1. */
 
 :root {
-  --noche: #060d0c;
-  --noche-2: #0a1514;
-  --panel: rgba(255, 255, 255, 0.045);
-  --panel-alto: rgba(255, 255, 255, 0.075);
-  --borde: rgba(255, 255, 255, 0.09);
-  --borde-alto: rgba(255, 255, 255, 0.18);
-  --texto: #e9f3f0;
-  --suave: #8ba39d;
-  --tenue: #5d7873;
-  --esmeralda: #10b981;
-  --esmeralda-alto: #34d399;
+  --fondo: #ffffff;
+  --fondo-2: #fafafa;
+  /* Las tarjetas son blancas y se separan del fondo con el borde, no con un
+     relleno: es lo que hace que una lista larga no se vea como un tablero. */
+  --panel: #ffffff;
+  --panel-alto: #efefef;
+  --borde: #dbdbdb;
+  --borde-alto: #c7c7c7;
+  --texto: #000000;
+  --suave: #737373;
+  /* #767676 y no el #a8a8a8 que usa Instagram para su tercer nivel: ese da
+     2,38:1 sobre blanco y no se lee. Sobre fondo claro no hay lugar para tres
+     grises legibles, así que el tercero se acerca al segundo en vez de
+     inventar una jerarquía que solo funciona si no la tenés que leer. */
+  --tenue: #767676;
+  /* El verde de acción ES el verde del perico. No un verde parecido: el mismo
+     valor que usa el ave, para que el botón y el bicho sean la misma cosa.
+     Blanco encima da 4,99:1, que pasa AA. El nombre del token quedó de la
+     versión esmeralda; el valor manda. */
+  --esmeralda: #4d7c0f;
+  --esmeralda-alto: #3f6212;
 
-  --perico: #a3e635;
-  --cotorra: #22d3ee;
-  --loro: #10b981;
-  --guacamayo: #fbbf24;
+  --perico: #4d7c0f;
+  --cotorra: #0e7490;
+  --loro: #047857;
+  --guacamayo: #b45309;
 
-  --radio: 16px;
-  --radio-chico: 10px;
-  --sombra: 0 18px 40px -20px rgba(0, 0, 0, 0.9);
+  --radio: 12px;
+  --radio-chico: 8px;
+  /* Una sombra de verdad, no una mancha negra: sobre blanco, la profundidad
+     se hace con un borde y una sombra corta. */
+  --sombra: 0 4px 16px -6px rgba(0, 0, 0, 0.18);
 
   --fuente: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Que los controles nativos —scrollbars, selects, el teclado— vengan en
+     claro. Sin esto el navegador los sigue pintando oscuros. */
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -36,7 +60,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--noche);
+  background: var(--fondo);
   color: var(--texto);
   font-family: var(--fuente);
   -webkit-font-smoothing: antialiased;
@@ -44,11 +68,10 @@ html, body {
 }
 
 body {
-  /* Dos luces de fondo, muy tenues: dan profundidad sin pedir una imagen. */
-  background-image:
-    radial-gradient(900px 500px at 12% -10%, rgba(16, 185, 129, 0.16), transparent 60%),
-    radial-gradient(700px 420px at 92% 8%, rgba(34, 211, 238, 0.1), transparent 60%);
-  background-attachment: fixed;
+  /* Las dos luces de la versión oscura no se trasladan: sobre blanco, un
+     gradiente de color se ve como una mancha, no como profundidad. El fondo
+     claro no necesita ayuda para tener aire. */
+  background: var(--fondo);
 }
 
 a { color: inherit; text-decoration: none; }
@@ -57,7 +80,7 @@ button { font: inherit; color: inherit; }
 h1, h2, h3 { margin: 0; letter-spacing: -0.02em; line-height: 1.08; }
 p { margin: 0; }
 
-::selection { background: rgba(16, 185, 129, 0.32); }
+::selection { background: rgba(0, 135, 90, 0.18); }
 
 /* ---------- piezas compartidas ---------- */
 
@@ -77,7 +100,7 @@ p { margin: 0; }
   border-radius: 999px;
   border: 1px solid transparent;
   background: var(--esmeralda);
-  color: #04120e;
+  color: #ffffff;
   font-weight: 750;
   font-size: 15px;
   cursor: pointer;
@@ -104,7 +127,7 @@ p { margin: 0; }
 .campo {
   width: 100%;
   padding: 13px 15px;
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--fondo-2);
   border: 1px solid var(--borde);
   border-radius: var(--radio-chico);
   color: var(--texto);
@@ -112,7 +135,7 @@ p { margin: 0; }
   outline: none;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.campo:focus { border-color: var(--esmeralda); background: rgba(0, 0, 0, 0.42); }
+.campo:focus { border-color: var(--borde-alto); background: var(--fondo); }
 .campo::placeholder { color: var(--tenue); }
 
 textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
@@ -170,20 +193,20 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 .leaflet-container {
   /* !important porque el CSS de Leaflet llega después (import dinámico) y su
      gris claro por defecto pisa esto justo cuando los mosaicos no cargan. */
-  background: #05100f !important;
+  background: #e8e8e8 !important;
   font-family: var(--fuente);
   outline: none;
 }
 /* Los controles de Leaflet vienen con look de 2011. */
 .leaflet-control-zoom a {
-  background: rgba(10, 21, 20, 0.92) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
   color: var(--texto) !important;
   border-color: var(--borde) !important;
   backdrop-filter: blur(8px);
 }
-.leaflet-control-zoom a:hover { background: rgba(16, 185, 129, 0.24) !important; }
+.leaflet-control-zoom a:hover { background: var(--panel-alto) !important; }
 .leaflet-control-attribution {
-  background: rgba(6, 13, 12, 0.78) !important;
+  background: rgba(255, 255, 255, 0.84) !important;
   color: var(--tenue) !important;
   font-size: 10px !important;
 }
@@ -193,10 +216,10 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 
 /* ---------- scrollbar ---------- */
 
-.scroll { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.16) transparent; }
+.scroll { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--borde-alto) transparent; }
 .scroll::-webkit-scrollbar { width: 8px; }
 .scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--borde-alto);
   border-radius: 99px;
 }
 .scroll::-webkit-scrollbar-track { background: transparent; }
@@ -227,7 +250,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
      (components/HojaInferior.tsx), y el alto pasa a mandarlo el dedo. */
   height: 58dvh;
   flex: 0 0 auto;
-  background: rgba(8, 17, 16, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   border-top: 1px solid var(--borde);
   backdrop-filter: blur(16px);
   /* Redondeada arriba: es lo que la lee como una hoja que se puede mover y no
@@ -313,7 +336,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   right: 0;
   bottom: 0;
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(8, 17, 16, 0.98) 62%, transparent);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.98) 62%, transparent);
 }
 
 /* Leaflet apila sus controles en z-index 800–1000, muy por encima de todo lo
@@ -358,7 +381,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   gap: 8px;
   padding: 8px 13px;
   border-radius: 999px;
-  background: rgba(8, 17, 16, 0.86);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--borde);
   backdrop-filter: blur(10px);
   font-size: 13px;
@@ -386,10 +409,10 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   max-width: min(360px, calc(100% - 24px));
   padding: 11px 14px;
   border-radius: 12px;
-  background: rgba(10, 21, 20, 0.95);
-  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
   backdrop-filter: blur(10px);
-  color: #fca5a5;
+  color: #b91c1c;
   font-size: 12.5px;
   font-weight: 600;
   line-height: 1.5;
@@ -410,7 +433,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   max-width: min(460px, calc(100% - 24px));
   padding: 13px 18px;
   border-radius: 14px;
-  background: rgba(10, 21, 20, 0.97);
+  background: var(--fondo);
   border: 1px solid var(--esmeralda);
   box-shadow: var(--sombra);
   font-size: 14px;
@@ -486,8 +509,8 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   margin-bottom: 22px;
   padding: 10px 16px 10px 12px;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(0, 135, 90, 0.08);
+  border: 1px solid rgba(0, 135, 90, 0.28);
   text-align: left;
 }
 .invitacion p {
@@ -518,27 +541,31 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 
 .cta-halo {
   position: absolute;
-  inset: -6px;
+  inset: -3px;
   border-radius: 999px;
+  /* Los mismos colores, dos pasos más oscuros y con la mitad de desenfoque.
+     Sobre negro un halo saturado y difuso se lee como luz; sobre blanco se
+     lee como una mancha de humedad alrededor del botón. Acá el halo apoya el
+     borde del botón en vez de derramarse. */
   background: linear-gradient(
     90deg,
-    #10b981,
-    #34d399,
-    #a3e635,
-    #fbbf24,
-    #f59e0b,
-    #fb7185,
-    #22d3ee,
-    #10b981
+    #047857,
+    #059669,
+    #4d7c0f,
+    #b45309,
+    #d97706,
+    #be185d,
+    #0e7490,
+    #047857
   );
   background-size: 300% 100%;
-  filter: blur(12px);
-  opacity: 0.75;
+  filter: blur(7px);
+  opacity: 0.34;
   pointer-events: none;
   animation: loroGlow 5s linear infinite;
   transition: opacity 0.35s ease;
 }
-.cta:hover .cta-halo { opacity: 1; }
+.cta:hover .cta-halo { opacity: 0.5; }
 
 @keyframes loroGlow {
   0% { background-position: 0% 50%; }

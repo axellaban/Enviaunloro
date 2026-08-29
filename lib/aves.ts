@@ -60,7 +60,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "el",
     velocidadKmh: 90,
     maxCaracteres: 120,
-    color: "#a3e635",
+    color: "#4d7c0f",
     lema: "El express",
     rareza: "romance",
     aviso:
@@ -72,7 +72,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "la",
     velocidadKmh: 60,
     maxCaracteres: 400,
-    color: "#22d3ee",
+    color: "#0e7490",
     lema: "La charlatana",
     rareza: "olvida",
     aviso:
@@ -84,7 +84,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "el",
     velocidadKmh: 40,
     maxCaracteres: 1000,
-    color: "#10b981",
+    color: "#047857",
     lema: "El clásico",
   },
   guacamayo: {
@@ -93,7 +93,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "el",
     velocidadKmh: 25,
     maxCaracteres: 2000,
-    color: "#fbbf24",
+    color: "#b45309",
     lema: "El ceremonioso",
   },
   paloma: {
@@ -102,7 +102,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "la",
     velocidadKmh: 50,
     maxCaracteres: 600,
-    color: "#f472b6",
+    color: "#be185d",
     lema: "La romántica",
     rareza: "confeti",
     aviso:
@@ -114,7 +114,7 @@ export const AVES: Record<AveId, Ave> = {
     articulo: "el",
     velocidadKmh: 70,
     maxCaracteres: 250,
-    color: "#a78bfa",
+    color: "#6d28d9",
     lema: "El de las malas noticias",
     rareza: "luto",
     aviso:
