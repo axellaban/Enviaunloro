@@ -76,6 +76,20 @@ export type LoroVista = {
   suerte: Suerte | null;
   /** Si la soltó: el vuelo de vuelta, para dibujarlo en el mapa. */
   vuelta: { salida: number; llegada: number } | null;
+  /**
+   * Lo que el ave trae de vuelta, con la misma regla que la ida: no sale del
+   * servidor hasta que el ave aterriza en el nido de origen.
+   *
+   * Quien contestó lo ve desde el momento cero —lo escribió— y quien lo espera
+   * no ve nada hasta que el bicho llega. Es la promesa entera de la app: el
+   * mensaje viaja, no está.
+   */
+  respuesta: string | null;
+  /** Cómo llegó del otro lado, si la cotorra la cambió. Solo para quien la
+   *  escribió, y recién cuando aterriza. */
+  respuestaEntregada: string | null;
+  /** Que hay algo esperando adentro del ave que vuelve, sin decir qué. */
+  traeRespuesta: boolean;
 };
 
 const punto = (n: Nido): Punto => ({ lat: n.lat, lng: n.lng });
@@ -134,6 +148,13 @@ export function verLoro(
       ? { salida: l.suerteEn, llegada: l.regreso }
       : null;
 
+  // La vuelta se lee al revés que la ida: quien MANDÓ el loro es quien espera
+  // la respuesta, y quien lo recibió es quien la escribió.
+  const volvio = Boolean(vuelta && ahora >= vuelta.llegada);
+  const hayRespuesta = Boolean(l.respuesta);
+  const respuestaLlega = l.respuestaEntregada ?? l.respuesta ?? null;
+  const respuestaCambio = hayRespuesta && respuestaLlega !== l.respuesta;
+
   // La punta del otro se corre; la propia queda exacta. Las dos personas ven
   // líneas apenas distintas y el mismo avance: el tiempo es lo que importa.
   const origen = enviado ? l.origen : zonaDe(l.origen, l.de);
@@ -173,6 +194,13 @@ export function verLoro(
     leido: l.leido,
     suerte,
     vuelta,
+    // Quien la escribió (recibió el loro) ve siempre lo suyo. Quien la espera
+    // (lo mandó) no ve nada hasta que el ave aterriza de vuelta.
+    respuesta: enviado ? (volvio ? respuestaLlega : null) : (l.respuesta ?? null),
+    respuestaEntregada: !enviado && volvio && respuestaCambio ? respuestaLlega : null,
+    // Se avisa que trae algo, sin decir qué: es lo que hace que valga la pena
+    // mirar el mapa mientras vuelve.
+    traeRespuesta: hayRespuesta,
   };
 }
 

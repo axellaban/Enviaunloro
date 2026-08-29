@@ -363,12 +363,42 @@ chequear(mordido.llego === true, "la cotorra aterrizó");
 chequear(mordido.olvido === true, "avisa que llegó cambiado");
 chequear(mordido.texto !== CARTA, `a Beto le llega mezclado: "${mordido.texto}"`);
 
-// Cambiado, no destruido: tiene que seguir entendiéndose.
-const comunes = CARTA.split(" ").filter((w) => mordido.texto.includes(w)).length;
-chequear(comunes / CARTA.split(" ").length > 0.7, "pero se entiende igual: quedan casi todas las palabras");
+// El contrato de la cotorra: cambia alrededor de un tercio de las palabras por
+// otras que suenan parecido, y deja la frase con la misma cantidad de palabras.
+//
+// Antes acá se pedía que sobrevivieran más del 70% de las palabras y que no se
+// tocaran ni la primera ni la última. Las dos cosas eran de la regla anterior
+// —la que olvidaba y repetía— y se cambiaron con ella.
+const originales = CARTA.split(" ");
+const recibidas = mordido.texto.split(" ");
 chequear(
-  mordido.texto.split(" ")[0] === "Che" && mordido.texto.endsWith("pasado"),
-  "no toca ni la primera ni la última palabra"
+  recibidas.length === originales.length,
+  `no le falta ni le sobra ninguna palabra (${recibidas.length} de ${originales.length})`
+);
+const cambiadas = originales.filter((w, i) => w !== recibidas[i]).length;
+// El tope sale del MISMO archivo que la regla. Si el número viviera acá
+// copiado, el día que se toque la cotorra la prueba seguiría verificando lo de
+// antes y no avisaría nada.
+let tope = Math.ceil(originales.length * 0.4);
+try {
+  const { PARTE_QUE_CAMBIA } = await import("../lib/sanateo.ts");
+  tope = Math.ceil(originales.length * PARTE_QUE_CAMBIA) + 1;
+} catch {
+  console.log("   (este Node no lee TypeScript: el tope va estimado)");
+}
+chequear(
+  cambiadas > 0 && cambiadas <= tope,
+  `cambia alrededor de un tercio, no más (${cambiadas} de ${originales.length}, tope ${tope})`
+);
+// Y que lo cambiado se parezca: la mitad intacta más las que comparten el
+// arranque tienen que dar casi toda la frase. Es lo que separa "escuchó mal"
+// de "escribió cualquier cosa".
+const suenanParecido = originales.filter(
+  (w, i) => w === recibidas[i] || (recibidas[i] && w.slice(0, 2).toLowerCase() === recibidas[i].slice(0, 2).toLowerCase())
+).length;
+chequear(
+  suenanParecido / originales.length > 0.7,
+  `y lo que cambió suena parecido, no es otra cosa (${suenanParecido} de ${originales.length})`
 );
 
 const delLadoDeAna = (await ana.llamar("/api/estado")).loros.find((l) => l.id === conCotorra.id);
@@ -583,6 +613,62 @@ try {
   await nadie.llamar("/api/mundo");
   chequear(false, "sin nido no se puede mirar el mundo");
 } catch (e) { chequear(String(e).includes("401"), "sin nido no se puede mirar el mundo"); }
+
+// --- soltar el ave ES contestar ---
+//
+// El ave queda posada en la ventana de quien la recibió. Soltarla la manda de
+// vuelta, y ahora se va cargada: soltar es la forma de responder. Antes volvía
+// vacía y para contestar había que arrancar un loro nuevo desde cero —elegir
+// persona, elegir ave— con el bicho ahí mirándote.
+//
+// La regla del texto es la misma que a la ida, y es la promesa entera de la
+// app: no sale del servidor hasta que el ave aterriza.
+{
+  const ida = (
+    await ana.llamar("/api/loros", { para: idBeto, ave: "cuervo", texto: "¿venís el sábado?" })
+  ).loro;
+  await new Promise((r) => setTimeout(r, ida.llegada - ida.salida + 2500));
+
+  const RESPUESTA = "Sí, llevo el vino";
+  await beto.llamar("/api/loros/suerte", { id: ida.id, suerte: "soltado", texto: RESPUESTA });
+
+  const enBeto = (await beto.llamar("/api/estado")).loros.find((l) => l.id === ida.id);
+  chequear(enBeto.suerte === "soltado", "Beto lo soltó con una respuesta");
+  chequear(enBeto.respuesta === RESPUESTA, "y ve lo que escribió, desde el momento cero");
+  chequear(!!enBeto.vuelta, "el ave sale de vuelta y se puede dibujar en el mapa");
+
+  // Lo que importa: mientras vuelve, el texto NO está del lado de Ana.
+  const volando = (await ana.llamar("/api/estado")).loros.find((l) => l.id === ida.id);
+  chequear(volando.respuesta === null, "mientras vuelve, la respuesta NO viajó a Ana");
+  chequear(
+    volando.traeRespuesta === true,
+    "pero Ana sabe que trae algo adentro (sin saber qué)"
+  );
+  chequear(
+    !JSON.stringify(volando).includes("vino"),
+    "y la respuesta no está escondida en ningún campo de la consulta"
+  );
+
+  await new Promise((r) => setTimeout(r, enBeto.vuelta.llegada - Date.now() + 2500));
+  const aterrizo = (await ana.llamar("/api/estado")).loros.find((l) => l.id === ida.id);
+  chequear(aterrizo.respuesta === RESPUESTA, `recién al aterrizar Ana la lee: "${aterrizo.respuesta}"`);
+}
+
+// --- enjaular y al puchero no devuelven nada ---
+for (const [suerte, como] of [["enjaulado", "enjaulada"], ["puchero", "al puchero"]]) {
+  const l = (
+    await ana.llamar("/api/loros", { para: idBeto, ave: "cuervo", texto: `probando ${suerte}` })
+  ).loro;
+  await new Promise((r) => setTimeout(r, l.llegada - l.salida + 2500));
+  await beto.llamar("/api/loros/suerte", { id: l.id, suerte, texto: "esto no tiene quien lo lleve" });
+  const enAna = (await ana.llamar("/api/estado")).loros.find((x) => x.id === l.id);
+  chequear(enAna.suerte === suerte, `un ave ${como} queda marcada así`);
+  chequear(enAna.vuelta === null, `un ave ${como} no vuelve`);
+  chequear(
+    enAna.respuesta === null && enAna.traeRespuesta === false,
+    `y no trae nada: sin ave no hay quien lleve el mensaje`
+  );
+}
 
 // --- la bandada perdida vuelve ---
 //

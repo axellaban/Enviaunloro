@@ -178,7 +178,12 @@ export function Panel(p: Props) {
         )}
 
         {pestaña === "buzon" && (
-          <Buzon llegados={llegados} refrescar={p.refrescar} alReenviar={p.alReenviar} />
+          <Buzon
+            llegados={llegados}
+            refrescar={p.refrescar}
+            alReenviar={p.alReenviar}
+            escala={p.escala}
+          />
         )}
 
         {pestaña === "bandada" && (
@@ -494,10 +499,12 @@ function Buzon({
   llegados,
   refrescar,
   alReenviar,
+  escala,
 }: {
   llegados: LoroVista[];
   refrescar: () => void;
   alReenviar: (loro: LoroVista) => void;
+  escala: number;
 }) {
   if (llegados.length === 0) {
     return (
@@ -514,7 +521,7 @@ function Buzon({
   const sinAbrir = llegados.filter(esSinAbrir);
   const vistos = llegados.filter((l) => !esSinAbrir(l));
   const tarjeta = (l: LoroVista) => (
-    <TarjetaBuzon key={l.id} loro={l} refrescar={refrescar} alReenviar={alReenviar} />
+    <TarjetaBuzon key={l.id} loro={l} refrescar={refrescar} alReenviar={alReenviar} escala={escala} />
   );
 
   if (sinAbrir.length === 0 || vistos.length <= HISTORIAL_LARGO) {
@@ -539,10 +546,12 @@ function TarjetaBuzon({
   loro,
   refrescar,
   alReenviar,
+  escala,
 }: {
   loro: LoroVista;
   refrescar: () => void;
   alReenviar: (loro: LoroVista) => void;
+  escala: number;
 }) {
   const [abriendo, setAbriendo] = useState(false);
   const [abierto, setAbierto] = useState(Boolean(loro.leido));
@@ -628,7 +637,7 @@ function TarjetaBuzon({
           {loro.olvido && <PorQueLlegoAsi loro={loro} />}
 
           {/* El ave sigue posada del otro lado. Quien la recibió decide. */}
-          {!enviado && !loro.perdido && <QueHagoConElAve loro={loro} refrescar={refrescar} />}
+          {!enviado && !loro.perdido && <QueHagoConElAve loro={loro} refrescar={refrescar} escala={escala} />}
           {loro.suerte && <FinalDelAve loro={loro} />}
         </div>
       )}
@@ -708,8 +717,8 @@ const FINALES: Record<
 > = {
   soltado: {
     icono: "🕊",
-    boton: "Soltar",
-    pie: "Se vuelve volando. Se la ve cruzar el mapa de nuevo.",
+    boton: "Contestar",
+    pie: "Se vuelve volando con lo que le escribas. Se la ve cruzar el mapa.",
     mio: (lo) => `${lo === "la" ? "La" : "Lo"} soltaste. Va camino a su nido.`,
     suyo: (quien, lo) => `${quien} ${lo} soltó: viene de vuelta.`,
   },
@@ -737,23 +746,78 @@ const FINALES: Record<
  * que elegiste sin que le hayas escrito nada. Por eso no hay confirmación —
  * elegir ya es la respuesta— pero tampoco hay vuelta atrás.
  */
-function QueHagoConElAve({ loro, refrescar }: { loro: LoroVista; refrescar: () => void }) {
+function QueHagoConElAve({
+  loro,
+  refrescar,
+  escala,
+}: {
+  loro: LoroVista;
+  refrescar: () => void;
+  escala: number;
+}) {
   const [ocupado, setOcupado] = useState<Suerte | null>(null);
   const [error, setError] = useState("");
+  /** Soltar abre un campo en vez de mandar de una: soltar el ave ES contestar,
+   *  y hacerlo sin ofrecer dónde escribir era devolverla vacía. */
+  const [escribiendo, setEscribiendo] = useState(false);
+  const [texto, setTexto] = useState("");
   const a = AVES[loro.ave];
 
   if (loro.suerte) return null;
 
-  async function decidir(suerte: Suerte) {
+  async function decidir(suerte: Suerte, conTexto = "") {
     setOcupado(suerte);
     setError("");
     try {
-      await pedir("/api/loros/suerte", { datos: { id: loro.id, suerte } });
+      await pedir("/api/loros/suerte", { datos: { id: loro.id, suerte, texto: conTexto } });
       refrescar();
     } catch (e: any) {
       setError(e?.message || "No se pudo.");
       setOcupado(null);
     }
+  }
+
+  if (escribiendo) {
+    const vuelve = formatearDuracion(duracionVuelo(loro.distanciaKm, loro.ave, escala));
+    return (
+      <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--borde)" }}>
+        <p style={{ fontSize: 12.5, color: "var(--suave)", lineHeight: 1.5 }}>
+          {a.articulo === "la" ? "La" : "Lo"} soltás con tu respuesta. Tarda lo mismo
+          en volver: <strong style={{ color: a.color }}>{vuelve}</strong>.
+        </p>
+        <textarea
+          className="campo"
+          rows={3}
+          autoFocus
+          maxLength={a.maxCaracteres}
+          placeholder={`Lo que le lleva ${a.articulo === "la" ? "la" : "el"} ${a.nombre.toLowerCase()}…`}
+          style={{ marginTop: 10, width: "100%", resize: "none" }}
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+        />
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button
+            className="boton fantasma chico"
+            onClick={() => setEscribiendo(false)}
+            disabled={ocupado !== null}
+          >
+            Volver
+          </button>
+          {/* Sin texto también se puede: a veces el gesto de devolverla es toda
+              la respuesta. Pero el botón lo dice, para que nadie la mande vacía
+              creyendo que mandó algo. */}
+          <button
+            className="boton chico"
+            style={{ flex: 1 }}
+            disabled={ocupado !== null}
+            onClick={() => decidir("soltado", texto)}
+          >
+            {ocupado ? "…" : texto.trim() ? "🕊 Soltar con esto" : "🕊 Soltar sin mensaje"}
+          </button>
+        </div>
+        {error && <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>{error}</p>}
+      </div>
+    );
   }
 
   return (
@@ -769,7 +833,7 @@ function QueHagoConElAve({ loro, refrescar }: { loro: LoroVista; refrescar: () =
             className="boton fantasma chico"
             style={{ flex: 1, padding: "9px 4px", fontSize: 12.5, whiteSpace: "nowrap" }}
             disabled={ocupado !== null}
-            onClick={() => decidir(k)}
+            onClick={() => (k === "soltado" ? setEscribiendo(true) : decidir(k))}
             title={FINALES[k].pie}
           >
             {FINALES[k].icono} {ocupado === k ? "…" : FINALES[k].boton}
@@ -786,19 +850,75 @@ function FinalDelAve({ loro }: { loro: LoroVista }) {
   const f = FINALES[loro.suerte!];
   const mio = loro.direccion === "recibido";
   const lo = AVES[loro.ave].articulo === "la" ? "la" : "lo";
+  const a = AVES[loro.ave];
+  // Quien la soltó (recibió el loro) ve su respuesta desde el momento cero: la
+  // escribió. Quien la espera no ve nada hasta que el ave aterriza — la misma
+  // regla que la ida, que es la promesa entera de la app.
+  const hayTexto = Boolean(loro.respuesta);
+
   return (
-    <p
-      style={{
-        marginTop: 12,
-        paddingTop: 10,
-        borderTop: "1px solid var(--borde)",
-        fontSize: 12.5,
-        lineHeight: 1.5,
-        color: "var(--suave)",
-      }}
-    >
-      {f.icono} {mio ? f.mio(lo) : f.suyo(loro.otro.nombre, lo)}
-    </p>
+    <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--borde)" }}>
+      <p style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--suave)" }}>
+        {f.icono} {mio ? f.mio(lo) : f.suyo(loro.otro.nombre, lo)}
+      </p>
+
+      {/* En el aire y con algo adentro: se avisa que trae, no qué trae. Es lo
+          que hace que valga la pena mirarla volver. */}
+      {loro.suerte === "soltado" && !hayTexto && loro.traeRespuesta && (
+        <p style={{ marginTop: 8, fontSize: 12.5, color: a.color }}>
+          ✉️ Vuelve con una respuesta adentro.
+        </p>
+      )}
+
+      {hayTexto && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: `${a.color}12`,
+            borderLeft: `2px solid ${a.color}`,
+          }}
+        >
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: a.color }}>
+            {mio ? "LO QUE MANDASTE DE VUELTA" : `LO QUE TE CONTESTÓ ${loro.otro.nombre.toUpperCase()}`}
+          </p>
+          <p
+            style={{
+              marginTop: 6,
+              fontSize: 14.5,
+              lineHeight: 1.55,
+              color: "var(--texto)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {loro.respuesta}
+          </p>
+          {/* Si la cotorra también escuchó mal a la vuelta, quien escribió ve
+              cómo llegó. Del otro lado no hace falta: eso ES lo que llegó. */}
+          {loro.respuestaEntregada && (
+            <>
+              <p style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: AVES.cotorra.color }}>
+                ASÍ LLEGÓ DEL OTRO LADO
+              </p>
+              <p
+                style={{
+                  marginTop: 4,
+                  fontSize: 13.5,
+                  lineHeight: 1.55,
+                  color: "var(--suave)",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {loro.respuestaEntregada}
+              </p>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -94,6 +94,20 @@ export type Loro = {
   suerteEn?: number | null;
   /** Si la soltó: cuándo llega de vuelta al nido de origen. */
   regreso?: number | null;
+  /**
+   * Lo que le escribió al soltarla, y lo que llega del otro lado.
+   *
+   * Soltar el ave ES la forma de contestar: está posada en tu ventana, la
+   * cargás y se va. Antes volvía vacía y para responder había que arrancar un
+   * loro nuevo desde cero —elegir persona, elegir ave— con el bicho ahí
+   * mirándote. El círculo se cortaba justo donde se tenía que cerrar.
+   *
+   * Van los dos textos por la misma razón que en la ida: la misma ave hace lo
+   * mismo a la vuelta. Una cotorra que escuchó mal a la ida escucha mal a la
+   * vuelta, y quien contesta ve lo que escribió, no lo que llegó.
+   */
+  respuesta?: string | null;
+  respuestaEntregada?: string | null;
   /** Interno de Doña Cotorra: si ya devolvió el ave con su respuesta. */
   respondido?: boolean;
 };
@@ -721,7 +735,8 @@ export async function marcarLeido(loroId: string, lector: string): Promise<Loro 
 export async function decidirSuerte(
   loroId: string,
   quien: string,
-  suerte: Suerte
+  suerte: Suerte,
+  respuesta = ""
 ): Promise<Loro | null> {
   const l = await loro(loroId);
   if (!l || l.para !== quien) return null;
@@ -747,6 +762,11 @@ export async function decidirSuerte(
     return (await loro(loroId)) ?? l;
   }
 
+  // El mensaje de vuelta solo existe si el ave vuelve. Enjaulada o al puchero
+  // no hay quien lo lleve, y guardarlo sería guardar algo que nadie va a leer.
+  const texto =
+    suerte === "soltado" ? respuesta.trim().slice(0, AVES[l.ave].maxCaracteres) : "";
+
   const actualizado: Loro = {
     ...l,
     suerte,
@@ -757,6 +777,15 @@ export async function decidirSuerte(
       suerte === "soltado"
         ? ahora + duracionVuelo(l.distanciaKm, l.ave, escalaGlobal())
         : null,
+    respuesta: texto || null,
+    // La misma ave hace lo mismo a la vuelta: si es cotorra, vuelve a escuchar
+    // mal. Se calcula ACÁ y queda escrito, igual que a la ida — si se calculara
+    // al leer, cada consulta entregaría un mensaje distinto.
+    respuestaEntregada: texto
+      ? AVES[l.ave].rareza === "olvida"
+        ? loQueRepiteLaCotorra(texto, `vuelta:${l.id}`)
+        : texto
+      : null,
   };
   await escribirDoc(claveLoro(loroId), actualizado);
   return actualizado;

@@ -39,13 +39,22 @@ import type { LoroVista } from "../../lib/vista";
  * palabra, y se estaba perdiendo.
  */
 type EstadoLoro = string;
-const estadoDe = (l: LoroVista): EstadoLoro =>
-  l.perdido ? "perdido" : l.llego ? `llego${l.suerte ? `:${l.suerte}` : ""}` : "vuelo";
+const estadoDe = (l: LoroVista, ahora: number): EstadoLoro => {
+  if (l.perdido) return "perdido";
+  if (!l.llego) return "vuelo";
+  // "Volvió" es un estado propio y no un detalle de "la soltó": entre las dos
+  // cosas puede haber días de vuelo, y el aterrizaje de la respuesta es el
+  // momento que hay que avisar.
+  const volvio = l.vuelta && ahora >= l.vuelta.llegada;
+  return `llego${l.suerte ? `:${l.suerte}` : ""}${volvio ? ":volvio" : ""}`;
+};
 
 /** Cómo se le cuenta a quien lo mandó lo que hicieron con su ave. */
 const NOTICIA_SUERTE: Record<string, (quien: string, ave: string, vuelve: string) => string> = {
   soltado: (quien, ave, vuelve) =>
     `${quien} soltó tu ${ave}. Vuelve a tu nido${vuelve ? `, llega en ${vuelve}` : ""}.`,
+  "soltado:volvio": (quien, ave) => `Volvió tu ${ave}, con la respuesta de ${quien}.`,
+  "soltado:volvio:vacio": (quien, ave) => `Volvió tu ${ave} de lo de ${quien}.`,
   enjaulado: (quien, ave) => `${quien} se quedó con tu ${ave}. Ese no vuelve más.`,
   puchero: (quien, ave) => `Tu ${ave} no volvió de lo de ${quien}. Mejor no preguntes.`,
 };
@@ -103,12 +112,12 @@ export default function Nido() {
   const ahoraServidor = est.ahoraServidor;
   useEffect(() => {
     if (conocidos.current === null) {
-      conocidos.current = new Map(est.loros.map((l) => [l.id, estadoDe(l)]));
+      conocidos.current = new Map(est.loros.map((l) => [l.id, estadoDe(l, ahoraServidor())]));
       return;
     }
     for (const l of est.loros) {
       const antes = conocidos.current.get(l.id);
-      const ahora = estadoDe(l);
+      const ahora = estadoDe(l, ahoraServidor());
       conocidos.current.set(l.id, ahora);
       if (antes === ahora) continue;
 
@@ -131,6 +140,17 @@ export default function Nido() {
       // Qué hicieron con tu ave del otro lado. Es el único aviso que le
       // corresponde a quien MANDÓ: la decisión la tomó el otro, y sin esto no
       // se enteraba salvo que se le ocurriera volver a mirar la tarjeta.
+      // El ave volvió y trae algo. Es su propio momento: entre soltarla y que
+      // aterrice pueden pasar días, y sin este aviso la respuesta se queda ahí
+      // sin que nadie sepa que llegó.
+      if (mio && ahora.endsWith(":volvio") && antes && !antes.endsWith(":volvio")) {
+        const clave = l.respuesta ? "soltado:volvio" : "soltado:volvio:vacio";
+        const texto = NOTICIA_SUERTE[clave](l.otro.nombre, a.nombre.toLowerCase(), "");
+        mostrarAviso(`🕊 ${texto}`);
+        avisar(`🕊 Volvió tu ${a.nombre.toLowerCase()}`, texto);
+        continue;
+      }
+
       if (mio && l.suerte && antes && !antes.includes(":")) {
         const vuelve =
           l.vuelta && l.vuelta.llegada > ahoraServidor()

@@ -25,6 +25,13 @@
 // Es determinista: el resultado sale de la semilla (el id del loro), así que
 // se calcula una vez al despegar y las dos personas ven exactamente lo mismo.
 
+import {
+  LARGO_MINIMO_PALABRA,
+  PARTE_QUE_CAMBIA,
+  tieneParecida,
+  transformar,
+} from "./sanateo";
+
 /** Hash de texto a número (FNV-1a). Solo para sembrar el azar. */
 function semillaNumerica(s: string): number {
   let h = 2166136261 >>> 0;
@@ -48,9 +55,8 @@ function azar(semilla: number): () => number {
 
 const MINIMO_PALABRAS = 4;
 
-/** Qué proporción de palabras se rompe. La cotorra habla el viaje entero; la
- *  perica apenas mete mano en un mensaje que ni siquiera es suyo. */
-const PROPORCION_COTORRA = 0.22;
+/** Qué proporción toca la perica. Apenas mete mano en un mensaje que ni
+ *  siquiera es suyo: la cotorra tiene su propia regla, más abajo. */
 const PROPORCION_PERICA = 0.12;
 
 function mezclar(texto: string, semilla: string, proporcion: number): string {
@@ -83,20 +89,67 @@ function mezclar(texto: string, semilla: string, proporcion: number): string {
     rotas++;
   }
 
-  // Si el azar no rompió nada, el chiste no llega. Se fuerza un olvido en el
-  // medio: una cotorra que entrega el mensaje perfecto no es una cotorra.
   if (rotas === 0) salida[Math.floor(palabras.length / 2)] = "…";
 
   return salida
     .join(" ")
-    .replace(/(?:… ){2,}…?/g, "… ") // dos olvidos seguidos se leen como uno
+    .replace(/(?:… ){2,}…?/g, "… ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/** El teléfono descompuesto de la cotorra. */
+/**
+ * Lo que la cotorra escuchó mal.
+ *
+ * Cambia un tercio de las palabras por otras que suenan parecido, y deja la
+ * frase con la misma cantidad de palabras. Nada de "…" ni de
+ * repeticiones: un mensaje al que le faltan pedazos está roto, uno con la
+ * mitad de las palabras cambiadas es un malentendido — que es lo que hace un
+ * ave que viene repitiendo lo que oyó todo el viaje.
+ *
+ * Cuáles se cambian sale de barajar los índices con la semilla, así que dos
+ * personas mirando el mismo loro leen lo mismo. Se prefieren las palabras
+ * largas: cambiar "de" por "te" no se nota y gasta uno de los turnos.
+ */
 export function loQueRepiteLaCotorra(texto: string, semilla: string): string {
-  return mezclar(texto, semilla, PROPORCION_COTORRA);
+  const palabras = texto.trim().split(/\s+/).filter(Boolean);
+  if (palabras.length < MINIMO_PALABRAS) return texto;
+
+  const r = azar(semillaNumerica(`cotorra:${semilla}`));
+  const cuantas = Math.max(1, Math.round(palabras.length * PARTE_QUE_CAMBIA));
+
+  // Barajado determinista (Fisher-Yates con la semilla), con las largas
+  // primero: son las que llevan el sentido y donde el cambio se escucha.
+  const orden = palabras.map((p, i) => i);
+  for (let i = orden.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [orden[i], orden[j]] = [orden[j], orden[i]];
+  }
+  // Primero las que tienen una parecida de verdad en la lista: son los mejores
+  // malentendidos, porque las dos son palabras que existen. Después las largas,
+  // que es donde el cambio se escucha. Cambiar "de" por "te" gasta un turno y
+  // no lo nota nadie.
+  const puntaje = (i: number) => {
+    const p = palabras[i];
+    const largo = p.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g, "").length;
+    return (tieneParecida(p) ? 100 : 0) + (largo > 3 ? 10 : 0) + Math.min(largo, 9);
+  };
+  orden.sort((a, b) => puntaje(b) - puntaje(a));
+
+  const elegidas = new Set<number>();
+  for (const i of orden) {
+    if (elegidas.size >= cuantas) break;
+    const p = palabras[i];
+    const largo = p.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g, "").length;
+    // Una palabra corta solo se toca si hay una parecida de verdad. Sin esto
+    // salían "qua" por "que" y "da" por "de": no son malentendidos, son
+    // erratas, y son justo lo que hacía que la cotorra escuchara DEMASIADO mal.
+    if (largo < LARGO_MINIMO_PALABRA && !tieneParecida(p)) continue;
+    elegidas.add(i);
+  }
+
+  const salida = palabras.map((p, i) => (elegidas.has(i) ? transformar(p, r) : p));
+  return salida.join(" ");
 }
 
 /**

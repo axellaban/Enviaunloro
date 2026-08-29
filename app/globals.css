@@ -350,7 +350,9 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   place-items: center;
 }
 .app-panel[data-tope="oculta"] .agarre span {
-  width: 60px;
+  /* Abajo del todo es lo ÚNICO que queda en pantalla, así que ahí sí se
+     muestra: más ancha y más clara que en el resto de las alturas. */
+  width: 48px;
   background: var(--suave);
 }
 
@@ -361,11 +363,17 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   width: 100%;
   /* Nunca se encoge: es el asa, y si se achica no hay de dónde agarrar. */
   flex-shrink: 0;
-  /* 22 + 4 de la rayita + 18 = 44 px de zona tocable, el mínimo de iOS y
-     Android. Antes eran 9 + 4 + 5 = 18 px: se veía igual y con el pulgar se le
-     erraba casi siempre, y el dedo terminaba en la lista de abajo, que hace
-     scroll. Una hoja arrastrable con un asa de 18 px no se arrastra. */
-  padding: 22px 0 18px;
+  /* La zona tocable sigue siendo de 44 px —el mínimo de iOS y Android, y sin
+     eso el asa no se agarra con el pulgar— pero repartida distinto: la rayita
+     sube y el relleno que sobra se va para abajo, donde no hay nada.
+
+     Y ese relleno de abajo se recupera con el margen negativo. El asa medía
+     44 px de alto y ADEMÁS el bloque de abajo traía sus propios 18 px de aire,
+     así que del borde del panel a la primera palabra había 59 px de nada, en
+     una hoja de 490. El margen mete la zona tocable adentro de ese aire: se
+     tocan los mismos 44 px, se ven 37. */
+  padding: 13px 0 27px;
+  margin-bottom: -12px;
   background: none;
   border: none;
   cursor: grab;
@@ -375,9 +383,14 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   -webkit-tap-highlight-color: transparent;
 }
 .agarre:active { cursor: grabbing; }
+/* Mientras el dedo la tiene, la rayita se enciende y se estira. Es el único
+   acuse de recibo del gesto: sin esto no se sabe si la agarraste o le erraste. */
+.agarre:active span { background: var(--suave); width: 44px; }
 .agarre span {
   display: block;
-  width: 42px;
+  /* 34 y no 42: es una pista de que la hoja se arrastra, no un control que
+     haya que mirar. El color sale del token para que siga al tema. */
+  width: 34px;
   height: 4px;
   margin: 0 auto;
   border-radius: 99px;

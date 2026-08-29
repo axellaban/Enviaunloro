@@ -1,9 +1,10 @@
 // Qué hace el destinatario con el ave, después de leer el mensaje.
 //
 // El vuelo termina cuando llega el mensaje, pero el ave sigue posada del otro
-// lado. Soltarla la devuelve volando —y se ve cruzar el mapa de vuelta—;
-// enjaularla o mandarla al puchero significa que ese loro no vuelve más. La
-// decisión es de quien lo recibió, se toma una sola vez y no se puede desdecir.
+// lado. Soltarla la devuelve volando —y ahí va la respuesta, porque soltar el
+// ave ES contestar—; enjaularla o mandarla al puchero significa que ese loro no
+// vuelve más. La decisión es de quien lo recibió, se toma una sola vez y no se
+// puede desdecir.
 
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../../lib/api";
 import { decidirSuerte, esSuerte, nido } from "../../../../lib/datos";
@@ -24,7 +25,9 @@ export async function POST(req: Request) {
   const suerte = b?.suerte;
   if (!esSuerte(suerte)) return error("No sé qué hacer con esa ave.", 400);
 
-  const l = await decidirSuerte(String(b?.id || ""), yo.id, suerte);
+  // El texto solo viaja si el ave viaja. `decidirSuerte` lo recorta al máximo
+  // del ave y lo ignora si no la soltó.
+  const l = await decidirSuerte(String(b?.id || ""), yo.id, suerte, String(b?.texto ?? ""));
   if (!l) return error("Esa ave no está posada en tu ventana.", 404);
 
   const otro = await nido(l.de);
