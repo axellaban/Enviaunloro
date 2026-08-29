@@ -347,12 +347,20 @@ const yaRescatado = new Set<string>();
  * No recupera a alguien con quien nunca intercambiaste un loro. Para eso no
  * quedó rastro, y prefiero decirlo a inventarlo.
  */
-async function rescatarBandada(id: string): Promise<string[]> {
+async function rescatarBandada(id: string): Promise<{ ids: string[]; persistió: boolean }> {
   const enBuzon = await store().leerLista(claveBuzon(id));
-  if (enBuzon.length === 0) return [];
-  // Una sola vez por nido en toda la vida de la base, no una por instancia.
-  if (!(await store().reservar(claveTurno("rescate", id), 0))) return [];
+  if (enBuzon.length === 0) return { ids: [], persistió: true };
 
+  // Sin candado a propósito. La primera versión pedía turno con `reservar`
+  // para no repetir trabajo, y eso tenía un defecto fatal: en Supabase
+  // `reservar` escribe en `loros_conjunto`, LA MISMA TABLA cuya ausencia
+  // causó la pérdida. El rescate quedaba bloqueado exactamente en el único
+  // caso para el que existe. Y un turno ya tomado tampoco significa que la
+  // bandada haya vuelto: si el intento anterior no persistió, negarse a
+  // reintentar deja al nido vacío para siempre.
+  //
+  // `emparejar` es idempotente, así que repetirlo no cuesta nada más que unas
+  // escrituras. La recuperación no puede depender de lo que se rompió.
   const crudos = await store().leerVarios(enBuzon.map(claveLoro));
   const otros = new Set<string>();
   for (const c of crudos) {
@@ -363,23 +371,33 @@ async function rescatarBandada(id: string): Promise<string[]> {
       if (otro && otro !== id) otros.add(otro);
     } catch {}
   }
-  if (otros.size === 0) return [];
+  if (otros.size === 0) return { ids: [], persistió: true };
 
-  await Promise.all([...otros].map((otro) => emparejar(id, otro)));
-  console.warn(`[bandada] rescatadas ${otros.size} amistades de ${id} desde el historial`);
-  return [...otros];
+  const entraron = await Promise.all([...otros].map((otro) => emparejar(id, otro)));
+  const persistió = entraron.every(Boolean);
+  console.warn(
+    `[bandada] ${otros.size} amistades de ${id} reconstruidas desde el historial` +
+      (persistió ? "" : " — PERO no se pudieron guardar: revisá /api/salud")
+  );
+  // Se devuelven igual aunque no hayan persistido: es mejor que las veas
+  // mientras la base se arregla. `persistió` decide si se reintenta.
+  return { ids: [...otros], persistió };
 }
 
 export async function idsAmigos(id: string): Promise<string[]> {
   if (sinBandadaVieja.has(id)) {
     const actuales = await store().leerConjunto(claveAmigos(id));
     if (actuales.length > 0 || yaRescatado.has(id)) return actuales;
-    // Marcar ANTES de intentar: si no, un nido sin nadie se paga una lectura
-    // del buzón en cada sondeo, que es el endpoint más consultado de la app.
-    if (yaRescatado.size > 5000) yaRescatado.clear();
-    yaRescatado.add(id);
-    const rescatados = await rescatarBandada(id);
-    return rescatados.length ? rescatados : actuales;
+    const r = await rescatarBandada(id);
+    // Solo se marca si de verdad quedó guardado. Marcar un rescate que no
+    // persistió es prometerle al nido que ya está resuelto y no volver a
+    // mirarlo nunca: se verían las amistades una vez y desaparecerían en la
+    // consulta siguiente.
+    if (r.persistió) {
+      if (yaRescatado.size > 5000) yaRescatado.clear();
+      yaRescatado.add(id);
+    }
+    return r.ids.length ? r.ids : actuales;
   }
 
   const [nuevos, viejos] = await Promise.all([
@@ -415,12 +433,49 @@ export async function idsAmigos(id: string): Promise<string[]> {
   // al que la migración rota le borró todo. El rescate distingue mirando el
   // historial, y no cuesta nada para quien de verdad no tiene a nadie.
   if (nuevos.length === 0 && !yaRescatado.has(id)) {
-    if (yaRescatado.size > 5000) yaRescatado.clear();
-    yaRescatado.add(id);
-    const rescatados = await rescatarBandada(id);
-    if (rescatados.length) return rescatados;
+    const r = await rescatarBandada(id);
+    if (r.persistió) {
+      if (yaRescatado.size > 5000) yaRescatado.clear();
+      yaRescatado.add(id);
+    }
+    if (r.ids.length) return r.ids;
   }
   return nuevos;
+}
+
+/**
+ * Qué hay realmente detrás de "no veo a nadie en mi bandada".
+ *
+ * Desde el teléfono, una bandada vacía y una base que no puede leer se ven
+ * exactamente igual. Esto separa las dos cosas mirando las tres fuentes por
+ * separado, para /api/salud. No escribe nada: solo cuenta.
+ */
+export async function estadoDeBandada(id: string): Promise<{
+  guardadas: number;
+  enFormatoViejo: number;
+  enHistorial: number;
+}> {
+  const [conjunto, viejo, buzon] = await Promise.all([
+    store().leerConjunto(claveAmigos(id)),
+    leerDoc<string[]>(claveAmigosViejo(id)),
+    store().leerLista(claveBuzon(id)),
+  ]);
+  const otros = new Set<string>();
+  if (buzon.length) {
+    for (const c of await store().leerVarios(buzon.map(claveLoro))) {
+      if (!c) continue;
+      try {
+        const l = JSON.parse(c) as Loro;
+        const otro = l.de === id ? l.para : l.de;
+        if (otro && otro !== id) otros.add(otro);
+      } catch {}
+    }
+  }
+  return {
+    guardadas: conjunto.length,
+    enFormatoViejo: viejo?.length ?? 0,
+    enHistorial: otros.size,
+  };
 }
 
 /** Varios nidos de una, por id. Una sola ida a la base y no una por nido. */
@@ -460,11 +515,14 @@ export async function amigos(id: string): Promise<Nido[]> {
  * la base resuelve el choque, así que seis personas tocando el mismo link en
  * el mismo segundo quedan las seis.
  */
-export async function emparejar(a: string, b: string): Promise<void> {
-  await Promise.all([
+export async function emparejar(a: string, b: string): Promise<boolean> {
+  // Devuelve si las DOS puntas entraron. Una amistad a medias es una amistad
+  // rota, y quien llama tiene que poder distinguirla de una que anduvo.
+  const lados = await Promise.all([
     store().agregarAConjunto(claveAmigos(a), b),
     store().agregarAConjunto(claveAmigos(b), a),
   ]);
+  return lados.every(Boolean);
 }
 
 // ---------- loros ----------

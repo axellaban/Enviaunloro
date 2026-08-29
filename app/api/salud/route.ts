@@ -10,8 +10,9 @@
 // clave). Nada de eso sirve para entrar a ningún lado, y sin eso no se puede
 // diagnosticar nada desde afuera.
 
-import { error, freno, ok } from "../../../lib/api";
+import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
 import { diagnosticar, rolDeClaveSupabase } from "../../../lib/store";
+import { estadoDeBandada } from "../../../lib/datos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,9 +55,23 @@ export async function GET(req: Request) {
     avisos.push("La base está configurada pero no responde: mirá `sugerencia`.");
   }
 
+  // Y el estado de TU bandada, si estás con tu nido abierto. Sin esto, "no veo
+  // a nadie" y "la base está rota" se ven idénticos desde afuera, y hay que
+  // adivinar cuál de los dos es. Acá se ve de una: cuántas amistades hay
+  // guardadas, cuántas quedaron en el formato viejo, y cuántas personas
+  // aparecen en tu historial de loros (que es de dónde se reconstruyen).
+  const yo = await nidoDeRequest(req).catch(() => null);
+  const bandada = yo ? await estadoDeBandada(yo.id).catch(() => null) : null;
+  if (bandada && bandada.guardadas === 0 && bandada.enHistorial > 0) {
+    avisos.push(
+      `Tu bandada figura vacía pero hay ${bandada.enHistorial} persona(s) en tu historial de loros. Se reconstruyen solas al abrir la app; si no vuelven, es porque la base no puede escribir (mirá \`sugerencia\`).`
+    );
+  }
+
   return ok({
     ...d,
     avisos,
+    bandada,
     variables: {
       SUPABASE_URL: Boolean(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL),
       claveSupabase: claveSupabase ? rolDeClaveSupabase(claveSupabase) : "falta",

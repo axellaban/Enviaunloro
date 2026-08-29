@@ -262,7 +262,11 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   width: 100%;
   /* Nunca se encoge: es el asa, y si se achica no hay de dónde agarrar. */
   flex-shrink: 0;
-  padding: 9px 0 5px;
+  /* 22 + 4 de la rayita + 18 = 44 px de zona tocable, el mínimo de iOS y
+     Android. Antes eran 9 + 4 + 5 = 18 px: se veía igual y con el pulgar se le
+     erraba casi siempre, y el dedo terminaba en la lista de abajo, que hace
+     scroll. Una hoja arrastrable con un asa de 18 px no se arrastra. */
+  padding: 22px 0 18px;
   background: none;
   border: none;
   cursor: grab;
