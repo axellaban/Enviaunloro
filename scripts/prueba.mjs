@@ -85,6 +85,74 @@ const chequear = (c, m) => { if (!c) fallos++; ok(c, m); };
   );
 }
 
+// --- el arco del mapa ---
+//
+// Las rutas se dibujan con una panza al costado: un ave despega, toma altura y
+// baja del otro lado, y una recta no cuenta nada de eso. Lo que se verifica acá
+// es que el adorno no toque el producto —el ave sale del nido, llega al nido, y
+// la distancia con la que se calcula el tiempo sigue siendo la real— porque un
+// dibujo lindo que mueve las cuentas es un bug con buena presencia.
+{
+  let geo = null;
+  try {
+    geo = await import("../lib/geo.ts");
+  } catch {
+    console.log("   (este Node no lee TypeScript: sin chequeo del arco)");
+  }
+  if (geo) {
+    const { distanciaKm, puntoEnRuta, puntoEnArco, arco, flechaKm, CURVA, CURVA_TECHO_KM } = geo;
+    const largo = (ps) => ps.slice(1).reduce((t, q, i) => t + distanciaKm(ps[i], q), 0);
+    const casos = [
+      ["vecinos", { lat: -34.6037, lng: -58.3816 }, { lat: -34.606, lng: -58.38 }],
+      ["misma ciudad", { lat: -34.6037, lng: -58.3816 }, { lat: -34.69, lng: -58.29 }],
+      ["cruzando el Atlántico", { lat: -34.6037, lng: -58.3816 }, { lat: 40.4168, lng: -3.7038 }],
+    ];
+    for (const [nombre, a, b] of casos) {
+      const ps = arco(a, b, 256);
+      chequear(
+        distanciaKm(ps[0], a) < 1e-6 && distanciaKm(ps[ps.length - 1], b) < 1e-6,
+        `${nombre}: el arco sale del nido y aterriza en el nido, no al lado`
+      );
+
+      const panza = distanciaKm(puntoEnArco(a, b, 0.5), puntoEnRuta(a, b, 0.5));
+      const esperada = flechaKm(distanciaKm(a, b));
+      chequear(
+        Math.abs(panza - esperada) < Math.max(1e-6, esperada * 0.01),
+        `${nombre}: la panza mide lo que dice (${panza.toFixed(2)} km)`
+      );
+
+      // Lo que importa: el camino dibujado no alarga el viaje. Si esto se
+      // dispara, el ave estaría cruzando la pantalla más rápido que los km/h
+      // que promete su tarjeta.
+      const recto = largo(Array.from({ length: 257 }, (_, i) => puntoEnRuta(a, b, i / 256)));
+      const extra = (largo(ps) / recto - 1) * 100;
+      chequear(extra < 3, `${nombre}: el dibujo es ${extra.toFixed(2)}% más largo que la distancia real`);
+
+      // La vuelta cae del otro lado sola, porque la panza va siempre al mismo
+      // lado de la marcha. Si se pisaran, un mensaje que va y vuelve sería una
+      // sola línea.
+      chequear(
+        distanciaKm(puntoEnArco(a, b, 0.5), puntoEnArco(b, a, 0.5)) > esperada * 1.5,
+        `${nombre}: la vuelta se dibuja del otro lado`
+      );
+    }
+
+    // Los vuelos largos ya se curvan solos: ahí la panza toca el techo y no
+    // convierte el cruce del Atlántico en un rulo.
+    chequear(
+      flechaKm(10_000) === CURVA_TECHO_KM && Math.abs(flechaKm(100) - 100 * CURVA) < 1e-9,
+      `la panza es proporcional hasta el techo de ${CURVA_TECHO_KM} km`
+    );
+
+    // Y con la curva en cero vuelve a ser lo de antes, sin sacar una línea.
+    const recto = arco({ lat: 0, lng: 0 }, { lat: 10, lng: 10 }, 32, 0);
+    chequear(
+      recto.every((q, i) => distanciaKm(q, puntoEnRuta({ lat: 0, lng: 0 }, { lat: 10, lng: 10 }, i / 32)) < 1e-9),
+      "con la curva en 0 las rutas vuelven a ser el círculo máximo pelado"
+    );
+  }
+}
+
 // --- alta de las dos puntas ---
 const ana = cliente("Ana");
 const beto = cliente("Beto");

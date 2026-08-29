@@ -399,6 +399,20 @@ hay token. Dos cosas que no son de fábrica:
   hora de salida, la de llegada y los dos puntos alcanza. El servidor se
   consulta cada varios segundos y el ave igual se mueve a 60 cuadros por
   segundo, porque cada cuadro se recalcula en el navegador.
+- **Las rutas se dibujan con una panza al costado**, no rectas. Un ave despega,
+  toma altura y baja del otro lado; en el mapa no hay altura, pero sí se puede
+  insinuar con un arco, que es lo que hacen todos los mapas de vuelos y lo que
+  ya dibujaba la portada con sus bezier —adentro, en cambio, todo salía recto.
+  La panza mide un 6 % de la distancia y tiene techo, porque un vuelo
+  transatlántico ya se curva solo por el círculo máximo. Va siempre al mismo
+  lado de la marcha, y eso resuelve gratis el dibujo de la vuelta: como vuelve
+  al revés, su arco cae del otro lado y las dos líneas no se pisan.
+
+  El arco es **dibujo**: la distancia con la que se calcula cuánto tarda cada
+  ave sigue siendo la real entre las dos personas. El camino que se ve es un
+  1,5 % más largo que esa recta y ese 1,5 % no se le cobra a nadie. Se apaga
+  entero poniendo `CURVA` en 0 (`lib/geo.ts`), sin sacar una línea de código.
+
 - **El mapa gira con dos dedos**, como Google Maps, vía
   [`leaflet-rotate`](https://github.com/Raruto/leaflet-rotate) (`shift` +
   arrastrar en la compu). Leaflet no sabe girar solo: el plugin le cambia la
@@ -599,7 +613,7 @@ lib/aves.ts       la tabla de las seis especies. Todo sale de acá.
 lib/vuelo.ts      la fórmula del vuelo. Pura, y la usan servidor Y navegador:
                   si no fueran la misma cuenta, la app prometería un tiempo
                   y cumpliría otro.
-lib/geo.ts        haversine, ruta de círculo máximo, rumbo, formatos.
+lib/geo.ts        haversine, círculo máximo, el arco que se dibuja, rumbo, formatos.
 lib/datos.ts      nidos, amistades, loros, la suerte del ave, Doña Cotorra.
 lib/olvido.ts     lo que llega cuando no llega tal cual: la cotorra y la perica.
 lib/tramos.ts     los vuelos dibujables: la ida de cada loro y, si lo soltaron,

@@ -31,7 +31,7 @@ import "leaflet/dist/leaflet.css";
 // creado antes de esta línea no giraría.
 import "leaflet-rotate";
 import { AVES, type AveId } from "../lib/aves";
-import { desplazar, puntoEnRuta, rumbo, ruta, type Punto } from "../lib/geo";
+import { arco, desplazar, puntoEnArco, rumbo, type Punto } from "../lib/geo";
 import { avanceVuelo } from "../lib/vuelo";
 import { tramosDelMundo, tramosEnElAire, type Tramo } from "../lib/tramos";
 import { aveHtml } from "./Ave";
@@ -434,7 +434,7 @@ export default function Mapa({
       // se distrae. Por eso se comprueba también sobre capas ya creadas.
       if (existente) {
         if (v.desvio && !existente.giro) {
-          const centro = puntoEnRuta(v.origen, v.destino, v.desvio.en);
+          const centro = puntoEnArco(v.origen, v.destino, v.desvio.en);
           existente.giro = {
             circulo: L.circle([centro.lat, centro.lng], {
               radius: radioGiro(v.distanciaKm) * 1000,
@@ -455,7 +455,7 @@ export default function Mapa({
         continue;
       }
 
-      const puntos = ruta(v.origen, v.destino, 96);
+      const puntos = arco(v.origen, v.destino, 96);
       const latlngs = puntos.map((p) => [p.lat, p.lng] as [number, number]);
 
       // La paloma va sembrando flores. Se crean las siete de una y arrancan
@@ -464,7 +464,7 @@ export default function Mapa({
       const flores: L.Marker[] =
         v.ave === "paloma" && !v.vuelta
           ? Array.from({ length: FLORES }, (_, i) => {
-              const p = puntoEnRuta(v.origen, v.destino, (i + 1) / (FLORES + 1));
+              const p = puntoEnArco(v.origen, v.destino, (i + 1) / (FLORES + 1));
               return L.marker([p.lat, p.lng], {
                 icon: L.divIcon({
                   className: "marcador-ave",
@@ -530,17 +530,17 @@ export default function Mapa({
 
         // Dónde está y hacia dónde mira. Mientras da vueltas, el ave no avanza:
         // orbita el punto donde se distrajo, y apunta a la tangente.
-        const enRuta = puntoEnRuta(v.origen, v.destino, t);
-        let pos = enRuta;
+        const enArco = puntoEnArco(v.origen, v.destino, t);
+        let pos = enArco;
         let grados: number;
         if (girando) {
           const angulo = ((ahora % GIRO_MS) / GIRO_MS) * 360;
-          pos = desplazar(enRuta, radioGiro(v.distanciaKm), angulo);
+          pos = desplazar(enArco, radioGiro(v.distanciaKm), angulo);
           grados = angulo + 90;
         } else {
-          const adelante = puntoEnRuta(v.origen, v.destino, Math.min(1, t + 0.01));
+          const adelante = puntoEnArco(v.origen, v.destino, Math.min(1, t + 0.01));
           grados =
-            t < 0.995 ? rumbo(pos, adelante) : rumbo(puntoEnRuta(v.origen, v.destino, 0.98), pos);
+            t < 0.995 ? rumbo(pos, adelante) : rumbo(puntoEnArco(v.origen, v.destino, 0.98), pos);
         }
         capa.ave.setLatLng([pos.lat, pos.lng]);
 
@@ -603,12 +603,12 @@ export default function Mapa({
     // Todavía no llegó nada: se vuelve a intentar cuando llegue.
     if (vista === "resto" && tramos.length === 0) return;
 
-    // Sobre los puntos de la ruta y no sobre las dos puntas: un vuelo largo se
-    // curva bastante afuera de la caja que forman su origen y su destino, y
-    // encuadrando las puntas el arco se salía por arriba de la pantalla.
+    // Sobre los puntos del arco y no sobre las dos puntas: la panza se sale
+    // de la caja que forman origen y destino —y un vuelo largo, además, se
+    // curva solo—, así que encuadrando las puntas el arco quedaba cortado.
     const limites = L.latLngBounds([]);
     for (const t of tramos) {
-      for (const p of ruta(t.origen, t.destino, 16)) limites.extend([p.lat, p.lng]);
+      for (const p of arco(t.origen, t.destino, 16)) limites.extend([p.lat, p.lng]);
     }
     if (vista === "tuyos" && yo) limites.extend([yo.lat, yo.lng]);
     if (!limites.isValid()) return;
@@ -629,7 +629,7 @@ export default function Mapa({
     const tramo = tramosEnElAire(vuelos, ahora).find((t) => t.loroId === id);
     if (tramo) {
       const { avance } = avanceVuelo(tramo, ahora);
-      const p = puntoEnRuta(tramo.origen, tramo.destino, avance);
+      const p = puntoEnArco(tramo.origen, tramo.destino, avance);
       m.flyTo([p.lat, p.lng], Math.max(m.getZoom(), 11), { duration: 0.9 });
       return;
     }

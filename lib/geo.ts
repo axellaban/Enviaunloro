@@ -68,10 +68,75 @@ export function rumbo(a: Punto, b: Punto): number {
   return (aGrados(Math.atan2(y, x)) + 360) % 360;
 }
 
-/** La ruta completa, para dibujarla como línea en el mapa. */
-export function ruta(a: Punto, b: Punto, pasos = 64): Punto[] {
+// ---------- el arco ----------
+//
+// Un ave no sale en línea recta hacia el destino: despega, toma altura, se
+// deja llevar y baja del otro lado. En el mapa eso no se puede mostrar —no hay
+// altura— pero sí se puede insinuar con una panza al costado, que es lo que
+// hacen todos los mapas de vuelos y lo que ya dibujaba la portada de esta app
+// con sus bezier. Adentro, en cambio, las rutas salían rectas: la promesa de la
+// portada y lo que se ve al entrar no eran lo mismo.
+//
+// LO QUE NO CAMBIA, y es lo que importa: el arco es DIBUJO. La distancia con
+// la que se calcula cuánto tarda cada ave sigue siendo la real entre las dos
+// personas —el círculo máximo, `distanciaKm`— y de eso vive el producto. El
+// camino dibujado es menos de un 1,5% más largo que esa recta, y ese 1,5% no se
+// le cobra a nadie: el ave sale y llega exactamente cuando decía que iba a
+// llegar.
+
+/**
+ * La panza del arco, como parte de la distancia. Es lo único que hay que tocar
+ * para que las rutas se curven más o menos.
+ *
+ * Con esto en 0 vuelve a ser todo recto, sin sacar una línea de código.
+ */
+export const CURVA = 0.06;
+
+/**
+ * Pero con techo, porque los vuelos largos YA se curvan solos: el círculo
+ * máximo de Buenos Aires a Madrid se va bien al norte por su cuenta, y una
+ * panza de mil kilómetros arriba de eso lo deja pareciendo un rulo. En un vuelo
+ * de barrio el arco es todo lo que hay; en uno que cruza el Atlántico es un
+ * detalle arriba de una curva que ya existe.
+ */
+export const CURVA_TECHO_KM = 120;
+
+/** Cuánto se despega el arco de la recta en su punto más alto, en km. */
+export function flechaKm(km: number, curva = CURVA): number {
+  return Math.min(km * curva, CURVA_TECHO_KM);
+}
+
+/**
+ * Igual que `puntoEnRuta`, pero sobre el arco que se dibuja.
+ *
+ * La panza se abre perpendicular al camino y va con el seno de `t`: cero en las
+ * dos puntas —el ave sale del nido y aterriza en el nido, no al lado— y máxima
+ * en el medio. Siempre para el mismo lado de la marcha, y eso resuelve solo el
+ * dibujo de la vuelta: como vuelve al revés, su arco cae del otro lado y las
+ * dos líneas no se pisan.
+ */
+export function puntoEnArco(a: Punto, b: Punto, t: number, curva = CURVA): Punto {
+  const base = puntoEnRuta(a, b, t);
+  if (curva <= 0) return base;
+
+  const alto = flechaKm(distanciaKm(a, b), curva) * Math.sin(Math.PI * t);
+  // Menos de un metro no lo ve nadie, y de paso evita pedirle un rumbo a dos
+  // puntos que son el mismo.
+  if (!(alto > 0.001)) return base;
+
+  // Perpendicular a la tangente de acá, y no a la recta entre las puntas: en un
+  // vuelo largo el rumbo gira decenas de grados en el camino, y la panza tiene
+  // que abrirse al costado del camino en cada tramo.
+  const paso = 1e-3;
+  const t0 = Math.max(0, Math.min(1 - paso, t - paso / 2));
+  const tangente = rumbo(puntoEnRuta(a, b, t0), puntoEnRuta(a, b, t0 + paso));
+  return desplazar(base, alto, tangente + 90);
+}
+
+/** El arco entero, para dibujarlo como línea en el mapa. */
+export function arco(a: Punto, b: Punto, pasos = 64, curva = CURVA): Punto[] {
   const puntos: Punto[] = [];
-  for (let i = 0; i <= pasos; i++) puntos.push(puntoEnRuta(a, b, i / pasos));
+  for (let i = 0; i <= pasos; i++) puntos.push(puntoEnArco(a, b, i / pasos, curva));
   return puntos;
 }
 
