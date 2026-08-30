@@ -35,6 +35,7 @@ export type ConviteEnPortada = {
   copetines: number;
   haciendo: string;
   yaSalio: boolean;
+  estado: "yendo" | "barra" | "volviendo" | "encasa" | "reclamado" | "cancelado";
   sosVos: boolean;
   esTuyo: boolean;
 };
@@ -126,12 +127,23 @@ function SaludoDeConvite({ c }: { c: ConviteEnPortada }) {
           </>
         ) : c.yaSalio ? (
           <>Ese lorito ya salió para otro lado.</>
+        ) : c.estado === "cancelado" ? (
+          <>
+            <strong>{c.de}</strong> llamó de vuelta a {a.articulo === "la" ? "esa" : "ese"}{" "}
+            {a.nombre.toLowerCase()}. Ese link ya no trae nada.
+          </>
         ) : (
           <>
             <strong>{c.de}</strong> te mandó {a.articulo === "la" ? "una" : "un"}{" "}
             {a.nombre.toLowerCase()}
             {c.para ? <> a vos, {c.para}</> : null}.{" "}
-            {enLaBarra ? (
+            {c.estado === "encasa" || c.estado === "volviendo" ? (
+              <>
+                Se cansó de esperarte en una cervecería
+                {c.copetines > 0 ? `, con ${c.copetines} copetín${c.copetines === 1 ? "" : "es"} encima,` : ""}{" "}
+                y se volvió a dormirla. Armá tu nido y sale igual.
+              </>
+            ) : enLaBarra ? (
               <>
                 Está esperando en una cervecería{c.barrio ? ` de ${ciudadDe(c.barrio)}` : ""}
                 {c.copetines > 0 ? ` y ya lleva ${c.copetines} copetín${c.copetines === 1 ? "" : "es"}` : ""}.

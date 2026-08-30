@@ -35,6 +35,8 @@ type Convite = {
   tenesNido: boolean;
   /** Ya salió para otro lado: el link llegó tarde. */
   yaSalio: boolean;
+  /** Lo llamaron de vuelta: el link no trae nada. */
+  cancelado: boolean;
   /** Lo mandaste vos, o ya lo reclamaste vos. En los dos casos no hay nada que
    *  destrabar acá. */
   tuyo: boolean;
@@ -58,6 +60,7 @@ export function PortadaCta() {
           de: j.convite.de,
           tenesNido: Boolean(j.tenesNido),
           yaSalio: Boolean(j.convite.yaSalio),
+          cancelado: j.convite.estado === "cancelado",
           tuyo: Boolean(j.sosVos || j.esTuyo),
         });
       })
@@ -95,7 +98,7 @@ export function PortadaCta() {
   // contar, no "sumate a la app".
   if (convite) {
     const a = AVES[convite.ave];
-    const destrabable = !convite.yaSalio && !convite.tuyo;
+    const destrabable = !convite.yaSalio && !convite.cancelado && !convite.tuyo;
     const texto = !destrabable
       ? convite.tenesNido
         ? "Ir a mi nido"

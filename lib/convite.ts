@@ -33,6 +33,7 @@ import { AVES } from "./aves";
 import {
   borrachera,
   dondeLaCerveceria,
+  esperaMaximaEnLaBarra,
   esperaMinimaEnLaBarra,
   MINUTOS_HASTA_LA_PARADA,
   type Parada,
@@ -49,7 +50,7 @@ import {
 } from "./datos";
 import { lugarDe } from "./geocode";
 import { duracionVuelo } from "./vuelo";
-import type { Punto } from "./geo";
+import { distanciaKm, type Punto } from "./geo";
 import { escribirDoc, leerDoc, store } from "./store";
 import { nuevoId } from "./sesion";
 
@@ -70,6 +71,16 @@ export type Convite = {
   llegadaPosada: number;
   /** Quién lo abrió, cuándo, y el loro que salió de ahí. null mientras espera. */
   reclamado: { nido: string; cuando: number; loro: string } | null;
+  /**
+   * Cuándo lo llamaste de vuelta. null si sigue su curso.
+   *
+   * Es lo único que MATA un convite: el ave vuelve y el link deja de servir.
+   * Existe porque un lorito soltado por error no tenía arreglo — el mensaje ya
+   * estaba escrito, el link ya estaba mandado, y lo único que quedaba era
+   * esperar a que alguien lo abriera. Volverse a las 48 horas resuelve el ave
+   * olvidada; esto resuelve el arrepentimiento, que es otra cosa y es ya.
+   */
+  cancelado: number | null;
 };
 
 const claveConvite = (id: string) => `convite:${id}`;
@@ -144,6 +155,7 @@ export async function crearConvite(datos: {
         escalaGlobal()
       ),
     reclamado: null,
+    cancelado: null,
   };
 
   await escribirDoc(claveConvite(id), c);
@@ -163,6 +175,25 @@ function ponerleNombreALaCerveceria(id: string, p: Punto): void {
       if (actual) await escribirDoc(claveConvite(id), { ...actual, lugar });
     })
     .catch(() => {});
+}
+
+/**
+ * Los dos horarios que no se guardan: cuándo se cansa y cuándo llega a casa.
+ *
+ * Se calculan y no se escriben, igual que la posición de un ave en vuelo: son
+ * consecuencia de horarios que ya están guardados, y un campo más es un campo
+ * más que puede quedar desactualizado.
+ */
+export function horariosDelConvite(
+  c: Convite,
+  nido: Punto,
+  escala = 1
+): { abandona: number; enCasa: number } {
+  const abandona = c.llegadaPosada + esperaMaximaEnLaBarra(escala);
+  return {
+    abandona,
+    enCasa: abandona + duracionVuelo(distanciaKm(c.posada, nido), c.ave, escala),
+  };
 }
 
 export async function convite(id: string): Promise<Convite | null> {
@@ -218,6 +249,10 @@ export async function reclamarConvite(
     return { ok: false, error: "Ese lorito lo mandaste vos." };
   }
 
+  if (c.cancelado !== null) {
+    return { ok: false, error: "Ese lorito volvió a su nido: quien lo mandó lo llamó de vuelta." };
+  }
+
   // Dos personas abriendo el mismo link en el mismo segundo: gana una sola. El
   // mensaje fue escrito para una persona y el ave es una.
   if (!(await store().reservar(claveTurno("convite", c.id), 0))) {
@@ -231,29 +266,53 @@ export async function reclamarConvite(
 
   const ahora = Date.now();
   const escala = escalaGlobal();
-  // Cuándo se levanta de la mesa. Dos pisos, y los dos importan:
+  const nidoDeQuienMando: Punto = { lat: de.lat, lng: de.lng };
+  const { abandona, enCasa } = horariosDelConvite(c, nidoDeQuienMando, escala);
+
+  // Dónde está el ave cuando abren el link, que es lo que decide todo lo demás.
+  // A las 48 horas se cansa de esperar y se vuelve; si abrieron después de eso,
+  // el ave ya está —o va a estar— en el nido de quien la mandó.
+  const seVolvio = ahora >= abandona;
+
+  // Cuándo se levanta, y de dónde sale. Tres pisos, y los tres importan:
   //
-  //   No antes de haber LLEGADO. Si abrieron el link a los treinta segundos,
-  //   el ave todavía está en el aire rumbo a la barra; llega y recién ahí se
-  //   pone a terminar. No se teletransporta ni pega la vuelta.
+  //   No antes de haber LLEGADO a la barra. Si abrieron el link a los treinta
+  //   segundos, el ave todavía está en el aire rumbo a ella; llega y recién ahí
+  //   se pone a terminar. No se teletransporta ni pega la vuelta.
   //
-  //   Y no antes de un minuto DESDE QUE ABRIERON EL LINK. Es el mejor momento
-  //   de todo esto: alguien acaba de armar su nido y lo primero que ve en su
-  //   mapa es un ave terminando el copetín antes de salir para su casa.
-  const salida = Math.max(c.llegadaPosada, ahora + esperaMinimaEnLaBarra(escala));
-  const espera = salida - c.llegadaPosada;
-  const b = borrachera(espera, escala);
+  //   Ni antes de haber llegado A CASA, si ya se había vuelto. Misma razón.
+  //
+  //   Y nunca antes de un minuto DESDE QUE ABRIERON EL LINK. Es el mejor
+  //   momento de todo esto: alguien acaba de armar su nido y lo primero que ve
+  //   en su mapa es el ave despidiéndose antes de salir para su casa.
+  const piso = seVolvio ? enCasa : c.llegadaPosada;
+  const salida = Math.max(piso, ahora + esperaMinimaEnLaBarra(escala));
+
+  // Los copetines se cuentan por lo que estuvo EN LA BARRA, no por lo que
+  // tardaron en abrir el link: una vez que se volvió al nido, lo que pasa es
+  // que la duerme.
+  const b = borrachera((seVolvio ? abandona : salida) - c.llegadaPosada, escala);
 
   const parada: Parada = {
     punto: c.posada,
     lugar: c.lugar,
     llegada: c.llegadaPosada,
     salida,
-    nivel: b.nivel,
+    // Durmiendo la mona no arrastra la lengua: el mensaje sale entero.
+    nivel: seVolvio ? 0 : b.nivel,
     copetines: b.copetines,
+    ...(seVolvio ? { durmioLaMona: true } : {}),
   };
 
-  const r = await enviarLoro({ de, para: quien, ave: c.ave, texto: c.texto, parada });
+  const r = await enviarLoro({
+    de,
+    para: quien,
+    ave: c.ave,
+    texto: c.texto,
+    parada,
+    // Y sale de donde está: de la barra, o del nido si ya se había vuelto.
+    ...(seVolvio ? { desde: nidoDeQuienMando } : {}),
+  });
   if (!r.ok) return { ok: false, error: r.error };
 
   await escribirDoc(claveConvite(c.id), {
@@ -262,4 +321,46 @@ export async function reclamarConvite(
   } satisfies Convite);
 
   return { ok: true, convite: c, loro: r.loro, deNombre: de.nombre };
+}
+
+
+export type ResultadoCancelar =
+  | { ok: true; convite: Convite; vuelveEn: number }
+  | { ok: false; error: string };
+
+/**
+ * Llamarlo de vuelta.
+ *
+ * Un silbido, no un botón de borrar: el ave deja la barra y se vuelve al nido,
+ * y el link deja de servir. Es la única forma de deshacer un lorito soltado por
+ * error —el mensaje equivocado, el link al contacto equivocado— y no hay otra:
+ * a las 48 horas se vuelve solo, pero arrepentirse es ahora.
+ *
+ * Solo lo puede llamar quien lo soltó, y solo mientras nadie lo haya abierto:
+ * después de eso ya no es un convite, es un loro en vuelo, y lo que se hace con
+ * un loro que ya llegó lo decide quien lo recibió.
+ */
+export async function cancelarConvite(
+  llave: string,
+  quien: Nido
+): Promise<ResultadoCancelar> {
+  const c = await convite(llave);
+  if (!c) return { ok: false, error: "Ese lorito no existe o ya no está." };
+  if (c.de !== quien.id) return { ok: false, error: "Ese lorito no es tuyo." };
+  if (c.reclamado) {
+    return { ok: false, error: "Ese lorito ya salió: ahora es un loro en vuelo." };
+  }
+  if (c.cancelado !== null) return { ok: true, convite: c, vuelveEn: 0 };
+
+  const ahora = Date.now();
+  const escala = escalaGlobal();
+  const nido: Punto = { lat: quien.lat, lng: quien.lng };
+  // Vuelve desde donde esté: si todavía va camino a la barra, desde la barra
+  // igual —no da media vuelta en el aire, termina de llegar— y si ya se estaba
+  // volviendo sola, no se le suma nada.
+  const desde = Math.max(ahora, c.llegadaPosada);
+  const vuelve = desde + duracionVuelo(distanciaKm(c.posada, nido), c.ave, escala);
+
+  await escribirDoc(claveConvite(c.id), { ...c, cancelado: ahora } satisfies Convite);
+  return { ok: true, convite: c, vuelveEn: Math.max(0, vuelve - ahora) };
 }

@@ -788,7 +788,9 @@ export default function Mapa({
       const mapaActual = mapa.current;
       if (vista === "tuyos" && mapaActual) {
         for (const c of convites) {
-          if (ahora < c.llegadaPosada) continue;
+          // Solo mientras esté SENTADA ahí: cuando se vuelve, la barra deja de
+          // ser parte de la historia y el ave pasa a ser un tramo de vuelo.
+          if (c.estado !== "barra") continue;
           barras.set(`convite:${c.id}`, {
             punto: c.posada,
             ave: c.ave,

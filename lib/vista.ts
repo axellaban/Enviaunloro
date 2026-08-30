@@ -17,9 +17,10 @@
 // Tu propio nido sí viaja exacto: es tu dato.
 
 import type { AveId } from "./aves";
-import type { Convite } from "./convite";
+import { horariosDelConvite, type Convite } from "./convite";
 import type { Loro, Nido, Suerte } from "./datos";
-import type { Parada } from "./cerveceria";
+import { estadoDeConvite, type EstadoConvite, type Parada } from "./cerveceria";
+import { duracionVuelo } from "./vuelo";
 import type { Desvio } from "./vuelo";
 import { distanciaKm, type Punto } from "./geo";
 import { RADIO_ZONA_KM, zonaDe, zonaMundial } from "./privacidad";
@@ -128,6 +129,14 @@ export type ConviteVista = {
   distanciaKm: number;
   /** Si ya salió: no hay nada más que esperar, el loro cuenta el resto. */
   reclamado: boolean;
+  /** Cuándo se cansa de esperar y arranca de vuelta, y cuándo llega. */
+  abandona: number;
+  enCasa: number;
+  /** Cuándo lo llamaron de vuelta, y cuándo llega al nido si así fue. */
+  cancelado: number | null;
+  vuelveA: number | null;
+  /** En qué anda, ya resuelto: la pantalla no tiene que hacer la cuenta. */
+  estado: EstadoConvite;
 };
 
 const punto = (n: Nido): Punto => ({ lat: n.lat, lng: n.lng });
@@ -315,8 +324,21 @@ export function verVueloMundial(l: Loro, ahora: number): VueloMundo {
  * por la razón de siempre: las dos son suyas. El nido es el propio y la
  * cervecería la eligió su propia ave.
  */
-export function verConvite(c: Convite, de: Nido): ConviteVista {
+export function verConvite(
+  c: Convite,
+  de: Nido,
+  escala = 1,
+  ahora = Date.now()
+): ConviteVista {
   const origen: Punto = { lat: de.lat, lng: de.lng };
+  const km = distanciaKm(origen, c.posada);
+  const { abandona, enCasa } = horariosDelConvite(c, origen, escala);
+  // Si lo llamaron de vuelta, el ave arranca desde donde esté —terminando de
+  // llegar a la barra si todavía iba— y tarda lo mismo que tardó en ir.
+  const vuelveA =
+    c.cancelado === null
+      ? null
+      : Math.max(c.cancelado, c.llegadaPosada) + duracionVuelo(km, c.ave, escala);
   return {
     id: c.id,
     ave: c.ave,
@@ -327,7 +349,21 @@ export function verConvite(c: Convite, de: Nido): ConviteVista {
     lugar: c.lugar,
     llegadaPosada: c.llegadaPosada,
     origen,
-    distanciaKm: distanciaKm(origen, c.posada),
+    distanciaKm: km,
     reclamado: Boolean(c.reclamado),
+    abandona,
+    enCasa,
+    cancelado: c.cancelado,
+    vuelveA,
+    estado: estadoDeConvite(
+      {
+        llegadaPosada: c.llegadaPosada,
+        abandona,
+        enCasa,
+        reclamado: Boolean(c.reclamado),
+        cancelado: c.cancelado,
+      },
+      ahora
+    ),
   };
 }

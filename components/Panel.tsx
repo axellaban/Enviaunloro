@@ -165,7 +165,13 @@ export function Panel(p: Props) {
           <>
             {soloLaVecina && <TraeAAlguien codigo={p.codigo} hayVuelo={enVuelo.length > 0} />}
             {p.convites.map((c) => (
-              <TarjetaConvite key={c.id} convite={c} ahora={ahora} escala={p.escala} />
+              <TarjetaConvite
+                key={c.id}
+                convite={c}
+                ahora={ahora}
+                escala={p.escala}
+                refrescar={p.refrescar}
+              />
             ))}
             {enVuelo.length + volviendo.length + p.convites.length === 0 ? (
               <Vacio
@@ -311,15 +317,52 @@ function TarjetaConvite({
   convite,
   ahora,
   escala,
+  refrescar,
 }: {
   convite: ConviteVista;
   ahora: number;
   escala: number;
+  refrescar: () => void;
 }) {
   const [copiado, setCopiado] = useState(false);
+  /** Dos toques para llamarlo de vuelta: el segundo confirma. */
+  const [porLlamar, setPorLlamar] = useState(false);
+  const [llamando, setLlamando] = useState(false);
   const a = AVES[convite.ave];
-  const enLaBarra = ahora >= convite.llegadaPosada;
-  const b = borrachera(enLaBarra ? ahora - convite.llegadaPosada : 0, escala);
+  const estado = convite.estado;
+  const enLaBarra = estado === "barra";
+  // Los copetines se cuentan por lo que estuvo EN la barra: una vez que se
+  // volvió al nido, lo que hace es dormirla.
+  const b = borrachera(
+    Math.max(0, Math.min(ahora, convite.abandona) - convite.llegadaPosada),
+    escala
+  );
+
+  async function llamar() {
+    setLlamando(true);
+    try {
+      await pedir("/api/convite", { metodo: "DELETE", datos: { c: convite.id } });
+      refrescar();
+    } catch {
+      setLlamando(false);
+      setPorLlamar(false);
+    }
+  }
+
+  // Qué está pasando, en un renglón. Cada momento del convite tiene el suyo:
+  // decir "en una cervecería" de un ave que ya se volvió a casa es mentir.
+  const donde =
+    estado === "yendo"
+      ? `Yendo a la cervecería · ${cuentaRegresiva(convite.llegadaPosada - ahora)}`
+      : estado === "barra"
+        ? `En una cervecería${convite.lugar ? ` de ${ciudadDe(convite.lugar)}` : ""}`
+        : estado === "volviendo"
+          ? `Se cansó de esperar · vuelve en ${cuentaRegresiva(convite.enCasa - ahora)}`
+          : estado === "cancelado"
+            ? convite.vuelveA && ahora < convite.vuelveA
+              ? `Lo llamaste · vuelve en ${cuentaRegresiva(convite.vuelveA - ahora)}`
+              : "Volvió a tu nido"
+            : "Durmiendo la mona en tu nido";
 
   return (
     <div
@@ -327,22 +370,19 @@ function TarjetaConvite({
       style={{ padding: 14, marginBottom: 10, borderColor: `${a.color}55` }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <Ave especie={convite.ave} size={30} aletea={!enLaBarra} />
+        <Ave especie={convite.ave} size={30} aletea={estado === "yendo" || estado === "volviendo" || estado === "cancelado"} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14.5, fontWeight: 700 }}>
             {a.nombre} {convite.para ? `→ ${convite.para}` : "→ sin abrir"}
           </p>
-          <p style={{ color: "var(--tenue)", fontSize: 12 }}>
-            {enLaBarra
-              ? `En una cervecería${convite.lugar ? ` de ${ciudadDe(convite.lugar)}` : ""}`
-              : `Yendo a la cervecería · ${cuentaRegresiva(convite.llegadaPosada - ahora)}`}
-          </p>
+          <p style={{ color: "var(--tenue)", fontSize: 12 }}>{donde}</p>
         </div>
         {enLaBarra && (
           <span style={{ fontSize: 19 }} title={`${b.copetines} copetines`}>
             {b.copetines === 0 ? "🪑" : b.nivel >= 0.75 ? "🥴" : "🍺"}
           </span>
         )}
+        {estado === "encasa" && <span style={{ fontSize: 19 }}>😴</span>}
       </div>
 
       {enLaBarra && (
@@ -362,18 +402,62 @@ function TarjetaConvite({
         </p>
       )}
 
-      <button
-        className="boton chico"
-        style={{ width: "100%" }}
-        onClick={async () => {
-          if (await compartirConvite(convite)) {
-            setCopiado(true);
-            setTimeout(() => setCopiado(false), 2200);
-          }
-        }}
-      >
-        {copiado ? "✓ Link copiado" : "Pasarle el link otra vez"}
-      </button>
+      {/* Se volvió, pero el link NO se murió: sale igual, desde el nido. Es la
+          diferencia entre "se te venció" y "tarda más porque tardaste". */}
+      {estado === "encasa" && (
+        <p
+          style={{
+            fontSize: 12.5,
+            lineHeight: 1.5,
+            color: "var(--suave)",
+            borderLeft: `2px solid ${a.color}`,
+            paddingLeft: 10,
+            marginBottom: 12,
+          }}
+        >
+          Se cansó de esperar y se volvió. <strong>El link sigue sirviendo</strong>
+          : cuando lo abran, sale de tu nido y llega sobrio — pero tarda más,
+          porque ahora el camino es entero.
+        </p>
+      )}
+
+      {estado === "cancelado" ? (
+        <p style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--tenue)" }}>
+          Ese link ya no sirve. El mensaje vuelve con el ave.
+        </p>
+      ) : (
+        <>
+          <button
+            className="boton chico"
+            style={{ width: "100%" }}
+            onClick={async () => {
+              if (await compartirConvite(convite)) {
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2200);
+              }
+            }}
+          >
+            {copiado ? "✓ Link copiado" : "Pasarle el link otra vez"}
+          </button>
+
+          {/* Llamarlo de vuelta. Es la única forma de deshacer un lorito
+              soltado por error, y por eso pide dos toques: el ave vuelve, el
+              link deja de servir y no hay cómo volver atrás de eso. */}
+          <button
+            className="boton chico fantasma"
+            style={{ width: "100%", marginTop: 8 }}
+            disabled={llamando}
+            onClick={() => (porLlamar ? llamar() : setPorLlamar(true))}
+            onBlur={() => setPorLlamar(false)}
+          >
+            {llamando
+              ? "Silbando…"
+              : porLlamar
+                ? "¿Seguro? El link deja de servir"
+                : "Llamarlo de vuelta"}
+          </button>
+        </>
+      )}
     </div>
   );
 }

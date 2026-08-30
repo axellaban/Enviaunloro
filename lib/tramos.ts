@@ -108,18 +108,45 @@ export function tramosDelMundo(vuelos: VueloMundo[], ahora: number): Tramo[] {
 export function tramosDeConvites(convites: ConviteVista[], ahora: number): Tramo[] {
   const salida: Tramo[] = [];
   for (const c of convites) {
-    if (ahora >= c.llegadaPosada) continue;
+    // La ida: del nido a la barra.
+    if (ahora < c.llegadaPosada) {
+      salida.push({
+        clave: `convite:${c.id}`,
+        loroId: c.id,
+        ave: c.ave,
+        origen: c.origen,
+        destino: c.posada,
+        distanciaKm: c.distanciaKm,
+        salida: c.salida,
+        llegada: c.llegadaPosada,
+        desvio: null,
+        vuelta: false,
+      });
+      continue;
+    }
+
+    // Y la vuelta, que pasa por dos razones distintas y se dibuja igual: se
+    // cansó de esperar a las 48 horas, o lo llamaron de vuelta. En los dos
+    // casos el ave cruza el mapa de regreso, y eso hay que verlo — un ave que
+    // desaparece de la barra y reaparece en el nido no cuenta nada.
+    const vuelve =
+      c.estado === "volviendo"
+        ? { desde: c.abandona, hasta: c.enCasa }
+        : c.estado === "cancelado" && c.vuelveA !== null && ahora < c.vuelveA
+          ? { desde: Math.max(c.cancelado ?? 0, c.llegadaPosada), hasta: c.vuelveA }
+          : null;
+    if (!vuelve) continue;
     salida.push({
-      clave: `convite:${c.id}`,
+      clave: `convite:${c.id}@vuelta`,
       loroId: c.id,
       ave: c.ave,
-      origen: c.origen,
-      destino: c.posada,
+      origen: c.posada,
+      destino: c.origen,
       distanciaKm: c.distanciaKm,
-      salida: c.salida,
-      llegada: c.llegadaPosada,
+      salida: vuelve.desde,
+      llegada: vuelve.hasta,
       desvio: null,
-      vuelta: false,
+      vuelta: true,
     });
   }
   return salida;

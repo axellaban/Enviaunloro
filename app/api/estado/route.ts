@@ -79,9 +79,13 @@ export async function GET(req: Request) {
     codigo: yo.codigo,
     amigos: bandada.map((a) => verNido(a, yo)),
     loros: vistas,
-    // Los loritos que están esperando en la cervecería a que alguien abra su
-    // link. Los reclamados no viajan: a partir de ahí la historia la cuenta el
-    // loro, que ya está en `loros` como cualquier otro vuelo.
-    convites: convites.filter((c) => !c.reclamado).map((c) => verConvite(c, yo)),
+    // Los loritos de convite que todavía tienen algo que contar. Los
+    // reclamados no viajan —a partir de ahí la historia la cuenta el loro, que
+    // ya está en `loros`— y los que llamaste de vuelta se van cuando el ave
+    // llega al nido: mientras vuelve, se ve volver.
+    convites: convites
+      .filter((c) => !c.reclamado)
+      .map((c) => verConvite(c, yo, escalaGlobal(), ahora))
+      .filter((c) => c.vuelveA === null || ahora < c.vuelveA),
   });
 }

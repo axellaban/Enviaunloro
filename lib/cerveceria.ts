@@ -105,6 +105,24 @@ const TOPE_COPETINES = 12;
 export const HORAS_HASTA_LA_JAROLA = 6;
 
 /**
+ * Cuánto aguanta en la barra antes de volverse.
+ *
+ * Un ave no espera para siempre. A las 48 horas se cansa, paga y se vuelve al
+ * nido de quien la mandó — y ahí se le pasa la borrachera durmiendo.
+ *
+ * Lo importante es lo que NO pasa: el link no se muere. Cuando esa persona
+ * finalmente lo abra, el ave sale igual; nomás que ahora sale desde el nido y
+ * no desde la barra, o sea que tarda más y llega sobria. La demora es la
+ * consecuencia de haber tardado dos días, y es una consecuencia con sentido,
+ * no un castigo.
+ */
+export const HORAS_EN_LA_BARRA = 48;
+
+export function esperaMaximaEnLaBarra(escala = 1): number {
+  return Math.round((HORAS_EN_LA_BARRA * 3_600_000) / (escala > 0 ? escala : 1));
+}
+
+/**
  * Cuánto se demora de más por venir tomado, como parte del viaje.
  *
  * Es un tope bajo a propósito. El chiste es que llegue haciendo eses, no que
@@ -129,6 +147,14 @@ export type Parada = {
   /** De 0 a 1. Cuánto le arrastra la lengua al entregar. */
   nivel: number;
   copetines: number;
+  /**
+   * Se cansó de esperar, se volvió al nido y ahí se le pasó durmiendo.
+   *
+   * Cuando es true, el ave NO salió de la barra sino del nido, y entrega el
+   * mensaje sin una sola eñe de más: los copetines siguen contados —la
+   * historia pasó— pero ya no le arrastran la lengua.
+   */
+  durmioLaMona?: boolean;
 };
 
 export type Borrachera = {
@@ -203,4 +229,41 @@ export function loQueEstaHaciendo(
   const salto = Math.floor(ahora / FRASE_MS);
   const base = Math.floor(rumboDeLaParada(semilla));
   return lista[(base + salto) % lista.length];
+}
+
+
+// ---------- en qué anda el convite ----------
+
+/**
+ * Un convite es una sola historia con seis momentos, y todos menos dos salen
+ * del reloj. No hay un campo "estado" que alguien tenga que acordarse de
+ * actualizar: hay horarios, y el estado se deduce. Es el mismo criterio con el
+ * que la app decide si un ave está volando.
+ */
+export type EstadoConvite =
+  | "yendo"      // del nido a la cervecería
+  | "barra"      // esperando, tomando
+  | "volviendo"  // se cansó, vuelve al nido
+  | "encasa"     // durmiendo la mona; el link igual sirve
+  | "reclamado"  // alguien lo abrió y el ave salió con el mensaje
+  | "cancelado"; // lo llamaron de vuelta: el link no sirve más
+
+export function estadoDeConvite(
+  c: {
+    llegadaPosada: number;
+    /** Cuándo se cansa de esperar y arranca de vuelta. */
+    abandona: number;
+    /** Cuándo llega de vuelta al nido. */
+    enCasa: number;
+    reclamado: boolean;
+    cancelado: number | null;
+  },
+  ahora: number
+): EstadoConvite {
+  if (c.reclamado) return "reclamado";
+  if (c.cancelado !== null) return "cancelado";
+  if (ahora < c.llegadaPosada) return "yendo";
+  if (ahora < c.abandona) return "barra";
+  if (ahora < c.enCasa) return "volviendo";
+  return "encasa";
 }

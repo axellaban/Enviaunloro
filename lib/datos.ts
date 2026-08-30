@@ -590,6 +590,16 @@ export async function enviarLoro(datos: {
    * barra— y cómo entrega el mensaje.
    */
   parada?: Parada;
+  /**
+   * De dónde despega, cuando no es ni el nido ni la parada.
+   *
+   * Existe para un caso: el ave que se cansó de esperar en la barra, se volvió
+   * al nido y sale de ahí cuando finalmente abren el link. La parada igual
+   * viaja —la historia pasó, los copetines se tomaron— pero el punto de
+   * despegue es otro. Sin esto, `parada.punto` mandaba siempre y el ave
+   * despegaba de una cervecería en la que ya no estaba.
+   */
+  desde?: Punto;
 }): Promise<ResultadoEnvio> {
   const texto = datos.texto.trim();
   if (!texto) return { ok: false, error: "El loro no puede volar sin nada que decir." };
@@ -607,7 +617,8 @@ export async function enviarLoro(datos: {
   // es donde estuvo esperando. Y sale cuando se levanta de la mesa, que puede
   // ser en el futuro —si abrieron el link antes de que llegara a la barra,
   // sale recién al llegar; el ave no se teletransporta ni pega la vuelta.
-  const origen: Punto = parada ? parada.punto : { lat: datos.de.lat, lng: datos.de.lng };
+  const origen: Punto =
+    datos.desde ?? (parada ? parada.punto : { lat: datos.de.lat, lng: datos.de.lng });
   const destino: Punto = { lat: datos.para.lat, lng: datos.para.lng };
   const km = distanciaKm(origen, destino);
   const salida = parada ? parada.salida : Date.now();

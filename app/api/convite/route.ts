@@ -14,10 +14,14 @@
 
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../lib/api";
 import { aveValida } from "../../../lib/datos";
-import { borrachera, loQueEstaHaciendo } from "../../../lib/cerveceria";
-import { convite, crearConvite } from "../../../lib/convite";
-import { escalaGlobal } from "../../../lib/datos";
-import { nido } from "../../../lib/datos";
+import { borrachera, estadoDeConvite, loQueEstaHaciendo } from "../../../lib/cerveceria";
+import {
+  cancelarConvite,
+  convite,
+  crearConvite,
+  horariosDelConvite,
+} from "../../../lib/convite";
+import { escalaGlobal, nido } from "../../../lib/datos";
 import { verConvite } from "../../../lib/vista";
 
 export const runtime = "nodejs";
@@ -38,8 +42,22 @@ export async function GET(req: Request) {
 
   const yo = await nidoDeRequest(req).catch(() => null);
   const ahora = Date.now();
-  const enLaBarra = Math.max(0, ahora - c.llegadaPosada);
-  const b = borrachera(c.reclamado ? 0 : enLaBarra, escalaGlobal());
+  const escala = escalaGlobal();
+  const { abandona, enCasa } = horariosDelConvite(c, { lat: de.lat, lng: de.lng }, escala);
+  const estado = estadoDeConvite(
+    {
+      llegadaPosada: c.llegadaPosada,
+      abandona,
+      enCasa,
+      reclamado: Boolean(c.reclamado),
+      cancelado: c.cancelado,
+    },
+    ahora
+  );
+  // Los copetines se cuentan por lo que estuvo en la barra y no por lo que
+  // tardaron en abrir: pasadas las 48 horas se volvió al nido a dormirla.
+  const enLaBarra = Math.max(0, Math.min(ahora, abandona) - c.llegadaPosada);
+  const b = borrachera(c.reclamado ? 0 : enLaBarra, escala);
 
   return ok({
     convite: {
@@ -55,9 +73,12 @@ export async function GET(req: Request) {
       barrio: c.lugar,
       enLaBarra: c.reclamado ? 0 : enLaBarra,
       copetines: b.copetines,
-      haciendo: c.reclamado ? "" : loQueEstaHaciendo(b, c.id, ahora),
+      haciendo: estado === "barra" ? loQueEstaHaciendo(b, c.id, ahora) : "",
       // Si ya salió, no hay nada que destrabar: el link llegó tarde.
       yaSalio: Boolean(c.reclamado),
+      // Y en qué anda el ave, que decide qué prometer. Con "encasa" el link
+      // sigue sirviendo: sale igual, nomás que desde el nido y sobria.
+      estado,
     },
     // Del que mira, lo mínimo para que el botón no mienta. Igual que en
     // /api/invitacion: dos booleanos y nada más.
@@ -66,6 +87,23 @@ export async function GET(req: Request) {
     // Y si ya lo reclamó esta misma persona, el botón la lleva a su nido.
     esTuyo: Boolean(yo && c.reclamado?.nido === yo.id),
   });
+}
+
+/** Llamarlo de vuelta: el ave deja la barra y el link deja de servir. */
+export async function DELETE(req: Request) {
+  if (!mismoOrigen(req)) return error("Origen no permitido.", 403);
+  if (!(await freno(req, "convite-baja", 40, 10 * 60_000))) {
+    return error("Demasiados pedidos.", 429);
+  }
+  const yo = await nidoDeRequest(req);
+  if (!yo) return error("Todavía no tenés nido.", 401);
+
+  const llave = String((await cuerpo(req))?.c || "");
+  if (!llave) return error("Falta el lorito.");
+
+  const r = await cancelarConvite(llave, yo);
+  if (!r.ok) return error(r.error);
+  return ok({ ok: true, vuelveEn: r.vuelveEn });
 }
 
 export async function POST(req: Request) {
@@ -86,5 +124,5 @@ export async function POST(req: Request) {
   });
   if (!r.ok) return error(r.error);
 
-  return ok({ ok: true, convite: verConvite(r.convite, yo) });
+  return ok({ ok: true, convite: verConvite(r.convite, yo, escalaGlobal()) });
 }

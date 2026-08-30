@@ -4,3 +4,8 @@ node_modules
 .data
 *.tsbuildinfo
 next-env.d.ts
+
+# Los escribe "next dev" solo, cada vez que arranca: instrucciones en inglés
+# para agentes, generadas por Next y no por este proyecto.
+AGENTS.md
+CLAUDE.md

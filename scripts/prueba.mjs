@@ -33,9 +33,9 @@ function cliente(nombre) {
   let cookie = "";
   return {
     nombre,
-    async llamar(ruta, datos) {
+    async llamar(ruta, datos, metodo) {
       const r = await fetch(BASE + ruta, {
-        method: datos ? "POST" : "GET",
+        method: metodo || (datos ? "POST" : "GET"),
         headers: {
           ...(datos ? { "Content-Type": "application/json" } : {}),
           ...(cookie ? { cookie } : {}),
@@ -388,6 +388,20 @@ chequear(
     "/api/salud dice cuántos loritos hay esperando en la barra"
   );
 
+  // El ave no espera para siempre: a las 48 horas se cansa y se vuelve. Los dos
+  // horarios se calculan, no se guardan, así que lo que se verifica es la
+  // cuenta —esperar dos días de reloj para ver el resto no es una prueba.
+  const c0 = conEsperando.convites[0];
+  const CUARENTA_Y_OCHO = (48 * 3_600_000) / escala;
+  chequear(
+    Math.abs(c0.abandona - (c0.llegadaPosada + CUARENTA_Y_OCHO)) < 1500,
+    "se cansa de esperar a las 48 horas, ni antes ni nunca"
+  );
+  chequear(
+    c0.enCasa > c0.abandona && c0.estado === "yendo",
+    "y después tarda en volver lo que tardó en ir"
+  );
+
   // Y ahora lo que de verdad importa: qué se cuenta por el link.
   const afuera = cliente("Afuera");
   const publico = await afuera.llamar(`/api/convite?c=${encodeURIComponent(llave)}`);
@@ -401,7 +415,7 @@ chequear(
   // se rompe según en qué ciudad viva la persona no prueba nada.
   chequear(
     Object.keys(publico.convite).sort().join(",") ===
-      "ave,barrio,copetines,de,enLaBarra,haciendo,llegadaPosada,lugar,para,salida,yaSalio",
+      "ave,barrio,copetines,de,enLaBarra,estado,haciendo,llegadaPosada,lugar,para,salida,yaSalio",
     "ni dónde queda la cervecería, que está a metros de la casa de quien lo mandó"
   );
 
@@ -477,6 +491,49 @@ chequear(
   // puede explotar: es el mismo loro, no uno nuevo ni un error.
   const otraVez = await receptor.llamar("/api/convite/reclamar", { c: llave });
   chequear(otraVez.loro.id === vuelo.id, "y abrirlo dos veces devuelve el mismo loro, no dos");
+
+  // --- llamarlo de vuelta ---
+  //
+  // La única forma de deshacer un lorito soltado por error. Un silbido: el ave
+  // vuelve y el link deja de servir.
+  {
+    const arrepentido = cliente("Arrepentido");
+    await arrepentido.llamar("/api/nido", { nombre: "Arrepentido", ave: "loro", lat: -34.55, lng: -58.45 });
+    const suyo = (await arrepentido.llamar("/api/convite", { ave: "loro", texto: "Uy, no era para vos.", para: "Nadie" })).convite;
+
+    const ajeno = cliente("Ajeno");
+    await ajeno.llamar("/api/nido", { nombre: "Ajeno", lat: -34.56, lng: -58.46 });
+    try {
+      await ajeno.llamar("/api/convite", { c: suyo.id }, "DELETE");
+      chequear(false, "un lorito ajeno no se puede llamar de vuelta");
+    } catch {
+      chequear(true, "un lorito ajeno no se puede llamar de vuelta");
+    }
+
+    const baja = await arrepentido.llamar("/api/convite", { c: suyo.id }, "DELETE");
+    chequear(baja.ok === true, "pero el propio sí, y el ave arranca de vuelta");
+
+    // Y el link, que ya está mandado, deja de traer nada.
+    const tarde = cliente("Tarde");
+    await tarde.llamar("/api/nido", { nombre: "Tarde", lat: -34.57, lng: -58.47 });
+    try {
+      await tarde.llamar("/api/convite/reclamar", { c: suyo.id });
+      chequear(false, "y el link deja de servir: es todo el punto de llamarlo");
+    } catch {
+      chequear(true, "y el link deja de servir: es todo el punto de llamarlo");
+    }
+    const publico2 = await tarde.llamar(`/api/convite?c=${encodeURIComponent(suyo.id)}`);
+    chequear(publico2.convite?.estado === "cancelado", "y la portada lo cuenta en vez de prometer un ave");
+
+    // Un loro ya reclamado no se llama de vuelta: eso ya es un vuelo, y lo que
+    // se hace con un ave que llegó lo decide quien la recibió.
+    try {
+      await emisor.llamar("/api/convite", { c: llave }, "DELETE");
+      chequear(false, "un lorito ya reclamado no se puede llamar de vuelta");
+    } catch {
+      chequear(true, "un lorito ya reclamado no se puede llamar de vuelta");
+    }
+  }
 
   // Y al aterrizar: el mensaje entero, con o sin hipo según lo que esperó.
   await new Promise((r) => setTimeout(r, vuelo.llegada - Date.now() + 2500));

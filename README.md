@@ -252,8 +252,26 @@ verifica campo por campo.
     lib/convite.ts      el documento, el alta y el reclamo.
     components/Convite.tsx   escribirlo y pasar el link.
 
-Todavía no se puede arrepentir: un lorito soltado no se cancela. El tope de
-veinte abiertos por nido es lo que evita que eso se convierta en un depósito.
+**El ave no espera para siempre, y el link tampoco se muere.** A las **48 horas**
+se cansa, paga y se vuelve al nido de quien la mandó — se la ve cruzar el mapa
+de regreso— y ahí duerme la mona. Lo importante es lo que NO pasa: el link
+sigue sirviendo. Cuando esa persona finalmente lo abra, el ave sale igual;
+nomás que ahora sale **desde el nido** y no desde la barra, o sea que tarda más
+y llega **sobria**. La demora es la consecuencia de haber tardado dos días, y
+es una consecuencia con sentido, no un vencimiento.
+
+**Y se puede llamar de vuelta.** Un silbido, no un botón de borrar: el ave deja
+la barra, se vuelve, y el link deja de servir. Es la única forma de deshacer un
+lorito soltado por error —el mensaje equivocado, el link al contacto
+equivocado— y hacía falta que existiera: volverse a las 48 horas resuelve el
+ave olvidada, pero arrepentirse es ahora. Pide dos toques, porque no hay cómo
+volver atrás de eso, y solo mientras nadie lo haya abierto: después ya no es un
+convite, es un loro en vuelo, y lo que se hace con un ave que llegó lo decide
+quien la recibió.
+
+Los seis momentos de un convite salen del reloj y no de un campo que alguien
+tenga que acordarse de actualizar —`yendo`, `barra`, `volviendo`, `encasa`,
+`reclamado`, `cancelado`— igual que la posición de un ave en vuelo.
 
 No hace falta migrar nada para prenderlo: las tres tablas de Supabase son
 genéricas (`clave` → valor), así que las claves nuevas entran en las que ya
@@ -263,6 +281,12 @@ Para verlo entero sin esperar seis horas a que el bicho se emborrache:
 
     LOROS_ESCALA_TIEMPO=600 npm run start
     LOROS_ESCALA_TIEMPO=600 npm run prueba
+
+Y las 48 horas, que a esa escala siguen siendo cinco minutos, tienen su propia
+prueba con el reloj mucho más acelerado, donde pasan en tres segundos:
+
+    LOROS_ESCALA_TIEMPO=60000 npm run start
+    npm run prueba:caducidad
 
 ## El código de nido
 

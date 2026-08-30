@@ -2,14 +2,15 @@
   "name": "enviaunloro",
   "version": "0.1.0",
   "private": true,
-  "description": "Envía Loros, no mensajes. Mensajería donde el mensaje vuela en tiempo real segun la distancia real.",
+  "description": "Env\u00eda Loros, no mensajes. Mensajer\u00eda donde el mensaje vuela en tiempo real segun la distancia real.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "prueba": "node scripts/prueba.mjs",
-    "vapid": "node scripts/vapid.mjs"
+    "vapid": "node scripts/vapid.mjs",
+    "prueba:caducidad": "node scripts/caducidad.mjs"
   },
   "dependencies": {
     "leaflet": "1.9.4",
