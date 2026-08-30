@@ -1,0 +1,257 @@
+// El lorito de convite: mandarle un mensaje a alguien que todavía no está.
+//
+// Hasta ahora había una sola forma de traer gente: compartir tu nido. Un link
+// genérico, el mismo para todos, que del otro lado se lee como "bajate esta
+// app". Funciona, pero es una invitación a una herramienta, no un mensaje de
+// alguien.
+//
+// Esto es lo otro: le escribís algo a una persona puntual, elegís con qué ave
+// se lo mandás, y el ave SALE. No espera en una bandeja: despega de tu nido,
+// cruza un pedazo de mapa y se posa en una cervecería a dos minutos de vuelo
+// (lib/cerveceria.ts). Ahí espera. El link que compartís no dice "bajate una
+// app": dice que hay un guacamayo tomando cerveza a doce kilómetros con un
+// mensaje tuyo adentro, y que sale en cuanto esa persona tenga un nido adonde
+// ir.
+//
+// Del otro lado, armar el nido deja de ser un trámite y pasa a ser lo que
+// destraba el ave.
+//
+// POR QUÉ UN DOCUMENTO APARTE Y NO UN LORO. Un `Loro` tiene destino, distancia
+// y hora de llegada desde el momento cero, y de eso vive el resto de la app.
+// Un convite no tiene nada de eso hasta que alguien lo reclama: no se sabe
+// adónde va. Meterlo en la misma tabla obligaría a que la mitad de los campos
+// pudieran ser null en todos lados. El loro nace en el momento en que hay
+// adónde ir, que es exactamente cuando existe de verdad.
+//
+// LA LLAVE. El id del convite ES el link, y son 96 bits de `randomBytes`: no
+// se adivina probando. No va firmado como la llave de sesión porque no da
+// acceso a un nido, solo al mensaje que alguien escribió para quien reciba ese
+// link — y esa es justo la persona a la que se lo mandaron.
+
+import type { AveId } from "./aves";
+import { AVES } from "./aves";
+import {
+  borrachera,
+  dondeLaCerveceria,
+  MINUTOS_HASTA_LA_PARADA,
+  type Parada,
+} from "./cerveceria";
+import {
+  claveTurno,
+  emparejar,
+  enviarLoro,
+  escalaGlobal,
+  loro as leerLoro,
+  nido,
+  type Loro,
+  type Nido,
+} from "./datos";
+import { lugarDe } from "./geocode";
+import { duracionVuelo } from "./vuelo";
+import type { Punto } from "./geo";
+import { escribirDoc, leerDoc, store } from "./store";
+import { nuevoId } from "./sesion";
+
+export type Convite = {
+  /** También la llave del link: /?c=<id>. */
+  id: string;
+  /** El nido que lo manda. */
+  de: string;
+  ave: AveId;
+  texto: string;
+  /** A quién va dirigido, para poder decir "para Jez". Puede estar vacío. */
+  para: string;
+  /** Cuándo despegó del nido. */
+  salida: number;
+  /** La cervecería, y cuándo se posó ahí. */
+  posada: Punto;
+  lugar: string;
+  llegadaPosada: number;
+  /** Quién lo abrió, cuándo, y el loro que salió de ahí. null mientras espera. */
+  reclamado: { nido: string; cuando: number; loro: string } | null;
+};
+
+const claveConvite = (id: string) => `convite:${id}`;
+const claveConvitesDe = (idNido: string) => `convites:${idNido}`;
+
+/** Cuántos loritos puede tener alguien esperando en la barra a la vez. */
+export const MAX_CONVITES = 20;
+
+/** Y cuántos guarda la lista, contando los ya reclamados. */
+const MAX_LISTA = 60;
+
+export type ResultadoConvite =
+  | { ok: true; convite: Convite }
+  | { ok: false; error: string };
+
+/**
+ * Suelta un lorito para alguien que todavía no tiene nido.
+ *
+ * El ave despega en el acto: la hora de llegada a la cervecería se fija acá y
+ * no depende de que nadie mire. Lo único que queda abierto es adónde sigue.
+ */
+export async function crearConvite(datos: {
+  de: Nido;
+  ave: AveId;
+  texto: string;
+  para: string;
+}): Promise<ResultadoConvite> {
+  const texto = datos.texto.trim();
+  if (!texto) return { ok: false, error: "El loro no puede volar sin nada que decir." };
+
+  const a = AVES[datos.ave];
+  if (texto.length > a.maxCaracteres) {
+    return {
+      ok: false,
+      error: `${a.nombre === "Cotorra" ? "A la" : "Al"} ${a.nombre.toLowerCase()} no le entran más de ${a.maxCaracteres} caracteres.`,
+    };
+  }
+
+  // Un tope, porque cada convite deja un ave posada para siempre si nadie lo
+  // abre. Veinte es más que suficiente para invitar gente y poco para usarlo
+  // de depósito.
+  const abiertos = (await convitesDe(datos.de.id)).filter((c) => !c.reclamado);
+  if (abiertos.length >= MAX_CONVITES) {
+    return {
+      ok: false,
+      error: `Ya tenés ${MAX_CONVITES} loritos esperando en la barra. Que alguno salga antes de mandar otro.`,
+    };
+  }
+
+  const id = nuevoId();
+  const nidoPunto: Punto = { lat: datos.de.lat, lng: datos.de.lng };
+  const posada = dondeLaCerveceria(nidoPunto, id, datos.ave);
+  const salida = Date.now();
+
+  const c: Convite = {
+    id,
+    de: datos.de.id,
+    ave: datos.ave,
+    texto,
+    para: datos.para.trim().slice(0, 40),
+    salida,
+    posada,
+    lugar: "",
+    // Los dos minutos salen de la misma cuenta que todo lo demás: la distancia
+    // hasta la barra dividida por la velocidad del ave. Así el ave que llega
+    // antes es la misma que llega antes en el resto de la app.
+    llegadaPosada:
+      salida +
+      duracionVuelo(
+        AVES[datos.ave].velocidadKmh * (MINUTOS_HASTA_LA_PARADA / 60),
+        datos.ave,
+        escalaGlobal()
+      ),
+    reclamado: null,
+  };
+
+  await escribirDoc(claveConvite(id), c);
+  await store().agregarALista(claveConvitesDe(datos.de.id), id, MAX_LISTA);
+  // Cómo se llama el barrio de la cervecería. Best-effort y en segundo plano,
+  // igual que el del nido: si Nominatim no contesta, el ave para en una
+  // cervecería sin nombre y no pasa nada.
+  ponerleNombreALaCerveceria(id, posada);
+  return { ok: true, convite: c };
+}
+
+function ponerleNombreALaCerveceria(id: string, p: Punto): void {
+  lugarDe(p.lat, p.lng)
+    .then(async (lugar) => {
+      if (!lugar) return;
+      const actual = await convite(id);
+      if (actual) await escribirDoc(claveConvite(id), { ...actual, lugar });
+    })
+    .catch(() => {});
+}
+
+export async function convite(id: string): Promise<Convite | null> {
+  return leerDoc<Convite>(claveConvite(id));
+}
+
+export async function convitesDe(idNido: string): Promise<Convite[]> {
+  const ids = await store().leerLista(claveConvitesDe(idNido));
+  if (ids.length === 0) return [];
+  const crudos = await store().leerVarios(ids.map(claveConvite));
+  const lista: Convite[] = [];
+  for (const c of crudos) {
+    if (!c) continue;
+    try {
+      lista.push(JSON.parse(c) as Convite);
+    } catch {}
+  }
+  return lista.sort((x, y) => y.salida - x.salida);
+}
+
+export type ResultadoReclamo =
+  | { ok: true; convite: Convite; loro: Loro; deNombre: string }
+  | { ok: false; error: string };
+
+/**
+ * Alguien abrió el link y ya tiene nido: el ave se levanta de la mesa.
+ *
+ * Es idempotente para quien ya lo reclamó, y eso no es un lujo: la página que
+ * lo llama corre un efecto que puede dispararse dos veces, y recargar con el
+ * link todavía en la barra de direcciones tiene que devolver el mismo loro, no
+ * un error.
+ */
+export async function reclamarConvite(
+  llave: string,
+  quien: Nido
+): Promise<ResultadoReclamo> {
+  const c = await convite(llave);
+  if (!c) return { ok: false, error: "Ese lorito no existe o ya no está." };
+
+  const de = await nido(c.de);
+  if (!de) return { ok: false, error: "El nido que te lo mandó ya no está." };
+
+  if (c.reclamado) {
+    if (c.reclamado.nido !== quien.id) {
+      return { ok: false, error: "Ese lorito ya salió para otro lado." };
+    }
+    const yaEsta = await leerLoro(c.reclamado.loro);
+    if (yaEsta) return { ok: true, convite: c, loro: yaEsta, deNombre: de.nombre };
+    return { ok: false, error: "Ese lorito ya salió." };
+  }
+
+  if (c.de === quien.id) {
+    return { ok: false, error: "Ese lorito lo mandaste vos." };
+  }
+
+  // Dos personas abriendo el mismo link en el mismo segundo: gana una sola. El
+  // mensaje fue escrito para una persona y el ave es una.
+  if (!(await store().reservar(claveTurno("convite", c.id), 0))) {
+    return { ok: false, error: "Ese lorito ya salió para otro lado." };
+  }
+
+  // Quedan conectados, y eso pasa antes que el vuelo: si el loro sale y la
+  // amistad no entró, del otro lado aparece un mensaje de alguien que no está
+  // en la bandada y no se le puede contestar.
+  await emparejar(c.de, quien.id);
+
+  const ahora = Date.now();
+  // No sale antes de haber llegado. Si abrieron el link a los treinta
+  // segundos, el ave todavía está en el aire rumbo a la barra: llega, no se
+  // toma nada y sigue viaje.
+  const salida = Math.max(ahora, c.llegadaPosada);
+  const espera = salida - c.llegadaPosada;
+  const b = borrachera(espera, escalaGlobal());
+
+  const parada: Parada = {
+    punto: c.posada,
+    lugar: c.lugar,
+    llegada: c.llegadaPosada,
+    salida,
+    nivel: b.nivel,
+    copetines: b.copetines,
+  };
+
+  const r = await enviarLoro({ de, para: quien, ave: c.ave, texto: c.texto, parada });
+  if (!r.ok) return { ok: false, error: r.error };
+
+  await escribirDoc(claveConvite(c.id), {
+    ...c,
+    reclamado: { nido: quien.id, cuando: ahora, loro: r.loro.id },
+  } satisfies Convite);
+
+  return { ok: true, convite: c, loro: r.loro, deNombre: de.nombre };
+}

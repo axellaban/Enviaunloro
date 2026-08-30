@@ -31,20 +31,34 @@ import "leaflet/dist/leaflet.css";
 // creado antes de esta línea no giraría.
 import "leaflet-rotate";
 import { AVES, type AveId } from "../lib/aves";
-import { arco, desplazar, puntoEnArco, rumbo, type Punto } from "../lib/geo";
+import {
+  arco,
+  desplazar,
+  formatearDistancia,
+  puntoEnArco,
+  rumbo,
+  type Punto,
+} from "../lib/geo";
 import { avanceVuelo } from "../lib/vuelo";
-import { tramosDelMundo, tramosEnElAire, type Tramo } from "../lib/tramos";
+import {
+  tramosDeConvites,
+  tramosDelMundo,
+  tramosEnElAire,
+  type Tramo,
+} from "../lib/tramos";
 import { aveHtml } from "./Ave";
-import type { LoroVista, NidoVista, VueloMundo } from "../lib/vista";
+import type { ConviteVista, LoroVista, NidoVista, VueloMundo } from "../lib/vista";
 import { coloresDeBandada, MI_COLOR } from "../lib/colorNido";
-import { pintura } from "../lib/tema";
+import { mosaicoElegido, pintura } from "../lib/tema";
 
 const MAPBOX = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 function capaBase(): L.TileLayer {
+  // Cuáles, no está fijo: se puede probar otro con ?mapa=calle (lib/tema.ts).
+  const mosaico = mosaicoElegido();
   if (MAPBOX) {
     return L.tileLayer(
-      `https://api.mapbox.com/styles/v1/mapbox/${pintura.mosaicoMapbox}/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX}`,
+      `https://api.mapbox.com/styles/v1/mapbox/${mosaico.mapbox}/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX}`,
       {
         maxZoom: 20,
         tileSize: 512,
@@ -55,7 +69,7 @@ function capaBase(): L.TileLayer {
     );
   }
   return L.tileLayer(
-    `https://{s}.basemaps.cartocdn.com/${pintura.mosaicoCarto}/{z}/{x}/{y}{r}.png`,
+    `https://{s}.basemaps.cartocdn.com/${mosaico.carto}/{z}/{x}/{y}{r}.png`,
     {
       maxZoom: 20,
       subdomains: "abcd",
@@ -133,6 +147,24 @@ function iconoPerica(): L.DivIcon {
   });
 }
 
+/**
+ * El ave posada en la cervecería, esperando a que abran su link.
+ *
+ * Quieta y con un chop al lado: en el mapa hay que poder distinguir de un
+ * vistazo un ave que vuela de una que está sentada en una barra hace dos días.
+ */
+function iconoPosada(ave: AveId): L.DivIcon {
+  return L.divIcon({
+    className: "marcador-ave",
+    iconSize: [34, 30],
+    iconAnchor: [17, 15],
+    html: `<div style="position:relative;width:34px;height:30px;display:grid;place-items:center">
+      <div style="filter:${pintura.sombraAve}">${aveHtml(ave, 28)}</div>
+      <span style="position:absolute;left:-2px;top:-10px;font-size:15px">🍺</span>
+    </div>`,
+  });
+}
+
 /** Cuántas flores deja la paloma por el camino. */
 const FLORES = 7;
 
@@ -182,11 +214,12 @@ function loQueSeDibuja(
   vista: "tuyos" | "resto",
   vuelos: LoroVista[],
   mundo: VueloMundo[] | undefined,
+  convites: ConviteVista[],
   ahora: number
 ): Tramo[] {
   return vista === "resto"
     ? tramosDelMundo(mundo ?? [], ahora)
-    : tramosEnElAire(vuelos, ahora);
+    : [...tramosEnElAire(vuelos, ahora), ...tramosDeConvites(convites, ahora)];
 }
 
 type CapaVuelo = {
@@ -209,17 +242,21 @@ export default function Mapa({
   amigos,
   vuelos,
   mundo,
+  convites = [],
   vista = "tuyos",
   ahoraServidor,
   foco,
   modoElegir = false,
   alElegirPunto,
+  alEscribirle,
 }: {
   yo: NidoVista | null;
   amigos: NidoVista[];
   vuelos: LoroVista[];
   /** Los vuelos anónimos de la vista del resto. */
   mundo?: VueloMundo[];
+  /** Los loritos de convite: van hasta la cervecería y ahí se quedan. */
+  convites?: ConviteVista[];
   vista?: "tuyos" | "resto";
   ahoraServidor: () => number;
   /** "<id>#<nonce>": id de un loro o de un nido para centrar la cámara. El
@@ -227,15 +264,25 @@ export default function Mapa({
   foco?: string | null;
   modoElegir?: boolean;
   alElegirPunto?: (p: Punto) => void;
+  /** Tocar el nido de alguien de tu bandada abre el compositor con esa persona
+   *  ya elegida. El mapa es donde están todos; hasta ahora era lo único de la
+   *  app donde verlos no servía para nada. */
+  alEscribirle?: (idAmigo: string) => void;
 }) {
   const contenedor = useRef<HTMLDivElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const nidos = useRef(new Map<string, L.Marker>());
   const zonas = useRef(new Map<string, L.Circle>());
   const capas = useRef(new Map<string, CapaVuelo>());
+  /** Las aves posadas en una cervecería. No son vuelos: no avanzan. */
+  const posadas = useRef(new Map<string, L.Marker>());
   const encuadrado = useRef(false);
   const alElegirRef = useRef(alElegirPunto);
   alElegirRef.current = alElegirPunto;
+  const alEscribirleRef = useRef(alEscribirle);
+  alEscribirleRef.current = alEscribirle;
+  /** El nombre que muestra cada globo, para poder cambiarlo sin rearmarlo. */
+  const rotulosPopup = useRef(new Map<string, HTMLElement>());
   const ahoraRef = useRef(ahoraServidor);
   ahoraRef.current = ahoraServidor;
   const [sinMosaicos, setSinMosaicos] = useState(false);
@@ -333,8 +380,15 @@ export default function Mapa({
       if (existente) {
         existente.setLatLng([n.lat, n.lng]);
         existente.setIcon(icono);
+        // El nombre puede cambiar; el globo no se rearma. Este efecto corre en
+        // cada consulta al servidor, y volver a llamar a bindPopup le cerraría
+        // el globo en la cara a quien lo tiene abierto.
+        const rotulo = rotulosPopup.current.get(n.id);
+        if (rotulo && rotulo.textContent !== n.nombre) rotulo.textContent = n.nombre;
       } else {
-        nidos.current.set(n.id, L.marker([n.lat, n.lng], { icon: icono }).addTo(m));
+        const marcador = L.marker([n.lat, n.lng], { icon: icono }).addTo(m);
+        if (!esMio) marcador.bindPopup(globoDeNido(n, marcador));
+        nidos.current.set(n.id, marcador);
       }
 
       // El círculo NO es decoración: es el tamaño real de lo que no sabemos.
@@ -365,6 +419,7 @@ export default function Mapa({
       if (!vistos.has(id)) {
         marcador.remove();
         nidos.current.delete(id);
+        rotulosPopup.current.delete(id);
       }
     }
     for (const [id, zona] of zonas.current) {
@@ -404,6 +459,46 @@ export default function Mapa({
     }
   }, [yo, amigos, vista]);
 
+  /**
+   * El globo que aparece al tocar el nido de alguien de tu bandada.
+   *
+   * Se arma con DOM a mano y no con React: Leaflet maneja su propio globo y
+   * meterle un portal para dos líneas de texto y un botón es más maquinaria
+   * que la que resuelve. El botón usa las mismas clases que el resto de la
+   * app, así que se pinta solo con el tema que esté puesto.
+   */
+  function globoDeNido(n: NidoVista, marcador: L.Marker): HTMLElement {
+    const caja = document.createElement("div");
+    caja.className = "globo-nido";
+
+    const nombre = document.createElement("strong");
+    nombre.textContent = n.nombre;
+    caja.appendChild(nombre);
+    rotulosPopup.current.set(n.id, nombre);
+
+    if (n.lugar || n.distanciaKm !== undefined) {
+      const donde = document.createElement("span");
+      donde.className = "globo-donde";
+      donde.textContent = [
+        n.lugar,
+        n.distanciaKm !== undefined ? `a ${formatearDistancia(n.distanciaKm)}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      caja.appendChild(donde);
+    }
+
+    const boton = document.createElement("button");
+    boton.className = "boton chico";
+    boton.textContent = "Envíale un lorito";
+    boton.onclick = () => {
+      marcador.closePopup();
+      alEscribirleRef.current?.(n.id);
+    };
+    caja.appendChild(boton);
+    return caja;
+  }
+
   /** Saca del mapa todo lo que dibuja un tramo. */
   function borrarCapa(clave: string) {
     const capa = capas.current.get(clave);
@@ -426,7 +521,7 @@ export default function Mapa({
     const m = mapa.current;
     if (!m) return;
 
-    for (const v of loQueSeDibuja(vista, vuelos, mundo, ahoraRef.current())) {
+    for (const v of loQueSeDibuja(vista, vuelos, mundo, convites, ahoraRef.current())) {
       const color = AVES[v.ave].color;
       const existente = capas.current.get(v.clave);
 
@@ -519,7 +614,7 @@ export default function Mapa({
     const paso = () => {
       if (!vivo) return;
       const ahora = ahoraRef.current();
-      const tramos = loQueSeDibuja(vista, vuelos, mundo, ahora);
+      const tramos = loQueSeDibuja(vista, vuelos, mundo, convites, ahora);
       const vivos = new Set(tramos.map((t) => t.clave));
 
       for (const v of tramos) {
@@ -570,6 +665,35 @@ export default function Mapa({
         if (!vivos.has(clave)) borrarCapa(clave);
       }
 
+      // Las aves posadas en la cervecería. Se manejan acá y no en un efecto
+      // porque el momento en que un lorito pasa de volar a estar sentado en
+      // una barra lo decide el reloj, no una consulta al servidor: es el mismo
+      // criterio con el que se podan los tramos.
+      const enLaBarra = new Set<string>();
+      const mapaActual = mapa.current;
+      if (vista === "tuyos" && mapaActual) {
+        for (const c of convites) {
+          if (ahora < c.llegadaPosada) continue;
+          enLaBarra.add(c.id);
+          if (!posadas.current.has(c.id)) {
+            posadas.current.set(
+              c.id,
+              L.marker([c.posada.lat, c.posada.lng], {
+                icon: iconoPosada(c.ave),
+                interactive: false,
+                zIndexOffset: 460,
+              }).addTo(mapaActual)
+            );
+          }
+        }
+      }
+      for (const [id, marcador] of posadas.current) {
+        if (!enLaBarra.has(id)) {
+          marcador.remove();
+          posadas.current.delete(id);
+        }
+      }
+
       cuadro = requestAnimationFrame(paso);
     };
     cuadro = requestAnimationFrame(paso);
@@ -578,7 +702,7 @@ export default function Mapa({
       vivo = false;
       cancelAnimationFrame(cuadro);
     };
-  }, [vuelos, mundo, vista]);
+  }, [vuelos, mundo, convites, vista]);
 
   // ---- al cambiar de vista, encuadrar lo que hay ----
   //
@@ -599,7 +723,7 @@ export default function Mapa({
     const m = mapa.current;
     if (!m || !porEncuadrar.current) return;
 
-    const tramos = loQueSeDibuja(vista, vuelos, mundo, ahoraRef.current());
+    const tramos = loQueSeDibuja(vista, vuelos, mundo, convites, ahoraRef.current());
     // Todavía no llegó nada: se vuelve a intentar cuando llegue.
     if (vista === "resto" && tramos.length === 0) return;
 
@@ -610,12 +734,15 @@ export default function Mapa({
     for (const t of tramos) {
       for (const p of arco(t.origen, t.destino, 16)) limites.extend([p.lat, p.lng]);
     }
+    if (vista === "tuyos") {
+      for (const c of convites) limites.extend([c.posada.lat, c.posada.lng]);
+    }
     if (vista === "tuyos" && yo) limites.extend([yo.lat, yo.lng]);
     if (!limites.isValid()) return;
 
     porEncuadrar.current = false;
     m.flyToBounds(limites, { padding: [60, 60], maxZoom: 13, duration: 0.8 });
-  }, [vista, mundo, vuelos, yo]);
+  }, [vista, mundo, vuelos, convites, yo]);
 
   // ---- cámara ----
   useEffect(() => {

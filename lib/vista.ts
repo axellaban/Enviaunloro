@@ -17,7 +17,9 @@
 // Tu propio nido sí viaja exacto: es tu dato.
 
 import type { AveId } from "./aves";
+import type { Convite } from "./convite";
 import type { Loro, Nido, Suerte } from "./datos";
+import type { Parada } from "./cerveceria";
 import type { Desvio } from "./vuelo";
 import { distanciaKm, type Punto } from "./geo";
 import { RADIO_ZONA_KM, zonaDe, zonaMundial } from "./privacidad";
@@ -90,6 +92,42 @@ export type LoroVista = {
   respuestaEntregada: string | null;
   /** Que hay algo esperando adentro del ave que vuelve, sin decir qué. */
   traeRespuesta: boolean;
+  /**
+   * La parada en la cervecería, si este loro salió de un convite.
+   *
+   * Viaja siempre, para las dos puntas y desde el momento cero, y ahí se
+   * separa del extravío y del romance: esos son sorpresas que se arruinan si
+   * se saben antes. Esto ya pasó —el ave estuvo esperando en la barra a que
+   * armaras tu nido— y es justamente lo que explica por qué el mensaje llega
+   * con hipo.
+   */
+  parada: Parada | null;
+};
+
+/**
+ * Un lorito de convite mientras todavía espera.
+ *
+ * Solo lo ve quien lo mandó: es la única punta que existe hasta que alguien
+ * abre el link. El texto NO viaja de vuelta al navegador de quien lo escribió
+ * por costumbre —lo escribió, ya lo sabe— pero sí, porque poder releer qué le
+ * mandaste a alguien antes de que lo abra es media razón para volver a mirar.
+ */
+export type ConviteVista = {
+  id: string;
+  ave: AveId;
+  texto: string;
+  /** A quién iba dirigido. Puede estar vacío. */
+  para: string;
+  salida: number;
+  /** La cervecería y cuándo se posó ahí. Exacta: sale de tu propio nido. */
+  posada: Punto;
+  lugar: string;
+  llegadaPosada: number;
+  /** Dónde despegó, para poder dibujar el tramo. */
+  origen: Punto;
+  distanciaKm: number;
+  /** Si ya salió: no hay nada más que esperar, el loro cuenta el resto. */
+  reclamado: boolean;
 };
 
 const punto = (n: Nido): Punto => ({ lat: n.lat, lng: n.lng });
@@ -198,6 +236,7 @@ export function verLoro(
     // (lo mandó) no ve nada hasta que el ave aterriza de vuelta.
     respuesta: enviado ? (volvio ? respuestaLlega : null) : (l.respuesta ?? null),
     respuestaEntregada: !enviado && volvio && respuestaCambio ? respuestaLlega : null,
+    parada: l.parada ?? null,
     // Se avisa que trae algo, sin decir qué: es lo que hace que valga la pena
     // mirar el mapa mientras vuelve.
     traeRespuesta: hayRespuesta,
@@ -266,5 +305,29 @@ export function verVueloMundial(l: Loro, ahora: number): VueloMundo {
     llegada: l.llegada,
     // Misma regla que en la bandada: el desvío no viaja hasta que pasa.
     desvio: desvio && ahora >= desvio.desde ? desvio : null,
+  };
+}
+
+/**
+ * Un convite, como lo ve quien lo mandó.
+ *
+ * Las dos puntas van exactas y no corridas, al revés que en un loro normal, y
+ * por la razón de siempre: las dos son suyas. El nido es el propio y la
+ * cervecería la eligió su propia ave.
+ */
+export function verConvite(c: Convite, de: Nido): ConviteVista {
+  const origen: Punto = { lat: de.lat, lng: de.lng };
+  return {
+    id: c.id,
+    ave: c.ave,
+    texto: c.texto,
+    para: c.para,
+    salida: c.salida,
+    posada: c.posada,
+    lugar: c.lugar,
+    llegadaPosada: c.llegadaPosada,
+    origen,
+    distanciaKm: distanciaKm(origen, c.posada),
+    reclamado: Boolean(c.reclamado),
   };
 }

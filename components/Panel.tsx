@@ -18,7 +18,9 @@ import {
 import { avanceVuelo, duracionVuelo } from "../lib/vuelo";
 import { pedir, pedirUbicacion, useTic } from "../lib/cliente";
 import type { Suerte } from "../lib/datos";
-import type { LoroVista, NidoVista } from "../lib/vista";
+import type { ConviteVista, LoroVista, NidoVista } from "../lib/vista";
+import { borrachera, loQueEstaHaciendo } from "../lib/cerveceria";
+import { compartirConvite } from "./Convite";
 import { Ave } from "./Ave";
 import { Fiesta } from "./Fiesta";
 import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
@@ -49,6 +51,8 @@ type Props = {
   codigo: string;
   amigos: NidoVista[];
   loros: LoroVista[];
+  /** Los loritos que esperan en la cervecería a que alguien abra su link. */
+  convites: ConviteVista[];
   escala: number;
   ahoraServidor: () => number;
   alEnfocar: (id: string) => void;
@@ -56,6 +60,8 @@ type Props = {
   alReenviar: (loro: LoroVista) => void;
   /** Prende el modo "tocá el mapa" para mover el nido. Lo maneja la página. */
   alElegirEnMapa: () => void;
+  /** Abrir la pantalla de mandarle un lorito a alguien que no está en la app. */
+  alConvidar: () => void;
   refrescar: () => void;
 };
 
@@ -88,7 +94,13 @@ export function Panel(p: Props) {
   const soloLaVecina = p.amigos.every((a) => a.bot);
 
   const pestañas = [
-    { id: "vuelo" as const, texto: "En vuelo", contador: enVuelo.length + volviendo.length },
+    {
+      id: "vuelo" as const,
+      texto: "En vuelo",
+      // Los convites cuentan: un ave posada en una barra también está afuera
+      // del nido, y es la que más necesita que alguien se acuerde de ella.
+      contador: enVuelo.length + volviendo.length + p.convites.length,
+    },
     { id: "buzon" as const, texto: "Buzón", contador: sinLeer },
     { id: "bandada" as const, texto: "Bandada", contador: 0 },
     // Tu código, tu ubicación y tu llave vivían en la cabecera, ocupando un
@@ -152,7 +164,10 @@ export function Panel(p: Props) {
         {pestaña === "vuelo" && (
           <>
             {soloLaVecina && <TraeAAlguien codigo={p.codigo} hayVuelo={enVuelo.length > 0} />}
-            {enVuelo.length + volviendo.length === 0 ? (
+            {p.convites.map((c) => (
+              <TarjetaConvite key={c.id} convite={c} ahora={ahora} escala={p.escala} />
+            ))}
+            {enVuelo.length + volviendo.length + p.convites.length === 0 ? (
               <Vacio
                 titulo="No hay nada en el aire"
                 texto="Cuando sueltes un ave la vas a ver acá, cruzando el mapa en tiempo real."
@@ -195,6 +210,7 @@ export function Panel(p: Props) {
             escala={p.escala}
             alEscribir={p.alEscribir}
             alEnfocar={p.alEnfocar}
+            alConvidar={p.alConvidar}
             refrescar={p.refrescar}
           />
         )}
@@ -281,6 +297,86 @@ function TraeAAlguien({ codigo, hayVuelo }: { codigo: string; hayVuelo: boolean 
 }
 
 // ---------- vuelo ----------
+
+/**
+ * Un lorito de convite, mientras espera.
+ *
+ * Es la única tarjeta de la app que no tiene cuenta regresiva, porque no
+ * depende del tiempo sino de otra persona: el ave no llega, espera. Así que en
+ * el lugar del reloj va lo que está haciendo en la barra —que cambia solo, con
+ * el reloj y la semilla— y en el lugar de la barra de progreso va lo único que
+ * de verdad se puede hacer: volver a pasar el link.
+ */
+function TarjetaConvite({
+  convite,
+  ahora,
+  escala,
+}: {
+  convite: ConviteVista;
+  ahora: number;
+  escala: number;
+}) {
+  const [copiado, setCopiado] = useState(false);
+  const a = AVES[convite.ave];
+  const enLaBarra = ahora >= convite.llegadaPosada;
+  const b = borrachera(enLaBarra ? ahora - convite.llegadaPosada : 0, escala);
+
+  return (
+    <div
+      className="tarjeta"
+      style={{ padding: 14, marginBottom: 10, borderColor: `${a.color}55` }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <Ave especie={convite.ave} size={30} aletea={!enLaBarra} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 14.5, fontWeight: 700 }}>
+            {a.nombre} {convite.para ? `→ ${convite.para}` : "→ sin abrir"}
+          </p>
+          <p style={{ color: "var(--tenue)", fontSize: 12 }}>
+            {enLaBarra
+              ? `En una cervecería${convite.lugar ? ` de ${convite.lugar}` : ""}`
+              : `Yendo a la cervecería · ${cuentaRegresiva(convite.llegadaPosada - ahora)}`}
+          </p>
+        </div>
+        {enLaBarra && (
+          <span style={{ fontSize: 19 }} title={`${b.copetines} copetines`}>
+            {b.copetines === 0 ? "🪑" : b.nivel >= 0.75 ? "🥴" : "🍺"}
+          </span>
+        )}
+      </div>
+
+      {enLaBarra && (
+        <p
+          style={{
+            fontSize: 12.5,
+            lineHeight: 1.5,
+            color: "var(--suave)",
+            borderLeft: `2px solid ${a.color}`,
+            paddingLeft: 10,
+            marginBottom: 12,
+          }}
+        >
+          {a.nombre} {loQueEstaHaciendo(b, convite.id, ahora)}
+          {b.copetines > 0 && ` · ${b.copetines} copetín${b.copetines === 1 ? "" : "es"}`}.
+          Sale en cuanto abran el link.
+        </p>
+      )}
+
+      <button
+        className="boton chico"
+        style={{ width: "100%" }}
+        onClick={async () => {
+          if (await compartirConvite(convite)) {
+            setCopiado(true);
+            setTimeout(() => setCopiado(false), 2200);
+          }
+        }}
+      >
+        {copiado ? "✓ Link copiado" : "Pasarle el link otra vez"}
+      </button>
+    </div>
+  );
+}
 
 function TarjetaVuelo({
   loro,
@@ -664,17 +760,33 @@ function PorQueLlegoAsi({ loro }: { loro: LoroVista }) {
   // texto cambiado— pero son dos historias distintas, y contarlas al revés
   // arruina las dos.
   const perica = Boolean(loro.desvio);
-  const color = perica ? "#f472b6" : AVES.cotorra.color;
+  // Tres historias distintas dejan el mismo rastro —un texto cambiado— y
+  // contarlas al revés arruina las tres. La de la barra manda sobre las otras:
+  // si el ave se tomó doce copetines esperando a que armaras tu nido, eso es
+  // lo que explica el hipo.
+  const copetines = loro.parada?.copetines ?? 0;
+  const barra = Boolean(loro.parada && loro.parada.nivel > 0);
+  const color = barra ? "#fbbf24" : perica ? "#f472b6" : AVES.cotorra.color;
   const titulo = enviado
-    ? perica
-      ? "Así llegó, después de que la perica le metiera mano"
-      : "Así llegó del otro lado"
+    ? barra
+      ? "Así llegó, con los copetines encima"
+      : perica
+        ? "Así llegó, después de que la perica le metiera mano"
+        : "Así llegó del otro lado"
+    : barra
+      ? "Venía de una cervecería, y se nota"
+      : perica
+        ? "Ups, el perico se distrajo en el camino"
+        : "La cotorra lo repitió tanto que se le mezcló";
+  const nota = barra
+    ? `Estuvo esperando en una cervecería${
+        loro.parada?.lugar ? ` de ${loro.parada.lugar}` : ""
+      } a que armaras tu nido, y se tomó ${copetines} copetín${
+        copetines === 1 ? "" : "es"
+      }. El mensaje está entero: lo que le sobra es el hipo.`
     : perica
-      ? "Ups, el perico se distrajo en el camino"
-      : "La cotorra lo repitió tanto que se le mezcló";
-  const nota = perica
-    ? "Se cruzó con una perica, se quedó dando vueltas y ella le leyó el mensaje entero antes de dejarlo seguir."
-    : "De tanto ir repitiéndolo en voz alta pierde palabras, repite otras y da vuelta alguna.";
+      ? "Se cruzó con una perica, se quedó dando vueltas y ella le leyó el mensaje entero antes de dejarlo seguir."
+      : "De tanto ir repitiéndolo en voz alta pierde palabras, repite otras y da vuelta alguna.";
 
   return (
     <div
@@ -1036,12 +1148,14 @@ function Bandada({
   escala,
   alEscribir,
   alEnfocar,
+  alConvidar,
   refrescar,
 }: {
   amigos: NidoVista[];
   escala: number;
   alEscribir: (id?: string) => void;
   alEnfocar: (id: string) => void;
+  alConvidar: () => void;
   refrescar: () => void;
 }) {
   const [codigo, setCodigo] = useState("");
@@ -1072,6 +1186,31 @@ function Bandada({
 
   return (
     <>
+      {/* Arriba del código a propósito. Agregar por código exige que la otra
+          persona YA esté adentro, o sea que sirve para la mitad de la agenda
+          de cualquiera. Esto sirve para la otra mitad, que es la que hace
+          crecer esto. */}
+      <div
+        className="tarjeta"
+        style={{
+          padding: 14,
+          marginBottom: 14,
+          borderColor: "var(--esmeralda)",
+          background: "rgba(163, 230, 53, 0.06)",
+        }}
+      >
+        <p style={{ fontSize: 15, fontWeight: 750, marginBottom: 5 }}>
+          ¿No está en la app?
+        </p>
+        <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--suave)" }}>
+          Escribile igual. El ave sale ahora y espera en una cervecería hasta que
+          abra el link y arme su nido — tomando, si tarda.
+        </p>
+        <button className="boton" style={{ width: "100%", marginTop: 12 }} onClick={alConvidar}>
+          Enviarle un lorito igual
+        </button>
+      </div>
+
       <div className="tarjeta" style={{ padding: 14, marginBottom: 14 }}>
         <p className="etiqueta">Agregar por código</p>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
@@ -1184,7 +1323,7 @@ function Bandada({
               onClick={() => alEscribir(f.id)}
               style={{ width: "100%", marginTop: 10 }}
             >
-              Mandale un lorito
+              Envíale un lorito
             </button>
           </div>
         );

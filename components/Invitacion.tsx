@@ -10,17 +10,53 @@
 // mismo link: alguien de afuera, alguien que ya es de esa bandada, y el dueño
 // del link probando que ande. A los últimos dos, el saludo de bienvenida les
 // contestaba algo que no era cierto.
+//
+// Y hay un segundo link, el del lorito de convite (?c=), que no invita a una
+// app: avisa que hay un ave posada en una cervecería con un mensaje adentro,
+// esperando a que armes tu nido para salir. El texto NO viaja hasta acá —esa
+// es la regla de toda la app— pero sí todo lo demás, que es lo que da ganas de
+// abrirlo: quién, qué ave, en qué barrio, y cuántos copetines lleva.
 
 import { useEffect, useState } from "react";
 import { Ave } from "./Ave";
-import type { AveId } from "../lib/aves";
+import { AVES, type AveId } from "../lib/aves";
 import { esCodigo } from "../lib/codigo";
 
 type Invita = { nombre: string; lugar: string; ave: AveId };
 type Quien = { invita: Invita; yaEsAmigo: boolean; sosVos: boolean };
 
+export type ConviteEnPortada = {
+  ave: AveId;
+  de: string;
+  para: string;
+  barrio: string;
+  llegadaPosada: number;
+  copetines: number;
+  haciendo: string;
+  yaSalio: boolean;
+  sosVos: boolean;
+  esTuyo: boolean;
+};
+
 export function Invitacion({ alSaber }: { alSaber?: (nombre: string, codigo: string) => void }) {
   const [q, setQ] = useState<Quien | null>(null);
+  const [c, setC] = useState<ConviteEnPortada | null>(null);
+
+  useEffect(() => {
+    const llave = new URLSearchParams(window.location.search).get("c") || "";
+    if (!llave) return;
+    let vivo = true;
+    fetch(`/api/convite?c=${encodeURIComponent(llave)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!vivo || !j?.convite) return;
+        setC({ ...j.convite, sosVos: Boolean(j.sosVos), esTuyo: Boolean(j.esTuyo) });
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   useEffect(() => {
     const n = new URLSearchParams(window.location.search).get("n") || "";
@@ -44,6 +80,7 @@ export function Invitacion({ alSaber }: { alSaber?: (nombre: string, codigo: str
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (c) return <SaludoDeConvite c={c} />;
   if (!q) return null;
   const { invita, yaEsAmigo, sosVos } = q;
   return (
@@ -62,6 +99,45 @@ export function Invitacion({ alSaber }: { alSaber?: (nombre: string, codigo: str
           <>
             <strong>{invita.nombre}</strong> te quiere mandar un loro
             {invita.lugar ? ` desde ${invita.lugar}` : ""}.
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/** El saludo del lorito que espera en la barra. */
+function SaludoDeConvite({ c }: { c: ConviteEnPortada }) {
+  const a = AVES[c.ave];
+  const enLaBarra = Date.now() >= c.llegadaPosada;
+  return (
+    <div className="invitacion entra">
+      <Ave especie={c.ave} size={44} aletea={!enLaBarra} />
+      <p>
+        {c.esTuyo ? (
+          <>
+            Tu {a.nombre.toLowerCase()} ya salió de la cervecería y va para tu nido.
+          </>
+        ) : c.sosVos ? (
+          <>
+            Este lorito lo mandaste <strong>vos</strong>. Pasá el link para que
+            salga de la barra.
+          </>
+        ) : c.yaSalio ? (
+          <>Ese lorito ya salió para otro lado.</>
+        ) : (
+          <>
+            <strong>{c.de}</strong> te mandó {a.articulo === "la" ? "una" : "un"}{" "}
+            {a.nombre.toLowerCase()}
+            {c.para ? <> a vos, {c.para}</> : null}.{" "}
+            {enLaBarra ? (
+              <>
+                Está esperando en una cervecería{c.barrio ? ` de ${c.barrio}` : ""}
+                {c.copetines > 0 ? ` y ya lleva ${c.copetines} copetín${c.copetines === 1 ? "" : "es"}` : ""}.
+              </>
+            ) : (
+              <>Va camino a una cervecería a esperarte.</>
+            )}
           </>
         )}
       </p>

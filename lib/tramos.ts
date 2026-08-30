@@ -11,7 +11,7 @@
 import type { AveId } from "./aves";
 import type { Punto } from "./geo";
 import type { Desvio } from "./vuelo";
-import type { LoroVista, VueloMundo } from "./vista";
+import type { ConviteVista, LoroVista, VueloMundo } from "./vista";
 
 export type Tramo = {
   /** Id de la capa en el mapa. No es el id del loro: la vuelta lleva sufijo. */
@@ -92,6 +92,34 @@ export function tramosDelMundo(vuelos: VueloMundo[], ahora: number): Tramo[] {
       desvio: v.desvio,
       vuelta: false,
       ajeno: true,
+    });
+  }
+  return salida;
+}
+
+/**
+ * El vuelo de un lorito de convite hasta la cervecería.
+ *
+ * Solo el primer tramo: nido → barra, y mientras dura. Después el ave se posa
+ * y deja de ser un tramo —no avanza— así que el mapa la dibuja como un
+ * marcador quieto, no como un vuelo. El segundo tramo, de la barra al nido de
+ * quien abrió el link, ya es un `Loro` común y entra por `tramosEnElAire`.
+ */
+export function tramosDeConvites(convites: ConviteVista[], ahora: number): Tramo[] {
+  const salida: Tramo[] = [];
+  for (const c of convites) {
+    if (ahora >= c.llegadaPosada) continue;
+    salida.push({
+      clave: `convite:${c.id}`,
+      loroId: c.id,
+      ave: c.ave,
+      origen: c.origen,
+      destino: c.posada,
+      distanciaKm: c.distanciaKm,
+      salida: c.salida,
+      llegada: c.llegadaPosada,
+      desvio: null,
+      vuelta: false,
     });
   }
   return salida;

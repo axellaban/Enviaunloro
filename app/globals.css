@@ -298,6 +298,41 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 }
 .leaflet-control-attribution a { color: var(--suave) !important; }
 
+/* El globo del nido: quién es, dónde está y el botón para escribirle.
+   Leaflet lo dibuja blanco con una flechita blanca, que sobre el mapa de noche
+   es un cartel de otra aplicación. Los tres pedazos —caja, flecha y cruz— se
+   repintan con los tokens, así que el globo sigue al tema sin tocar nada. */
+.leaflet-popup-content-wrapper {
+  background: var(--noche-2) !important;
+  color: var(--texto) !important;
+  border: 1px solid var(--borde-alto);
+  border-radius: var(--radio-chico) !important;
+  box-shadow: var(--sombra) !important;
+}
+.leaflet-popup-tip {
+  background: var(--noche-2) !important;
+  border: 1px solid var(--borde-alto);
+  box-shadow: none !important;
+}
+.leaflet-popup-content { margin: 12px 14px !important; }
+.leaflet-popup-close-button {
+  color: var(--suave) !important;
+  /* 44 px de blanco táctil sobre una cruz de 14: en el teléfono, cerrar el
+     globo no puede depender de acertarle a la cruz dibujada. */
+  width: 30px !important;
+  height: 30px !important;
+  font-size: 20px !important;
+  line-height: 26px !important;
+}
+.globo-nido {
+  display: grid;
+  gap: 4px;
+  min-width: 148px;
+}
+.globo-nido strong { font-size: 14.5px; font-weight: 750; }
+.globo-nido .globo-donde { color: var(--suave); font-size: 12px; }
+.globo-nido .boton { margin-top: 7px; width: 100%; }
+
 .marcador-nido, .marcador-ave { background: none !important; border: none !important; }
 
 /* ---------- scrollbar ---------- */

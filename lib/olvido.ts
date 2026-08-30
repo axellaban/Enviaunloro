@@ -172,3 +172,101 @@ export function loQueRetocaLaPerica(texto: string, semilla: string): string {
   const firma = FIRMAS[semillaNumerica(`firma:${semilla}`) % FIRMAS.length];
   return `${mezclado} ${firma}`;
 }
+
+// ---------- el ave que paró en la cervecería ----------
+//
+// Un lorito de convite —el que se le manda a alguien que todavía no está en la
+// app— espera posado en una cervecería hasta que esa persona abre el link. Y
+// mientras espera, se toma unos copetines (lib/cerveceria.ts). Cuanto más
+// esperó, más tomado llega.
+//
+// LA REGLA QUE MANDA ACÁ ES OTRA que la de la cotorra y la perica, y es a
+// propósito: este mensaje es lo PRIMERO que esa persona lee de la app, y a
+// veces lo primero que lee de quien la invitó. Un chiste que se come el
+// mensaje de bienvenida no es un chiste, es una invitación rota. Así que acá no
+// se pierde ni se cambia una sola palabra: se estiran vocales y se le mete
+// hipo. Se lee todo, y se lee tomado.
+
+/** Vocales que se pueden estirar. Sin acentos: "estáaa" se lee raro. */
+const VOCALES = "aeiou";
+
+/** Palabras más cortas que esto no se estiran: no hay dónde. */
+const LARGO_PARA_ESTIRAR = 3;
+
+/** Cuántas palabras se estiran, como máximo, de jarana del todo. */
+const PARTE_ESTIRADA = 0.25;
+
+/** Cuántos hipos, de jarana del todo. */
+const HIPOS_MAXIMOS = 3;
+
+const HIPO = "¡hip!";
+
+/** Estira una vocal de la palabra. "vino" → "viiino". */
+function estirar(palabra: string, r: () => number, nivel: number): string {
+  const posiciones: number[] = [];
+  for (let i = 0; i < palabra.length; i++) {
+    if (VOCALES.includes(palabra[i].toLowerCase())) posiciones.push(i);
+  }
+  if (posiciones.length === 0) return palabra;
+  const i = posiciones[Math.floor(r() * posiciones.length)];
+  // Con un copetín encima se arrastra apenas; de jarana, se arrastra en serio.
+  const veces = 1 + Math.round(r() * (1 + nivel));
+  return palabra.slice(0, i) + palabra[i].repeat(1 + veces) + palabra.slice(i + 1);
+}
+
+/**
+ * Lo que entrega un ave que viene de la cervecería.
+ *
+ * @param nivel de 0 (recién se había sentado) a 1 (de jarana). Con 0 el
+ *   mensaje sale intacto: si abrieron el link enseguida, el ave no llegó ni a
+ *   pedir, y fingir que sí sería mentirle a la pantalla.
+ */
+export function loQueBalbuceaElBorracho(
+  texto: string,
+  semilla: string,
+  nivel: number
+): string {
+  const n = Math.min(1, Math.max(0, nivel));
+  if (n <= 0) return texto;
+
+  const palabras = texto.trim().split(/\s+/).filter(Boolean);
+  if (palabras.length === 0) return texto;
+
+  const r = azar(semillaNumerica(`copetin:${semilla}`));
+
+  // Las del medio, por la misma razón que en el resto del archivo: un mensaje
+  // que abre y cierra derecho se entiende igual aunque el medio venga torcido.
+  const medio: number[] = [];
+  for (let i = 1; i < palabras.length - 1; i++) {
+    if (palabras[i].length >= LARGO_PARA_ESTIRAR) medio.push(i);
+  }
+
+  const cuantas = Math.min(medio.length, Math.round(medio.length * PARTE_ESTIRADA * n));
+  // Barajado determinista: se estiran las primeras de la lista revuelta.
+  for (let i = medio.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [medio[i], medio[j]] = [medio[j], medio[i]];
+  }
+  const estiradas = new Set(medio.slice(0, cuantas));
+
+  const salida = palabras.map((p, i) => (estiradas.has(i) ? estirar(p, r, n) : p));
+
+  // Y el hipo, que es lo que de verdad se escucha. Va entre palabras y nunca
+  // al principio: arrancar con "¡hip!" tapa el saludo.
+  // Uno cada tres palabras como mucho: en un mensaje de cuatro, tres hipos
+  // dejan de ser un ave tomada y pasan a ser un mensaje ilegible.
+  const hipos = Math.min(
+    Math.max(1, Math.round(HIPOS_MAXIMOS * n)),
+    Math.max(1, Math.floor(palabras.length / 3))
+  );
+  const huecos: number[] = [];
+  for (let i = 1; i < salida.length; i++) huecos.push(i);
+  for (let i = huecos.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [huecos[i], huecos[j]] = [huecos[j], huecos[i]];
+  }
+  const donde = huecos.slice(0, Math.min(hipos, huecos.length)).sort((a, b) => b - a);
+  for (const i of donde) salida.splice(i, 0, HIPO);
+
+  return salida.join(" ");
+}

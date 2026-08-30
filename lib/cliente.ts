@@ -9,13 +9,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Punto } from "./geo";
-import type { LoroVista, NidoVista, VueloMundo } from "./vista";
+import type { ConviteVista, LoroVista, NidoVista, VueloMundo } from "./vista";
 
 export type Estado = {
   yo: NidoVista | null;
   codigo: string;
   amigos: NidoVista[];
   loros: LoroVista[];
+  /** Los loritos de convite que todavía esperan en la cervecería. */
+  convites: ConviteVista[];
   /** Escala de tiempo del servidor. El navegador calcula los ETA con la misma. */
   escala: number;
   /** "upstash" | "archivo". Sirve para explicar por qué se pierde un nido. */
@@ -27,6 +29,7 @@ const VACIO: Estado = {
   codigo: "",
   amigos: [],
   loros: [],
+  convites: [],
   escala: 1,
   almacenamiento: "",
 };
@@ -109,6 +112,7 @@ export function useEstado() {
         codigo: j.codigo || "",
         amigos: j.amigos || [],
         loros: j.loros || [],
+        convites: j.convites || [],
         escala: Number(j.escala) > 0 ? Number(j.escala) : 1,
         almacenamiento: String(j.almacenamiento || ""),
       });

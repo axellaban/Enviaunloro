@@ -339,6 +339,147 @@ chequear(
   chequear(v5.yaEsAmigo === true, "apenas la suma, el mismo link deja de ofrecerlo");
 }
 
+// --- el lorito de convite: el que espera en la cervecería ---
+//
+// Mandarle un mensaje a alguien que TODAVÍA NO ESTÁ en la app. El ave despega
+// igual, se posa en una cervecería a dos minutos de vuelo y espera ahí a que
+// esa persona abra el link y arme su nido. Lo que se verifica es lo que
+// sostiene el invento:
+//
+//   El texto NO sale del servidor por el link. Si saliera, el link SERÍA el
+//   mensaje, armar el nido no destrabaría nada y la app entera dejaría de
+//   tener sentido. Es la misma regla que la del loro en vuelo, y acá es la
+//   que más fácil se rompe sin darse cuenta.
+//
+//   Tampoco salen las coordenadas de la barra: están a pocos kilómetros del
+//   nido de quien lo mandó, así que darlas es contar dónde vive.
+//
+//   El ave sale DE LA BARRA, no del nido. Es de donde está.
+{
+  const emisor = cliente("Convidante");
+  await emisor.llamar("/api/nido", { nombre: "Convidante", ave: "perico", lat: -34.6, lng: -58.38 });
+  const est = await emisor.llamar("/api/estado");
+  const escala = Number(est.escala) || 1;
+
+  const SECRETO = "Traete el vino tinto que quedó en casa de tu vieja";
+  const nuevo = await emisor.llamar("/api/convite", {
+    ave: "perico",
+    texto: SECRETO,
+    para: "Jez",
+  });
+  const llave = nuevo.convite.id;
+  chequear(Boolean(llave), "se puede soltar un lorito para alguien que no tiene nido");
+  chequear(
+    nuevo.convite.llegadaPosada > nuevo.convite.salida,
+    `el ave sale ya y tarda en llegar a la barra (${Math.round((nuevo.convite.llegadaPosada - nuevo.convite.salida) / 1000)} s)`
+  );
+
+  const conEsperando = await emisor.llamar("/api/estado");
+  chequear(
+    conEsperando.convites?.length === 1 && conEsperando.convites[0].texto === SECRETO,
+    "quien lo mandó lo ve esperando, y puede releer lo que escribió"
+  );
+
+  // Y ahora lo que de verdad importa: qué se cuenta por el link.
+  const afuera = cliente("Afuera");
+  const publico = await afuera.llamar(`/api/convite?c=${encodeURIComponent(llave)}`);
+  chequear(publico.convite?.de === "Convidante", "el link dice quién lo mandó");
+  chequear(publico.convite?.ave === "perico", "y con qué ave");
+  chequear(publico.convite?.para === "Jez", "y a quién iba dirigido");
+  const crudo = JSON.stringify(publico);
+  chequear(!crudo.includes(SECRETO), "pero NO el mensaje: para eso hay que armar el nido");
+  chequear(!crudo.includes("vino"), "ni un pedazo de él");
+  // Por claves y no por substring: "La Plata" contiene "lat", y una prueba que
+  // se rompe según en qué ciudad viva la persona no prueba nada.
+  chequear(
+    Object.keys(publico.convite).sort().join(",") ===
+      "ave,barrio,copetines,de,enLaBarra,haciendo,llegadaPosada,lugar,para,salida,yaSalio",
+    "ni dónde queda la cervecería, que está a metros de la casa de quien lo mandó"
+  );
+
+  // Del otro lado: alguien arma su nido y el ave se levanta de la mesa. Se lo
+  // planta cerca de la barra para que el segundo tramo dure poco.
+  const barra = conEsperando.convites[0].posada;
+  const receptor = cliente("Jez");
+  await receptor.llamar("/api/nido", { nombre: "Jez", lat: barra.lat + 0.004, lng: barra.lng + 0.004 });
+
+  // Si la escala está acelerada se lo deja tomar unos copetines antes de
+  // abrirlo; si no, se abre enseguida y el ave llega sobria.
+  const seEmborracha = escala >= 100;
+  if (seEmborracha) {
+    console.log("   (escala acelerada: se lo deja tomando unos copetines)");
+    await new Promise((r) => setTimeout(r, 12_000));
+  }
+
+  const reclamo = await receptor.llamar("/api/convite/reclamar", { c: llave });
+  chequear(reclamo.de === "Convidante", "abrir el link con nido propio destraba el lorito");
+  const vuelo = reclamo.loro;
+  chequear(vuelo.texto === null, "y el texto SIGUE sin viajar: el ave todavía está en el aire");
+  chequear(Boolean(vuelo.parada), "el loro sabe que salió de una cervecería");
+  chequear(
+    vuelo.parada.salida >= vuelo.parada.llegada,
+    "y que se levantó de la mesa después de haberse sentado"
+  );
+
+  const jezEnVuelo = await receptor.llamar("/api/estado");
+  chequear(
+    !JSON.stringify(jezEnVuelo).includes(SECRETO),
+    "tampoco viaja en la consulta de estado mientras vuela"
+  );
+  chequear(
+    jezEnVuelo.amigos.some((a) => a.nombre === "Convidante"),
+    "quedaron en la misma bandada, de este lado"
+  );
+  const emisorAhora = await emisor.llamar("/api/estado");
+  chequear(
+    emisorAhora.amigos.some((a) => a.nombre === "Jez"),
+    "y del otro"
+  );
+  chequear(
+    (emisorAhora.convites ?? []).length === 0,
+    "y el convite deja de estar esperando: ahora la historia la cuenta el loro"
+  );
+
+  // El ave es una y el mensaje era para una persona.
+  const otro = cliente("Colado");
+  await otro.llamar("/api/nido", { nombre: "Colado", lat: -34.7, lng: -58.5 });
+  try {
+    await otro.llamar("/api/convite/reclamar", { c: llave });
+    chequear(false, "un tercero no puede quedarse con un lorito ya reclamado");
+  } catch {
+    chequear(true, "un tercero no puede quedarse con un lorito ya reclamado");
+  }
+  try {
+    await emisor.llamar("/api/convite/reclamar", { c: llave });
+    chequear(false, "y quien lo mandó no se lo puede reclamar a sí mismo");
+  } catch {
+    chequear(true, "y quien lo mandó no se lo puede reclamar a sí mismo");
+  }
+  // Pero recargar la página con el link todavía en la barra de direcciones no
+  // puede explotar: es el mismo loro, no uno nuevo ni un error.
+  const otraVez = await receptor.llamar("/api/convite/reclamar", { c: llave });
+  chequear(otraVez.loro.id === vuelo.id, "y abrirlo dos veces devuelve el mismo loro, no dos");
+
+  // Y al aterrizar: el mensaje entero, con o sin hipo según lo que esperó.
+  await new Promise((r) => setTimeout(r, vuelo.llegada - Date.now() + 2500));
+  const buzon = await receptor.llamar("/api/estado");
+  const llegado = buzon.loros.find((l) => l.id === vuelo.id);
+  chequear(Boolean(llegado?.llego), "el lorito aterriza en el nido recién armado");
+  console.log(`  llegó: "${llegado?.texto}"`);
+  const palabras = (t) => (t || "").split(/\s+/).filter((w) => w !== "¡hip!").length;
+  chequear(
+    palabras(llegado?.texto) === palabras(SECRETO),
+    "y no le falta ni una palabra del mensaje: es lo primero que esa persona lee de la app"
+  );
+  if (seEmborracha) {
+    chequear(llegado.parada.copetines > 0, `se tomó ${llegado?.parada?.copetines} copetines esperando`);
+    chequear(String(llegado?.texto).includes("¡hip!"), "y lo entrega con hipo");
+  } else {
+    chequear(llegado?.texto === SECRETO, "abierto enseguida, el ave no llegó ni a pedir: llega tal cual");
+    console.log("   (escala normal: para ver los copetines, LOROS_ESCALA_TIEMPO=600)");
+  }
+}
+
 // --- código inexistente y código propio ---
 for (const [codigo, motivo] of [["ZZZZZZ", "código inexistente"], [estBeto.codigo, "código propio"]]) {
   try { await beto.llamar("/api/amigos", { codigo }); chequear(false, `rechaza ${motivo}`); }

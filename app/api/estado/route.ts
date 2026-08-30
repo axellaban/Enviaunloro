@@ -18,7 +18,8 @@ import {
   vecinaTienePendiente,
   type Nido,
 } from "../../../lib/datos";
-import { verLoro, verNido } from "../../../lib/vista";
+import { convitesDe } from "../../../lib/convite";
+import { verConvite, verLoro, verNido } from "../../../lib/vista";
 import { store } from "../../../lib/store";
 
 export const runtime = "nodejs";
@@ -49,8 +50,12 @@ export async function GET(req: Request) {
   asegurarLugar(yo);
 
   const ahora = Date.now();
-  // Las dos consultas que hacen falta siempre, en paralelo.
-  const [bandada, propio] = await Promise.all([amigos(yo.id), buzon(yo.id)]);
+  // Las tres consultas que hacen falta siempre, en paralelo.
+  const [bandada, propio, convites] = await Promise.all([
+    amigos(yo.id),
+    buzon(yo.id),
+    convitesDe(yo.id),
+  ]);
 
   // Doña Cotorra contesta acá: sin worker ni cron, cuando mirás ya está. Pero
   // solo se la llama si el buzón que acabamos de leer dice que hay algo sin
@@ -74,5 +79,9 @@ export async function GET(req: Request) {
     codigo: yo.codigo,
     amigos: bandada.map((a) => verNido(a, yo)),
     loros: vistas,
+    // Los loritos que están esperando en la cervecería a que alguien abra su
+    // link. Los reclamados no viajan: a partir de ahí la historia la cuenta el
+    // loro, que ya está en `loros` como cualquier otro vuelo.
+    convites: convites.filter((c) => !c.reclamado).map((c) => verConvite(c, yo)),
   });
 }

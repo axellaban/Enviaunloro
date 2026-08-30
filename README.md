@@ -191,6 +191,55 @@ sola—. Para una demo con distancias de verdad está
 que viaja al navegador en `/api/estado` para que el tiempo que se promete antes
 de mandar sea exactamente el que después se cumple.
 
+## El lorito de convite
+
+Hasta acá había una sola forma de traer gente: compartir tu nido. Un link
+genérico, el mismo para todos, que del otro lado se lee como "bajate esta app".
+
+Esto es lo otro. Le escribís algo a una persona puntual, elegís con qué ave, y
+**el ave sale**. No espera en una bandeja: despega de tu nido, cruza un pedazo
+de mapa y se posa en una cervecería a **dos minutos de vuelo**. Ahí espera. El
+link que compartís ya no dice "bajate una app": dice que hay un guacamayo
+tomando cerveza a doce kilómetros con un mensaje tuyo adentro, y que sale en
+cuanto esa persona tenga un nido adonde ir.
+
+Del otro lado, armar el nido deja de ser un trámite y pasa a ser lo que
+destraba el ave.
+
+**Por qué una parada y no la espera en el nido.** No se sabe adónde va: el nido
+de esa persona no existe todavía, así que no hay destino, ni distancia, ni hora
+de llegada. Y un pájaro quieto en tu propio nido no le cuenta nada a nadie. La
+parada resuelve las dos cosas: hay algo que ver desde el primer segundo, y hay
+un lugar concreto del que el ave va a salir.
+
+**Los copetines.** El ave está en una cervecería, así que toma. Cuanto más
+tardan en abrir el link, más tomada llega: se demora hasta un 35 % más y
+entrega el mensaje con hipo (`lib/olvido.ts`). La espera —que en cualquier otra
+app es tiempo muerto— es la parte divertida.
+
+Pero **el mensaje llega entero**. Ni una palabra perdida, ni cambiada: se
+estiran vocales y se le mete hipo, nada más. Es lo primero que esa persona lee
+de la app y a veces lo primero que lee de quien la invitó; un chiste que se
+come el mensaje de bienvenida no es un chiste, es una invitación rota. Por la
+misma razón, **el lorito de convite no se pierde ni se enamora**: el 0,2 % y el
+romance del perico no corren acá. El ave ya tuvo su noche.
+
+**Lo que el link NO cuenta.** El texto no sale del servidor hasta que hay un
+nido que lo reciba. Si saliera, el link *sería* el mensaje y armar el nido no
+destrabaría nada. Tampoco salen las coordenadas de la cervecería: están a pocos
+kilómetros de la casa de quien lo mandó. Va el nombre del barrio, que es la
+misma precisión que ya da el link de invitación. La prueba de punta a punta lo
+verifica campo por campo.
+
+    lib/cerveceria.ts   dónde para, cuántos copetines, qué está haciendo.
+    lib/convite.ts      el documento, el alta y el reclamo.
+    components/Convite.tsx   escribirlo y pasar el link.
+
+Para verlo entero sin esperar seis horas a que el bicho se emborrache:
+
+    LOROS_ESCALA_TIEMPO=600 npm run start
+    LOROS_ESCALA_TIEMPO=600 npm run prueba
+
 ## El código de nido
 
 Dos palabras del mundo de la app —`loroparlanchin`, `zorzalgentil`,
@@ -615,7 +664,10 @@ lib/vuelo.ts      la fórmula del vuelo. Pura, y la usan servidor Y navegador:
                   y cumpliría otro.
 lib/geo.ts        haversine, círculo máximo, el arco que se dibuja, rumbo, formatos.
 lib/datos.ts      nidos, amistades, loros, la suerte del ave, Doña Cotorra.
-lib/olvido.ts     lo que llega cuando no llega tal cual: la cotorra y la perica.
+lib/olvido.ts     lo que llega cuando no llega tal cual: la cotorra, la
+                  perica y el ave que paró en la cervecería.
+lib/cerveceria.ts la parada del lorito de convite y los copetines.
+lib/convite.ts    el lorito para alguien que todavía no tiene nido.
 lib/tramos.ts     los vuelos dibujables: la ida de cada loro y, si lo soltaron,
                   la vuelta. Solo tipos importados — lo usa el navegador.
 lib/store.ts      persistencia: Upstash, Supabase o un archivo, según lo que

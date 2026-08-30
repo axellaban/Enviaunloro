@@ -12,6 +12,7 @@ import dynamic from "next/dynamic";
 import { Onboarding } from "../../components/Onboarding";
 import { Panel } from "../../components/Panel";
 import { Compositor } from "../../components/Compositor";
+import { Convite } from "../../components/Convite";
 import { HojaInferior } from "../../components/HojaInferior";
 import { VistaMapa, type Vista } from "../../components/VistaMapa";
 import { esCodigo, normalizarCodigo } from "../../lib/codigo";
@@ -83,6 +84,8 @@ export default function Nido() {
   const [aviso, setAviso] = useState("");
   /** Modo "tocá el mapa para mudar tu nido". */
   const [mudando, setMudando] = useState(false);
+  /** El compositor del lorito para alguien que todavía no está en la app. */
+  const [convidando, setConvidando] = useState(false);
   /** Qué loros muestra el mapa: los tuyos, o los de todo el mundo. */
   const [vista, setVista] = useState<Vista>("tuyos");
   // Solo consulta mientras la vista del resto está prendida.
@@ -90,6 +93,9 @@ export default function Nido() {
   /** Código que venía en el link compartido, esperando a que haya nido. */
   const invitacion = useRef<string | null>(null);
   const sumado = useRef(false);
+  /** Llave de un lorito de convite, esperando lo mismo. */
+  const convite = useRef<string | null>(null);
+  const reclamado = useRef(false);
   /** id del loro → en qué estado lo vimos la última vez. */
   const conocidos = useRef<Map<string, EstadoLoro> | null>(null);
 
@@ -169,9 +175,14 @@ export default function Nido() {
 
       if (nuevo && ahora === "vuelo") {
         const falta = formatearDuracion(l.llegada - ahoraServidor());
-        const texto = `${a.nombre} de ${l.otro.nombre} viene en camino. Llega en ${falta}.`;
-        mostrarAviso(`🪶 ${texto}`);
-        avisar("Viene un loro en camino 🦜", texto);
+        // El que sale de una cervecería no "viene en camino" y ya: estuvo
+        // esperando a que armaras tu nido, y eso es lo primero que esa persona
+        // lee de la app. Contarlo como un vuelo más se come toda la historia.
+        const texto = l.parada
+          ? `${a.nombre} de ${l.otro.nombre} salió de la cervecería. Llega en ${falta}.`
+          : `${a.nombre} de ${l.otro.nombre} viene en camino. Llega en ${falta}.`;
+        mostrarAviso(`${l.parada ? "🍺" : "🪶"} ${texto}`);
+        avisar(l.parada ? "Tu lorito salió de la barra 🍺" : "Viene un loro en camino 🦜", texto);
       } else if (ahora.startsWith("llego") && (antes === "vuelo" || reciente)) {
         const texto = `${a.nombre} de ${l.otro.nombre} aterrizó en tu nido.`;
         mostrarAviso(`🪶 ${texto}`);
@@ -213,6 +224,46 @@ export default function Nido() {
         if (!String(e?.message || "").includes("tu propio")) {
           mostrarAviso(`No se pudo sumar ese nido: ${e?.message || "código inválido"}`);
         }
+      }
+    })();
+  }, [est.yo, est, mostrarAviso, enfocar]);
+
+  // Destrabar el lorito que estaba esperando en la cervecería.
+  //
+  // Misma forma que el de arriba y por la misma razón: corre cuando aparece el
+  // nido, no al montar, así sirve igual para alguien que ya tenía nido —el ave
+  // sale en el acto— y para alguien que lo acaba de armar en el onboarding, que
+  // es el caso para el que se inventó todo esto.
+  useEffect(() => {
+    if (convite.current === null) {
+      const c = new URLSearchParams(window.location.search).get("c") || "";
+      convite.current = c;
+      // Fuera de la URL: si no, recargar la página lo reintenta para siempre.
+      if (c) window.history.replaceState({}, "", "/nido");
+    }
+    const llave = convite.current;
+    if (!llave || !est.yo || reclamado.current) return;
+    reclamado.current = true;
+
+    (async () => {
+      try {
+        const r = await pedir<{ de: string; loro: LoroVista }>("/api/convite/reclamar", {
+          datos: { c: llave },
+        });
+        // Primero refrescar y después avisar, en ese orden: la misma consulta
+        // dispara el aviso genérico de "viene un loro en camino", y si este
+        // saliera antes quedaría pisado por aquel — que es más pobre, porque
+        // no cuenta de dónde salió el bicho.
+        await est.refrescar();
+        const a = AVES[r.loro.ave];
+        mostrarAviso(
+          `🍺 ${a.nombre} de ${r.de} salió de la cervecería. Llega en ${formatearDuracion(
+            Math.max(0, r.loro.llegada - est.ahoraServidor())
+          )}.`
+        );
+        enfocar(r.loro.id);
+      } catch (e: any) {
+        mostrarAviso(`No se pudo destrabar ese lorito: ${e?.message || "ya no está"}`);
       }
     })();
   }, [est.yo, est, mostrarAviso, enfocar]);
@@ -271,7 +322,14 @@ export default function Nido() {
   const volviendo = est.loros.filter(
     (l) => l.vuelta && est.ahoraServidor() < l.vuelta.llegada
   ).length;
-  const enElAire = enVuelo.length + volviendo;
+  // Los convites cuentan mientras VUELAN hacia la cervecería. Posados no: el
+  // cartel dice qué se está moviendo en el mapa, y un ave sentada en una barra
+  // no se mueve. Lo que la espera es la pestaña, que es una lista de
+  // pendientes, no un contador de tráfico.
+  const yendoALaBarra = est.convites.filter(
+    (c) => est.ahoraServidor() < c.llegadaPosada
+  ).length;
+  const enElAire = enVuelo.length + volviendo + yendoALaBarra;
 
   return (
     <div className="app">
@@ -283,10 +341,12 @@ export default function Nido() {
           amigos={est.amigos}
           vuelos={est.loros}
           mundo={mundo.vuelos}
+          convites={est.convites}
           vista={vista}
           ahoraServidor={est.ahoraServidor}
           foco={foco}
           modoElegir={mudando}
+          alEscribirle={(id) => setCompositor({ abierto: true, para: id })}
           alElegirPunto={async (punto) => {
             if (!mudando) return;
             setMudando(false);
@@ -392,7 +452,9 @@ export default function Nido() {
           escala={est.escala}
           ahoraServidor={est.ahoraServidor}
           alEnfocar={enfocar}
+          convites={est.convites}
           alEscribir={(id) => setCompositor({ abierto: true, para: id })}
+          alConvidar={() => setConvidando(true)}
           alElegirEnMapa={() => setMudando(true)}
           alReenviar={(l) =>
             setCompositor({
@@ -426,6 +488,19 @@ export default function Nido() {
             setCompositor({ abierto: false });
             mostrarAviso(`🪶 ${mensaje}`);
             pedirPermisoAvisos();
+            est.refrescar();
+          }}
+        />
+      )}
+
+      {convidando && (
+        <Convite
+          yo={est.yo}
+          alCerrar={() => setConvidando(false)}
+          alSoltado={(mensaje) => {
+            // No se cierra: la pantalla se convierte en el link, que es lo
+            // único que falta para que el ave salga de la barra.
+            mostrarAviso(mensaje);
             est.refrescar();
           }}
         />

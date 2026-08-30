@@ -22,7 +22,12 @@ import {
   sortearDesvio,
   type Desvio,
 } from "./vuelo";
-import { loQueRepiteLaCotorra, loQueRetocaLaPerica } from "./olvido";
+import {
+  loQueBalbuceaElBorracho,
+  loQueRepiteLaCotorra,
+  loQueRetocaLaPerica,
+} from "./olvido";
+import { demoraPorCopetines, type Parada } from "./cerveceria";
 import { nuevoId } from "./sesion";
 
 export type Nido = {
@@ -110,6 +115,16 @@ export type Loro = {
   respuestaEntregada?: string | null;
   /** Interno de Doña Cotorra: si ya devolvió el ave con su respuesta. */
   respondido?: boolean;
+  /**
+   * La parada en la cervecería, si este loro viene de un convite.
+   *
+   * Un lorito mandado a alguien que todavía no estaba en la app no despega
+   * desde el nido: despega desde la cervecería donde estuvo esperando a que
+   * esa persona abriera el link (lib/cerveceria.ts). `origen` es la
+   * cervecería, no el nido, porque es de donde sale de verdad; esto guarda el
+   * resto de la historia, incluidos los copetines que se tomó mientras tanto.
+   */
+  parada?: Parada | null;
 };
 
 /**
@@ -602,6 +617,13 @@ export async function enviarLoro(datos: {
   para: Nido;
   ave: AveId;
   texto: string;
+  /**
+   * La parada en la cervecería, cuando el ave no despega del nido sino de
+   * donde estuvo esperando (lib/cerveceria.ts). Cambia tres cosas: de dónde
+   * sale, cuándo sale —puede ser en el futuro, si todavía no llegó a la
+   * barra— y cómo entrega el mensaje.
+   */
+  parada?: Parada;
 }): Promise<ResultadoEnvio> {
   const texto = datos.texto.trim();
   if (!texto) return { ok: false, error: "El loro no puede volar sin nada que decir." };
@@ -614,25 +636,40 @@ export async function enviarLoro(datos: {
     };
   }
 
-  const origen: Punto = { lat: datos.de.lat, lng: datos.de.lng };
+  const parada = datos.parada ?? null;
+  // El ave que viene de un convite despega de la cervecería, no del nido: ahí
+  // es donde estuvo esperando. Y sale cuando se levanta de la mesa, que puede
+  // ser en el futuro —si abrieron el link antes de que llegara a la barra,
+  // sale recién al llegar; el ave no se teletransporta ni pega la vuelta.
+  const origen: Punto = parada ? parada.punto : { lat: datos.de.lat, lng: datos.de.lng };
   const destino: Punto = { lat: datos.para.lat, lng: datos.para.lng };
   const km = distanciaKm(origen, destino);
-  const salida = Date.now();
+  const salida = parada ? parada.salida : Date.now();
   const escala = escalaGlobal();
   // Lo que iba a tardar si nada raro pasaba. Todo lo demás se mide contra esto.
-  const duracionLimpia = duracionVuelo(km, datos.ave, escala);
+  // El que viene de la cervecería tarda de más, en proporción a lo que se tomó.
+  const duracionLimpia = Math.round(
+    duracionVuelo(km, datos.ave, escala) * (parada ? demoraPorCopetines(parada.nivel) : 1)
+  );
 
   // El sorteo va acá, una sola vez, y el resultado queda guardado. Ni cerca
   // del principio ni del final: perderse a los tres segundos de despegar no se
   // vive como un viaje que salió mal, y perderse rozando el destino es una
   // crueldad innecesaria.
-  const seExtravia = Math.random() < probabilidadExtravio();
+  //
+  // EL LORITO DE CONVITE NO SE PIERDE NI SE ENAMORA, y no es una excepción
+  // caprichosa: es el PRIMER mensaje que esa persona recibe en la app, muchas
+  // veces lo primero que ve de quien la invitó. Perderlo sería recibir a
+  // alguien que acaba de armar su nido con un nido vacío y ninguna razón para
+  // volver. El ave ya tuvo su noche en la cervecería; con eso alcanza.
+  const seExtravia = !parada && Math.random() < probabilidadExtravio();
   const dondeSePierde = 0.15 + Math.random() * 0.7;
 
   // Un ave que se pierde no se enamora: la historia de cada vuelo es una sola.
-  const desvio = seExtravia
-    ? null
-    : sortearDesvio(datos.ave, salida, duracionLimpia, escala);
+  const desvio =
+    seExtravia || parada
+      ? null
+      : sortearDesvio(datos.ave, salida, duracionLimpia, escala);
   const duracion = duracionLimpia + (desvio ? desvio.hasta - desvio.desde : 0);
 
   const id = nuevoId();
@@ -650,7 +687,12 @@ export async function enviarLoro(datos: {
     // al que la perica le metió mano mientras estaba distraído. Un perico que
     // no se distrajo entrega el mensaje intacto — es el premio por mandar el
     // ave más rápida y que salga bien.
-    textoEntregado: retocarTexto(datos.ave, texto, id, desvio),
+    // Y si viene de la cervecería, encima de lo que haga el ave, el hipo. Van
+    // en este orden porque así pasó: primero el bicho escuchó lo que escuchó
+    // durante el viaje, después se tomó los copetines.
+    textoEntregado: parada
+      ? loQueBalbuceaElBorracho(retocarTexto(datos.ave, texto, id, desvio), id, parada.nivel)
+      : retocarTexto(datos.ave, texto, id, desvio),
     llegada: salida + duracion,
     extravio: seExtravia
       ? salida + Math.round(duracionLimpia * dondeSePierde)
@@ -661,6 +703,7 @@ export async function enviarLoro(datos: {
     suerte: null,
     suerteEn: null,
     regreso: null,
+    parada,
   };
 
   await escribirDoc(claveLoro(loro.id), loro);
