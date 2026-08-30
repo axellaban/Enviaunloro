@@ -83,6 +83,8 @@ export function Convite({
 }) {
   const [para, setPara] = useState("");
   const [ave, setAve] = useState<AveId>(yo.ave);
+  /** Que salga de la barra convertido. Solo el loro puede, igual que siempre. */
+  const [pollera, setPollera] = useState(false);
   const [texto, setTexto] = useState("");
   const [error, setError] = useState("");
   const [soltando, setSoltando] = useState(false);
@@ -92,6 +94,7 @@ export function Convite({
 
   const a = AVES[ave];
   const sobra = a.maxCaracteres - texto.length;
+  const enPollera = pollera && ave === "loro";
 
   async function soltar() {
     if (!texto.trim()) return;
@@ -99,9 +102,11 @@ export function Convite({
     setError("");
     try {
       const r = await pedir<{ convite: ConviteVista }>("/api/convite", {
-        datos: { ave, texto: texto.trim(), para: para.trim() },
+        datos: { ave, texto: texto.trim(), para: para.trim(), pollera: enPollera },
       });
       setSalido(r.convite);
+      // Sale un loro, y eso es lo que dice el aviso aunque vaya a convertirse:
+      // lo que despega del nido es un loro. La pollera se cuenta cuando pasa.
       alSoltado(
         `🍺 Tu ${a.nombre.toLowerCase()} salió y para en una cervecería. Pasale el link para que salga de ahí.`
       );
@@ -191,6 +196,23 @@ export function Convite({
               Cuanto más tarde en abrirlo, más tomado va a llegar el bicho. Eso
               no lo arregla nadie.
             </p>
+
+            {salido.pollera && (
+              <p
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.55,
+                  color: "var(--suave)",
+                  borderLeft: "2px solid #f472b6",
+                  paddingLeft: 10,
+                  marginBottom: 12,
+                }}
+              >
+                <strong style={{ color: "#f9a8d4" }}>Y sale en pollera.</strong>{" "}
+                Nadie lo ve venir: el link dice loro, y en la barra hay un loro.
+                Se convierte cuando despega para el nido de esa persona.
+              </p>
+            )}
 
             <p
               style={{
@@ -315,6 +337,44 @@ export function Convite({
               <br />
               {a.aviso || `Para a ${formatearDistancia(kmHastaLaParada(a.id))} de acá.`}
             </p>
+
+            {/* La gracia del loro, acá con un giro que en un envío común no
+                existe: el ave entra a la cervecería siendo un loro y sale
+                convertida. Nada de esto se cuenta por el link —ni el ave que
+                espera en la barra lo deja ver— así que del otro lado la pollera
+                aparece recién cuando despega, que es cuando tiene gracia. */}
+            {ave === "loro" && (
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  margin: "-6px 0 16px",
+                  padding: "9px 11px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  background: enPollera ? "rgba(244,114,182,.12)" : "var(--panel)",
+                  border: `1px ${enPollera ? "solid" : "dashed"} ${
+                    enPollera ? "#f472b6" : "var(--borde-alto)"
+                  }`,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={enPollera}
+                  onChange={(e) => setPollera(e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: "#f472b6", flex: "0 0 auto" }}
+                />
+                <span style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                  <strong style={{ color: enPollera ? "#f9a8d4" : "var(--texto)" }}>
+                    Sale de la barra en pollera.
+                  </strong>{" "}
+                  <span style={{ color: "var(--suave)" }}>
+                    Entra loro. El link no lo cuenta: se convierte al despegar.
+                  </span>
+                </span>
+              </label>
+            )}
 
             <p className="etiqueta" style={{ marginBottom: 8 }}>
               El mensaje

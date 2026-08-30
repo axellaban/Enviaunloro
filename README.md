@@ -76,7 +76,9 @@ muestra pegado a la elección). Avisarlo después sería una trampa.
   otro lado llueven polleras en toda la pantalla. El mensaje no se toca: el
   chiste es el envoltorio, no el contenido. Es la única gracia que se elige en
   vez de sortearse, y la única que solo puede tener un ave: pedirla con otra se
-  ignora en silencio y sale el ave de siempre.
+  ignora en silencio y sale el ave de siempre. También se le puede pedir al
+  lorito de convite, y ahí gana un tiempo propio: entra a la cervecería siendo
+  un loro y sale convertido — más abajo.
 
 ### Las ceremonias
 
@@ -302,6 +304,28 @@ destrabaría nada. Tampoco salen las coordenadas de la cervecería: están a poc
 kilómetros de la casa de quien lo mandó. Va el nombre del barrio, que es la
 misma precisión que ya da el link de invitación. La prueba de punta a punta lo
 verifica campo por campo.
+
+**Y el lorito también puede salir en pollera.** Es la misma gracia del loro de
+siempre, pero acá tiene un momento que en un envío común no existe: **entra a la
+cervecería siendo un loro y sale convertido**. Lo que despega del nido es un
+loro, lo que espera en la barra es un loro, y lo que cuenta el link es un loro.
+Recién cuando el ave se levanta de la mesa —ese minuto de más que se queda
+terminando el copetín— lo que sale para el nido de la otra persona es una
+pollera, y del otro lado llueven polleras al abrirlo.
+
+Que no se cuente antes no es un detalle de implementación, es la gracia entera:
+si el link dijera de antemano que va a salir en pollera, no quedaría nada para
+ver cuando pase. Así que sigue la regla que ya cumplen el 0,2 % y el romance del
+perico —**el resultado está decidido desde el principio y no viaja al navegador
+hasta que ocurre**— con dos lugares donde se sostiene: `/api/convite`, que es
+público, no lo menciona nunca, y `lib/vista.ts` lo tapa en el loro ya reclamado
+hasta que pasa la hora de salida. Sin lo segundo, la pollera aparecía sentada en
+la barra durante ese último minuto, contando el final antes de tiempo.
+
+Lo ve una sola persona antes de tiempo: quien lo mandó, en su tarjeta del panel,
+y por la razón opuesta —lo eligió—. Escondérselo no sería una sorpresa, sería un
+interruptor del que no se sabe si anduvo, y la espera puede durar dos días. En su
+mapa, eso sí, el ave de la cervecería se dibuja loro como para cualquiera.
 
 **El link tiene ruta propia: `/l/<lorito>`.** No es capricho de URL, es lo que
 se ve antes de abrirlo. La portada de `/` es estática a propósito —es la que

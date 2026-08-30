@@ -60,6 +60,21 @@ export type Convite = {
   /** El nido que lo manda. */
   de: string;
   ave: AveId;
+  /**
+   * Sale de la cervecería convertido en pollera. Solo el loro puede.
+   *
+   * Se elige al soltarlo y queda escrito acá, pero NO se cuenta por el link ni
+   * se dibuja mientras espera: el ave entra a la barra siendo un loro y sale en
+   * pollera, y esa transformación ES el chiste. Adelantarla lo arruina, así que
+   * sigue la misma regla que el texto —que tampoco sale del servidor hasta que
+   * hay un nido que lo reciba— y la misma que el extravío y el desvío del
+   * perico: el resultado está sorteado desde el principio y no viaja hasta que
+   * ocurre.
+   *
+   * Quien lo mandó sí lo ve en su tarjeta: no es un secreto de ese lado, lo
+   * eligió al soltarlo.
+   */
+  pollera: boolean;
   texto: string;
   /** A quién va dirigido, para poder decir "para Jez". Puede estar vacío. */
   para: string;
@@ -107,6 +122,8 @@ export async function crearConvite(datos: {
   ave: AveId;
   texto: string;
   para: string;
+  /** Que salga de la barra convertido en pollera. Solo el loro puede. */
+  pollera?: boolean;
 }): Promise<ResultadoConvite> {
   const texto = datos.texto.trim();
   if (!texto) return { ok: false, error: "El loro no puede volar sin nada que decir." };
@@ -139,6 +156,10 @@ export async function crearConvite(datos: {
     id,
     de: datos.de.id,
     ave: datos.ave,
+    // La regla se resuelve una sola vez, acá, y lo que se guarda ya es la
+    // respuesta: igual que en un envío común, pedirla con otra ave se ignora en
+    // silencio y sale el ave de siempre.
+    pollera: datos.ave === "loro" && datos.pollera === true,
     texto,
     para: datos.para.trim().slice(0, 40),
     salida,
@@ -310,6 +331,10 @@ export async function reclamarConvite(
     ave: c.ave,
     texto: c.texto,
     parada,
+    // Entró loro y sale en pollera. El campo se decidió al soltarlo —hace dos
+    // días, tal vez— y recién ahora empieza a existir para alguien más: `false`
+    // en los convites viejos, que no tenían el campo.
+    pollera: c.pollera === true,
     // Y sale de donde está: de la barra, o del nido si ya se había vuelto.
     ...(seVolvio ? { desde: nidoDeQuienMando } : {}),
   });

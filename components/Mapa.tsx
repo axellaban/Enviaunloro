@@ -342,6 +342,10 @@ type CapaVuelo = {
   flores: L.Marker[];
   /** Solo el perico enamorado, y recién cuando efectivamente se distrae. */
   giro: { circulo: L.Circle; perica: L.Marker } | null;
+  /** Si esta capa ya se dibuja como pollera. Se guarda porque puede cambiar con
+   *  la capa ya en el mapa: el lorito que salió de una cervecería se convierte
+   *  al despegar, no al crearse. */
+  pollera: boolean;
 };
 
 export default function Mapa({
@@ -725,6 +729,24 @@ export default function Mapa({
             }).addTo(m),
           };
         }
+
+        // Y la pollera, por el mismo motivo: tampoco viene desde el principio.
+        // El lorito de convite se pasa un minuto más en la barra terminando el
+        // copetín, y en ese minuto todavía es un loro; se convierte cuando
+        // despega, con la capa ya dibujada. Hay que cambiarle las tres cosas
+        // que lo hacen un loro: el dibujo, la ruta y lo recorrido.
+        //
+        // Llega en la consulta siguiente al despegue y no en el cuadro exacto,
+        // porque el servidor es el que decide cuándo contarlo. Son unos
+        // segundos con el ave ya en el aire, y se prefieren a mandar el campo
+        // antes de tiempo: adelantado, el chiste se lee en las herramientas de
+        // desarrollo; atrasado, no lo nota nadie.
+        if (v.pollera && !existente.pollera) {
+          existente.pollera = true;
+          existente.ave.setIcon(iconoAve(v.ave, 0, true));
+          existente.completa.setStyle({ color: COLOR_POLLERA });
+          existente.recorrida.setStyle({ color: COLOR_POLLERA });
+        }
         continue;
       }
 
@@ -759,6 +781,7 @@ export default function Mapa({
         llegada: v.llegada,
         flores,
         giro: null,
+        pollera: Boolean(v.pollera),
         completa: L.polyline(latlngs, {
           color,
           weight: 1.5,

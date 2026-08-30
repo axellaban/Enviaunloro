@@ -555,6 +555,72 @@ chequear(
   }
 }
 
+// --- el lorito de convite que sale en pollera ---
+//
+// La pollera del loro, pero para alguien que todavía no tiene nido. Lo que se
+// verifica es CUÁNDO se cuenta, que es todo el invento: el ave entra a la
+// cervecería siendo un loro y sale convertida.
+//
+//   Por el link no viaja. Es público: lo abre cualquiera a quien se lo
+//   reenvíen, y si dijera de antemano que va a salir en pollera no quedaría
+//   nada que ver cuando pase. Misma regla que el texto.
+//
+//   Y en el loro que sale, tampoco hasta que DESPEGA. Entre que abren el link
+//   y que el ave se levanta de la mesa pasa un minuto, y en ese minuto sigue
+//   siendo un loro: si el campo viajara en el reclamo, la pollera aparecería
+//   sentada en la barra contando el final antes de tiempo.
+{
+  const dona = cliente("Pollerudo");
+  await dona.llamar("/api/nido", { nombre: "Pollerudo", ave: "loro", lat: -34.61, lng: -58.39 });
+  const escala = Number((await dona.llamar("/api/estado")).escala) || 1;
+
+  const c = (await dona.llamar("/api/convite", {
+    ave: "loro", texto: "Abrí el link y vas a ver.", para: "Nico", pollera: true,
+  })).convite;
+  chequear(c.pollera === true, "un lorito de convite puede salir en pollera");
+
+  // Ninguna otra ave, igual que en un envío común: se ignora en silencio.
+  const guaca = (await dona.llamar("/api/convite", {
+    ave: "guacamayo", texto: "Un guacamayo con ínfulas.", para: "Nadie", pollera: true,
+  })).convite;
+  chequear(guaca.pollera === false, "y ninguna otra ave, aunque se lo pidan");
+
+  // Lo ve quien lo mandó, y sólo él: la eligió, esconderla de su lado sería un
+  // interruptor que no se sabe si anduvo.
+  const mio = (await dona.llamar("/api/estado")).convites.find((x) => x.id === c.id);
+  chequear(mio?.pollera === true, "quien lo mandó la ve en su tarjeta mientras el ave espera");
+
+  // Pero el link no la cuenta. Por claves y no por substring: lo que importa es
+  // que el campo no esté, no que la palabra no aparezca.
+  const miron = cliente("Miron");
+  const publico = await miron.llamar(`/api/convite?c=${encodeURIComponent(c.id)}`);
+  chequear(publico.convite?.ave === "loro", "el link sigue diciendo con qué ave viene");
+  chequear(
+    !("pollera" in publico.convite) && !JSON.stringify(publico).includes("pollera"),
+    "pero NO que va a salir en pollera: eso se ve cuando pasa, no antes"
+  );
+
+  // Del otro lado: se lo planta pegado a la barra para que el vuelo dure poco.
+  const nico = cliente("Nico");
+  await nico.llamar("/api/nido", { nombre: "Nico", lat: mio.posada.lat + 0.002, lng: mio.posada.lng + 0.002 });
+  const reclamo = await nico.llamar("/api/convite/reclamar", { c: c.id });
+  chequear(
+    reclamo.loro.pollera === false && reclamo.loro.salida > Date.now(),
+    "al abrir el link el ave todavía es un loro: le queda un copetín en la barra"
+  );
+
+  // Y el momento: despega, y recién ahí es una pollera. Sólo se espera si la
+  // escala lo hace barato — el minuto de barra es un minuto de reloj.
+  const falta = reclamo.loro.salida - Date.now();
+  if (falta < 8000) {
+    await new Promise((r) => setTimeout(r, falta + 1200));
+    const enElAire = (await nico.llamar("/api/estado")).loros.find((l) => l.id === reclamo.loro.id);
+    chequear(enElAire?.pollera === true, "y al despegar de la cervecería se convierte en pollera");
+  } else {
+    console.log("   (escala normal: para ver la conversión, LOROS_ESCALA_TIEMPO=600)");
+  }
+}
+
 // --- código inexistente y código propio ---
 for (const [codigo, motivo] of [["ZZZZZZ", "código inexistente"], [estBeto.codigo, "código propio"]]) {
   try { await beto.llamar("/api/amigos", { codigo }); chequear(false, `rechaza ${motivo}`); }

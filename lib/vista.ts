@@ -104,7 +104,8 @@ export type LoroVista = {
    */
   parada: Parada | null;
   /** El loro salió convertido en pollera: lo que vuela es una pollera, y al
-   *  abrirlo del otro lado llueven polleras. */
+   *  abrirlo del otro lado llueven polleras. Falso hasta que DESPEGA —importa
+   *  para el que sale de una cervecería, que hasta ese momento es un loro. */
   pollera: boolean;
 };
 
@@ -119,6 +120,18 @@ export type LoroVista = {
 export type ConviteVista = {
   id: string;
   ave: AveId;
+  /**
+   * Va a salir de la barra convertido en pollera.
+   *
+   * Viaja solo acá, que es la vista de quien lo mandó: lo eligió al soltarlo, y
+   * esconderlo de ese lado no sería una sorpresa sino un interruptor del que no
+   * se sabe si anduvo. Del otro lado no viaja ni por el link (`/api/convite` es
+   * público) ni en el loro que sale, hasta que despega.
+   *
+   * Y el mapa lo ignora a propósito: lo que se dibuja esperando en la
+   * cervecería es un loro, para cualquiera que lo mire.
+   */
+  pollera: boolean;
   texto: string;
   /** A quién iba dirigido. Puede estar vacío. */
   para: string;
@@ -192,6 +205,17 @@ export function verLoro(
   const desvio = l.desvio ?? null;
   const seDistrajo = desvio !== null && ahora >= desvio.desde;
 
+  // Y la pollera tampoco, por la misma razón: la transformación es el chiste y
+  // adelantarla lo arruina.
+  //
+  // En un envío común no cambia nada —el ave despega en el mismo momento en que
+  // se manda, así que ya sale convertida—. Existe por el lorito de convite, que
+  // sale de la cervecería en pollera: entre que abren el link y que el ave se
+  // levanta de la mesa pasa un minuto, y durante ese minuto sigue siendo un
+  // loro. Sin esto, el campo llegaba al navegador en cuanto lo reclamaban y la
+  // pollera aparecía sentada en la barra, contando el final antes de tiempo.
+  const despego = ahora >= l.salida;
+
   const suerte = l.suerte ?? null;
   const vuelta =
     suerte === "soltado" && l.suerteEn && l.regreso
@@ -249,7 +273,7 @@ export function verLoro(
     respuesta: enviado ? (volvio ? respuestaLlega : null) : (l.respuesta ?? null),
     respuestaEntregada: !enviado && volvio && respuestaCambio ? respuestaLlega : null,
     parada: l.parada ?? null,
-    pollera: Boolean(l.pollera),
+    pollera: Boolean(l.pollera) && despego,
     // Se avisa que trae algo, sin decir qué: es lo que hace que valga la pena
     // mirar el mapa mientras vuelve.
     traeRespuesta: hayRespuesta,
@@ -346,6 +370,7 @@ export function verConvite(
   return {
     id: c.id,
     ave: c.ave,
+    pollera: c.pollera === true,
     texto: c.texto,
     para: c.para,
     salida: c.salida,

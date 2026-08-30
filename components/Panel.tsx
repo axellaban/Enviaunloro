@@ -403,6 +403,26 @@ function TarjetaConvite({
         </p>
       )}
 
+      {/* Lo único que esta tarjeta cuenta y el mapa no. El ave que espera en la
+          cervecería se dibuja loro para cualquiera que la mire, así que sin
+          este renglón, haber marcado la casilla y no haberla marcado se ven
+          igual hasta que el bicho despega, dos días después. */}
+      {convite.pollera && estado !== "cancelado" && (
+        <p
+          style={{
+            fontSize: 12.5,
+            lineHeight: 1.5,
+            color: "var(--suave)",
+            borderLeft: "2px solid #f472b6",
+            paddingLeft: 10,
+            marginBottom: 12,
+          }}
+        >
+          <strong style={{ color: "#f9a8d4" }}>Sale en pollera.</strong> Ahí
+          todavía es un loro: se convierte al despegar de la barra.
+        </p>
+      )}
+
       {/* Se volvió, pero el link NO se murió: sale igual, desde el nido. Es la
           diferencia entre "se te venció" y "tarda más porque tardaste". */}
       {estado === "encasa" && (

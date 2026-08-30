@@ -11,6 +11,11 @@
 // nido de quien lo mandó, así que darlas sería contar dónde vive esa persona a
 // cualquiera que tenga el link. Va el nombre del barrio, que es la misma
 // precisión que ya da /api/invitacion.
+//
+// Ni la pollera, por una razón distinta a las dos anteriores: no protege a
+// nadie, protege el chiste. El ave entra a la cervecería siendo un loro y sale
+// convertida; si el link dijera de antemano que va a salir en pollera, no
+// quedaría nada que ver cuando pase.
 
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../lib/api";
 import { aveValida } from "../../../lib/datos";
@@ -121,6 +126,7 @@ export async function POST(req: Request) {
     ave: aveValida(b?.ave, yo.ave),
     texto: String(b?.texto ?? ""),
     para: String(b?.para ?? ""),
+    pollera: b?.pollera === true,
   });
   if (!r.ok) return error(r.error);
 
