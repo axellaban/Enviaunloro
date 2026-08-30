@@ -221,6 +221,21 @@ antes de salir para su casa. Y por eso la cervecería es un LUGAR en el mapa
 —cartel propio, resplandor, nombre debajo, el ave bamboleándose encima— y no un
 pajarito más con un vasito al lado.
 
+**La mesa se va llenando.** La espera puede durar dos días y era un ícono
+quieto. Ahora es una escena que crece: a los primeros minutos hay una cotorra
+tomando al lado del cartel, más tarde son dos, y cuando el ave ya está de
+jarola son tres, con música y cara de circunstancia. Son cuatro escalones
+—`etapaDeLaBarra`— y no un número continuo a propósito: el dibujo cambia cuatro
+veces en toda la espera y no sesenta veces por segundo. Es la única parte de la
+app donde no pasa nada durante horas, así que es justo donde tiene que haber
+algo para volver a mirar.
+
+**Y la cervecería no se borra cuando el ave se va.** Se queda hasta que el
+lorito aterriza. Mientras viaja, ese punto del mapa es la mitad de la historia
+—de dónde viene y por qué va a llegar hablando raro— y borrarlo justo cuando
+empieza lo interesante dejaba el vuelo saliendo de la nada. La fiesta sigue sin
+ella: los que se quedaron tomando no se van porque se fue una.
+
 **Los copetines.** El ave está en una cervecería, así que toma. Cuanto más
 tardan en abrir el link, más tomada llega: se demora hasta un 35 % más y
 entrega el mensaje con hipo (`lib/olvido.ts`). La espera —que en cualquier otra
@@ -248,9 +263,23 @@ kilómetros de la casa de quien lo mandó. Va el nombre del barrio, que es la
 misma precisión que ya da el link de invitación. La prueba de punta a punta lo
 verifica campo por campo.
 
+**El link tiene ruta propia: `/l/<lorito>`.** No es capricho de URL, es lo que
+se ve antes de abrirlo. La portada de `/` es estática a propósito —es la que
+puede recibir un pico de gente de golpe— así que su miniatura de WhatsApp es la
+misma para todos los links y no puede cambiar según un `?c=`. Un lorito de
+convite, en cambio, se le manda a UNA persona: ahí sí se puede consultar quién
+lo mandó y contarlo en la vista previa. La miniatura es la fiesta en la
+cervecería (`scripts/miniatura.mjs`, dibujada con las mismas aves de la app) y
+el texto dice quién, en qué barrio y cuántos copetines. Los links viejos con
+`?c=` siguen abriendo igual, para siempre: `llaveDeConvite()` lee las dos
+formas. Lo que no entra en la miniatura es el mensaje — la ve cualquiera a
+quien le reenvíen el link, así que el sobre se dibuja cerrado.
+
     lib/cerveceria.ts   dónde para, cuántos copetines, qué está haciendo.
     lib/convite.ts      el documento, el alta y el reclamo.
     components/Convite.tsx   escribirlo y pasar el link.
+    app/l/[llave]/      la ruta del link y su miniatura.
+    scripts/miniatura.mjs    cómo se dibuja esa miniatura.
 
 **El ave no espera para siempre, y el link tampoco se muere.** A las **48 horas**
 se cansa, paga y se vuelve al nido de quien la mandó — se la ve cruzar el mapa

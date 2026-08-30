@@ -1359,8 +1359,9 @@ function Bandada({
             ¿No está en la app?
           </p>
           <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--suave)" }}>
-            Escribile igual. El ave sale ahora y espera en una cervecería hasta que
-            abra el link y arme su nido — tomando, si tarda.
+            Escribile igual. El lorito sale ahora, se va de copetines y espera en
+            una birrería hasta que tu amigo abra el link y arme su nido… y si toma
+            mucho, ¡atenti! 🥴
           </p>
           <button className="boton" style={{ width: "100%", marginTop: 12 }} onClick={alConvidar}>
             Enviarle un lorito igual

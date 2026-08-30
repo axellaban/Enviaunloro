@@ -42,13 +42,24 @@ import { Ave } from "./Ave";
  *  Exportados porque la tarjeta del panel comparte el mismo link mientras el
  *  ave espera: si el WhatsApp se perdió, se vuelve a mandar desde ahí. */
 export function linkDeConvite(id: string): string {
-  return typeof window !== "undefined" ? `${window.location.origin}/?c=${id}` : "";
+  // /l/<lorito> y no /?c=<lorito>: la portada es estática y su miniatura de
+  // WhatsApp es la misma para todos los links. Esta ruta existe para que el
+  // lorito tenga la suya —la fiesta en la cervecería— y su propio texto.
+  // Los links viejos con ?c= siguen abriendo igual (ver Invitacion).
+  return typeof window !== "undefined" ? `${window.location.origin}/l/${id}` : "";
 }
 
 export async function compartirConvite(c: ConviteVista): Promise<boolean> {
-  const a = AVES[c.ave];
   const url = linkDeConvite(c.id);
-  const texto = `Te mandé ${a.articulo === "la" ? "una" : "un"} ${a.nombre.toLowerCase()} 🦜 Está esperando en una cervecería con un mensaje tuyo adentro. Abrí el link y sale para vos:`;
+  // "Un lorito" y no el nombre de la especie. Decía "te mandé una cotorra" y
+  // eso, para alguien que todavía no conoce la app, es una frase sin sentido:
+  // la especie recién significa algo del otro lado del link. Lorito es la
+  // palabra de la app y se entiende sola.
+  //
+  // "Te está esperando" y no "está esperando": el ave no está haciendo tiempo,
+  // te está esperando A VOS, y esa es toda la razón para abrir el link.
+  const texto =
+    "Te mandé un lorito 🦜 Te está esperando de jarola en una cervecería del barrio, con el mensaje. Abrí el link y sale para tu nido:";
   try {
     if (navigator.share) {
       await navigator.share({ title: "Loros", text: texto, url });

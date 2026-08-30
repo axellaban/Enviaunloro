@@ -159,20 +159,85 @@ function iconoPerica(): L.DivIcon {
  * El cartel cuelga POR DEBAJO del punto y el ave se para justo encima, así que
  * las dos cosas se ven juntas sin taparse: el bicho arriba de la barra.
  */
+/**
+ * En qué momento de la noche está la barra: 0 recién llegó, 3 ya no da más.
+ *
+ * Se saca del nivel de borrachera pero se redondea a cuatro escalones a
+ * propósito. El nivel es un número continuo que cambia sesenta veces por
+ * segundo; el dibujo tiene que cambiar cuatro veces en toda la espera, o el
+ * marcador se estaría rehaciendo todo el tiempo para mover un papelito.
+ */
+export function etapaDeLaBarra(nivel: number): number {
+  if (nivel >= 0.75) return 3;
+  if (nivel >= 0.45) return 2;
+  if (nivel >= 0.2) return 1;
+  return 0;
+}
+
+/**
+ * Las que se van sumando a la mesa, en orden de llegada.
+ *
+ * Las posiciones están FUERA del cartel a propósito: el cartel mide 38 px y
+ * está centrado en (62, 30), así que ocupa de x=43 a x=81. Puestas más cerca
+ * quedaban detrás y solo se les veía la cola. Las dos primeras se sientan a
+ * los costados y la tercera adelante, abajo, pisando un poco el cartel.
+ */
+const LA_BARRA: { ave: AveId; x: number; y: number; tam: number; espejo: boolean; copa: string }[] = [
+  { ave: "cotorra", x: 2, y: 24, tam: 30, espejo: false, copa: "🍺" },
+  { ave: "cotorra", x: 88, y: 26, tam: 28, espejo: true, copa: "🍺" },
+  { ave: "loro", x: 44, y: 50, tam: 28, espejo: false, copa: "🍻" },
+];
+
+/**
+ * La cervecería, con la mesa que se va llenando.
+ *
+ * Arrancaba siendo un cartel con un pájaro al lado, y la espera —que puede
+ * durar dos días— era un ícono quieto. Ahora es una escena que crece: a los
+ * primeros minutos hay una cotorra tomando, más tarde son dos, y cuando el ave
+ * ya está de jarola son tres, con música y todo. Es la única parte de la app
+ * donde no pasa nada durante horas, así que es justo donde tiene que haber
+ * algo para volver a mirar.
+ *
+ * El cartel cuelga POR DEBAJO del punto y el ave del convite se para justo
+ * encima, así que las dos cosas se ven juntas sin taparse: el bicho arriba de
+ * la barra, y la mesa alrededor.
+ */
 function iconoCerveceria(nivel: number, rotulo: string): L.DivIcon {
   const pin = pinturaDelMapa();
-  const jarana = nivel >= 0.75;
+  const etapa = etapaDeLaBarra(nivel);
+  const jarana = etapa >= 3;
+  // Una más en la mesa por escalón. En el escalón 0 la barra está vacía: el
+  // ave acaba de sentarse y todavía no la acompaña nadie.
+  const mesa = LA_BARRA.slice(0, Math.min(etapa, LA_BARRA.length))
+    .map(
+      (b, i) => `<span class="ave-tomada" style="position:absolute;left:${b.x}px;top:${b.y}px;animation-delay:${(i * 0.43).toFixed(2)}s">
+        <span style="display:block;filter:${pin.sombraAve}${b.espejo ? ";transform:scaleX(-1)" : ""}">${aveHtml(b.ave, b.tam)}</span>
+        <span style="position:absolute;left:${b.espejo ? -9 : b.tam - 5}px;top:${Math.round(b.tam * 0.46)}px;font-size:13px;line-height:1">${b.copa}</span>
+      </span>`
+    )
+    .join("");
+  // La música empieza cuando hay con quién: una sola ave tomando sola no hace
+  // ruido. Y cuando ya está de jarola, la nota se cambia por la cara.
+  const ruido = jarana
+    ? `<span class="cerveceria-nota" style="position:absolute;left:84px;top:0;font-size:16px;line-height:1">🥴</span>
+       <span class="cerveceria-nota" style="position:absolute;left:22px;top:0;font-size:13px;line-height:1;animation-delay:.8s">🎶</span>`
+    : etapa >= 1
+      ? `<span class="cerveceria-nota" style="position:absolute;left:84px;top:2px;font-size:14px;line-height:1">🎵</span>`
+      : "";
   return L.divIcon({
     className: "marcador-ave",
-    iconSize: [92, 76],
+    iconSize: [124, 96],
     // El ancla queda arriba del cartel: el punto de verdad es donde se posa el
-    // ave, y la barra se dibuja abajo.
-    iconAnchor: [46, 8],
-    html: `<div style="position:relative;width:92px;height:76px">
-      <span style="position:absolute;left:50%;top:30px;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:99px;background:radial-gradient(circle,rgba(251,191,36,.42),rgba(251,191,36,0) 68%)"></span>
-      <span class="cerveceria-cartel" style="position:absolute;left:50%;top:30px;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:13px;background:linear-gradient(160deg,#fbbf24,#f59e0b);border:2px solid ${pin.anilloNido};box-shadow:0 3px 12px rgba(0,0,0,.4);display:grid;place-items:center;font-size:19px;line-height:1">🍻</span>
-      <span style="position:absolute;left:calc(50% + 13px);top:8px;font-size:15px;line-height:1">${jarana ? "🥴" : "🎵"}</span>
-      <span data-rotulo style="position:absolute;left:50%;top:54px;transform:translateX(-50%);white-space:nowrap;font:700 10.5px/1 ui-sans-serif,system-ui;color:${pin.rotuloMapa};text-shadow:${pin.rotuloHalo};padding:3px 5px">${escapar(rotulo)}</span>
+    // ave del convite, y la barra se dibuja abajo.
+    iconAnchor: [62, 8],
+    // La mesa va DESPUÉS del cartel: dibujada antes quedaba atrás y de las
+    // cotorras solo asomaba la cola.
+    html: `<div style="position:relative;width:124px;height:96px">
+      <span style="position:absolute;left:62px;top:30px;transform:translate(-50%,-50%);width:${jarana ? 104 : 84}px;height:${jarana ? 104 : 84}px;border-radius:99px;background:radial-gradient(circle,rgba(251,191,36,${jarana ? ".5" : ".42"}),rgba(251,191,36,0) 68%)"></span>
+      <span class="cerveceria-cartel" style="position:absolute;left:62px;top:30px;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:13px;background:linear-gradient(160deg,#fbbf24,#f59e0b);border:2px solid ${pin.anilloNido};box-shadow:0 3px 12px rgba(0,0,0,.4);display:grid;place-items:center;font-size:19px;line-height:1">🍻</span>
+      ${mesa}
+      ${ruido}
+      <span data-rotulo style="position:absolute;left:62px;top:80px;transform:translateX(-50%);white-space:nowrap;font:700 10.5px/1 ui-sans-serif,system-ui;color:${pin.rotuloMapa};text-shadow:${pin.rotuloHalo};padding:3px 5px">${escapar(rotulo)}</span>
     </div>`,
   });
 }
@@ -310,8 +375,13 @@ export default function Mapa({
   const nidos = useRef(new Map<string, L.Marker>());
   const zonas = useRef(new Map<string, L.Circle>());
   const capas = useRef(new Map<string, CapaVuelo>());
-  /** Las aves posadas en una cervecería. No son vuelos: no avanzan. */
-  const posadas = useRef(new Map<string, { cartel: L.Marker; ave: L.Marker | null }>());
+  /** Las aves posadas en una cervecería. No son vuelos: no avanzan.
+   *  Se guarda la etapa dibujada para no rehacer el cartel en cada cuadro:
+   *  la mesa cambia cuatro veces en toda la espera, no sesenta veces por
+   *  segundo. */
+  const posadas = useRef(
+    new Map<string, { cartel: L.Marker; ave: L.Marker | null; etapa: number }>()
+  );
   const encuadrado = useRef(false);
   const alElegirRef = useRef(alElegirPunto);
   alElegirRef.current = alElegirPunto;
@@ -780,31 +850,59 @@ export default function Mapa({
       // reloj, no una consulta al servidor: mismo criterio que la poda.
       //
       // Hay barra en dos casos, y los dos tienen que verse igual: un convite
-      // que todavía nadie abrió, y un lorito recién destrabado que se queda un
-      // minuto más terminando el copetín. En el segundo el ave la dibuja la
-      // capa de vuelo —está parada en el origen— así que acá va solo el cartel;
-      // dibujarla dos veces la pondría en negrita sin querer.
+      // que todavía nadie abrió, y un lorito ya destrabado que salió de ahí.
+      //
+      // La cervecería NO se borra cuando el ave se levanta de la mesa. Se
+      // queda hasta que el lorito aterriza. Mientras el ave viaja, ese punto
+      // en el mapa es la mitad de la historia —de dónde viene y por qué va a
+      // llegar hablando raro— y borrarlo justo cuando empieza lo interesante
+      // deja el vuelo saliendo de la nada. La fiesta sigue sin ella: los que
+      // se quedaron tomando no se van porque se fue una.
+      //
+      // El ave posada va solo mientras esté SENTADA. Apenas despega la dibuja
+      // la capa de vuelo, y dibujarla dos veces la pondría en negrita sin
+      // querer.
       const barras = new Map<string, { punto: Punto; ave: AveId | null; nivel: number }>();
       const mapaActual = mapa.current;
       if (vista === "tuyos" && mapaActual) {
         for (const c of convites) {
-          // Solo mientras esté SENTADA ahí: cuando se vuelve, la barra deja de
-          // ser parte de la historia y el ave pasa a ser un tramo de vuelo.
-          if (c.estado !== "barra") continue;
+          // Sentada en la barra, o volviéndose al nido después de las 48 horas:
+          // en los dos casos la cervecería sigue estando. Cuando ya llegó a
+          // dormirla, la historia terminó y el cartel se va con ella.
+          if (c.estado !== "barra" && c.estado !== "volviendo") continue;
           barras.set(`convite:${c.id}`, {
             punto: c.posada,
-            ave: c.ave,
-            nivel: borrachera(ahora - c.llegadaPosada, escala).nivel,
+            ave: c.estado === "barra" ? c.ave : null,
+            nivel: borrachera(Math.min(ahora, c.abandona) - c.llegadaPosada, escala).nivel,
           });
         }
         for (const l of vuelos) {
-          if (!l.parada || ahora >= l.salida || ahora < l.parada.llegada) continue;
+          // Desde que se sienta hasta que aterriza en el nido de la otra
+          // persona. Ni antes —todavía va camino a la barra— ni después.
+          if (!l.parada || ahora < l.parada.llegada || ahora >= l.llegada) continue;
           barras.set(`loro:${l.id}`, { punto: l.parada.punto, ave: null, nivel: l.parada.nivel });
         }
       }
       for (const [clave, b] of barras) {
-        if (posadas.current.has(clave)) continue;
+        const etapa = etapaDeLaBarra(b.nivel);
+        const ya = posadas.current.get(clave);
+        if (ya) {
+          // La mesa se llena mientras espera: cuando cambia de escalón se
+          // redibuja el cartel, y solo entonces.
+          if (ya.etapa !== etapa) {
+            ya.cartel.setIcon(iconoCerveceria(b.nivel, "La cervecería"));
+            ya.etapa = etapa;
+          }
+          // Y cuando el ave se levanta de la mesa, se saca de ahí: el resto de
+          // la barra se queda.
+          if (!b.ave && ya.ave) {
+            ya.ave.remove();
+            ya.ave = null;
+          }
+          continue;
+        }
         posadas.current.set(clave, {
+          etapa,
           cartel: L.marker([b.punto.lat, b.punto.lng], {
             icon: iconoCerveceria(b.nivel, "La cervecería"),
             interactive: false,

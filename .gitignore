@@ -9,3 +9,6 @@ next-env.d.ts
 # para agentes, generadas por Next y no por este proyecto.
 AGENTS.md
 CLAUDE.md
+
+# El directorio temporal que crea scripts/miniatura.mjs para compilar las aves.
+.aves-*

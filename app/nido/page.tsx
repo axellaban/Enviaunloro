@@ -20,6 +20,7 @@ import { Ave } from "../../components/Ave";
 import { Cta } from "../../components/Cta";
 import {
   avisar,
+  llaveDeConvite,
   pedir,
   pedirPermisoAvisos,
   pedirUbicacion,
@@ -252,7 +253,7 @@ export default function Nido() {
   // es el caso para el que se inventó todo esto.
   useEffect(() => {
     if (convite.current === null) {
-      const c = new URLSearchParams(window.location.search).get("c") || "";
+      const c = llaveDeConvite();
       convite.current = c;
       // Fuera de la URL: si no, recargar la página lo reintenta para siempre.
       if (c) window.history.replaceState({}, "", "/nido");

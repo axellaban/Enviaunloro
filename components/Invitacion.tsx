@@ -22,6 +22,7 @@ import { Ave } from "./Ave";
 import { AVES, type AveId } from "../lib/aves";
 import { ciudadDe } from "../lib/cerveceria";
 import { esCodigo } from "../lib/codigo";
+import { llaveDeConvite } from "../lib/cliente";
 
 type Invita = { nombre: string; lugar: string; ave: AveId };
 type Quien = { invita: Invita; yaEsAmigo: boolean; sosVos: boolean };
@@ -45,7 +46,7 @@ export function Invitacion({ alSaber }: { alSaber?: (nombre: string, codigo: str
   const [c, setC] = useState<ConviteEnPortada | null>(null);
 
   useEffect(() => {
-    const llave = new URLSearchParams(window.location.search).get("c") || "";
+    const llave = llaveDeConvite();
     if (!llave) return;
     let vivo = true;
     fetch(`/api/convite?c=${encodeURIComponent(llave)}`)

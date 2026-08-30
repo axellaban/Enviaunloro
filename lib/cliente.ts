@@ -34,6 +34,30 @@ const VACIO: Estado = {
   almacenamiento: "",
 };
 
+/**
+ * La llave del lorito de convite, salga de donde salga.
+ *
+ * Hay dos formas del mismo link y las dos tienen que abrir: /l/<lorito>, que
+ * es la que se comparte hoy porque trae su propia miniatura de WhatsApp, y
+ * ?c=<lorito>, que es la de antes. Los links viejos ya están dados por
+ * WhatsApp y no se rompen nunca.
+ *
+ * Vive acá y no en cada pantalla porque lo leen tres: la portada, el botón de
+ * la portada y el nido.
+ */
+export function llaveDeConvite(): string {
+  if (typeof window === "undefined") return "";
+  const enLaRuta = window.location.pathname.match(/^\/l\/([^/?#]+)/);
+  if (enLaRuta) {
+    try {
+      return decodeURIComponent(enLaRuta[1]);
+    } catch {
+      return enLaRuta[1];
+    }
+  }
+  return new URLSearchParams(window.location.search).get("c") || "";
+}
+
 export async function pedir<T = any>(
   url: string,
   opciones?: { metodo?: string; datos?: unknown }

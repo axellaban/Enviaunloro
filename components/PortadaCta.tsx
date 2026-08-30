@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { Cta } from "./Cta";
 import { AVES, type AveId } from "../lib/aves";
 import { esCodigo, normalizarCodigo } from "../lib/codigo";
+import { llaveDeConvite } from "../lib/cliente";
 
 type Invitacion = {
   nombre: string;
@@ -47,7 +48,7 @@ export function PortadaCta() {
   const [convite, setConvite] = useState<Convite | null>(null);
 
   useEffect(() => {
-    const llave = new URLSearchParams(window.location.search).get("c") || "";
+    const llave = llaveDeConvite();
     if (!llave) return;
     let vivo = true;
     fetch(`/api/convite?c=${encodeURIComponent(llave)}`)

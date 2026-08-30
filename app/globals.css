@@ -420,8 +420,20 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 }
 .ave-tomada { animation: ave-tomada 1.9s ease-in-out infinite; }
 
+/* La música de la barra. Sube y se apaga, en loop: a distancia de mapa es lo
+   único que dice "acá adentro está pasando algo" sin ocupar más lugar. */
+@keyframes cerveceria-nota {
+  0%   { transform: translateY(4px) rotate(-8deg); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translateY(-11px) rotate(10deg); opacity: 0; }
+}
+.cerveceria-nota { animation: cerveceria-nota 2.4s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .cerveceria-cartel, .ave-tomada { animation: none; }
+  /* La nota sin animación desaparecería —arranca en opacidad 0— así que en vez
+     de apagarla se la deja quieta y visible. */
+  .cerveceria-nota { animation: none; opacity: 1; }
 }
 
 /* El nombre que perdió el codazo. Con opacidad y no con display: un rótulo
