@@ -40,14 +40,13 @@ export function VistaMapa({
             key={o.id}
             onClick={() => alCambiar(o.id)}
             aria-pressed={activa}
+            // Se ve chica —es una vista, no una sección— y se toca entera: la
+            // zona cómoda le pone los 44 px sin inflarle el dibujo.
+            className="toque-comodo"
             style={{
-              // La chapa se ve chica —es una vista, no una sección— pero se
-              // toca entera: 24 px de alto era la mitad del mínimo táctil y
-              // con el pulgar se le erraba al mapa de atrás.
-              minHeight: 44,
               display: "grid",
               placeItems: "center",
-              padding: "5px 12px",
+              padding: "7px 11px",
               borderRadius: 999,
               border: "none",
               cursor: "pointer",

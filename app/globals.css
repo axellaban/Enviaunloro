@@ -30,6 +30,18 @@
 
   --radio: 16px;
   --radio-chico: 10px;
+
+  /* La escala de aire. Todo el relleno de la app sale de acá, así que el día
+     que algo se vea inflado se corrige UNA vez y se mueve la app entera, en
+     vez de cazar cuarenta números sueltos por los componentes.
+
+     Nada de esto decide el alto de lo que se toca: eso lo sostiene el mínimo
+     táctil de 44 px, que está aparte. Apretar el aire nunca achica un objetivo
+     de toque; achica lo que se ve alrededor del texto. */
+  --aire-1: 4px;
+  --aire-2: 8px;
+  --aire-3: 11px; /* el relleno de una tarjeta */
+  --aire-4: 16px;
   --sombra: 0 18px 40px -20px rgba(0, 0, 0, 0.9);
 
   --fuente: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
@@ -164,7 +176,51 @@ p { margin: 0; }
 
 /* ---------- piezas compartidas ---------- */
 
+/* Lo que se VE y lo que se TOCA no tienen por qué medir lo mismo.
+
+   Toda pastilla de la app estaba clavada en 44 px de alto —el mínimo táctil de
+   iOS y Android— y con letra de 12 a 13 px eso deja una corona de aire que se
+   nota: la pastilla no abraza a su texto, lo aloja. Pero bajarla a 37 px y
+   listo es cambiar una pastilla linda por un botón al que se le erra.
+
+   Así que se separan las dos cosas. La caja se dibuja del alto que le pide su
+   relleno, y este pseudo-elemento —invisible, sin fondo ni borde— estira la
+   zona que recibe el dedo hasta los 44 px, repartidos arriba y abajo. Se
+   tocan 44; se ven 37. Es el mismo truco que ya usa el asa del panel.
+
+   Va solo en lo que ES el control. Una chapa que CONTIENE botones —el par
+   "Los tuyos / Del resto"— tiene su propio dibujo pero no recibe toques: si se
+   le pone la zona ampliada, esa capa invisible se acuesta encima de sus dos
+   botones y se los come. Medido: los dos dejaban de responder.
+
+   Y dos pastillas apiladas necesitan 10 px de aire entre ellas o más: con
+   menos, las zonas se pisan y la de abajo —que se dibuja después— se queda con
+   el borde de la de arriba. Eso no lo puede saber el CSS; lo caza la prueba de
+   toque, que apunta al borde de arriba, al medio y al borde de abajo de cada
+   cosa y pregunta quién recibe el golpe.
+
+   `inset-inline: 0` y no un ancho fijo: a lo ancho ninguna pastilla de la app
+   baja de 44, así que solo hay que arreglar el alto. */
+.toque-comodo,
+.boton { position: relative; }
+.toque-comodo::after,
+.boton::after,
+button.flotante::after,
+a.flotante::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+  /* Sin fondo: no pinta nada, solo recibe toques. Y sin `pointer-events: none`,
+     que es justamente lo que lo haría inútil. */
+}
+
 .tarjeta {
+  /* El relleno viene con la tarjeta. Antes lo repetía cada componente —
+     dieciséis veces el mismo 14— y apretar las tarjetas era cazar números. */
+  padding: var(--aire-3);
   background: var(--panel);
   border: 1px solid var(--borde);
   border-radius: var(--radio);
@@ -176,12 +232,9 @@ p { margin: 0; }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  /* 44 px es el mínimo táctil, y acá se pone UNA vez para todos: la variante
-     chica daba 36 y se usa en los botones más importantes de la app —
-     "Envíale un lorito", "Compartir mi nido", "Pasarle el link"—, que son
-     justo los que hay que poder tocar sin apuntar. */
-  min-height: 44px;
-  padding: 13px 20px;
+  /* El alto lo pone el relleno; los 44 px del dedo los pone la zona de toque
+     de arriba, que los estira sin inflar el dibujo. */
+  padding: 11px 17px;
   border-radius: 999px;
   border: 1px solid transparent;
   background: var(--esmeralda);
@@ -207,14 +260,17 @@ p { margin: 0; }
 }
 .boton.fantasma:hover:not(:disabled) { background: var(--panel-alto); }
 
-/* Chico es la LETRA, no el objetivo: el alto lo sigue poniendo el mínimo
-   táctil de arriba. Un botón de 36 px se ve prolijo en una captura y se falla
-   con el pulgar. */
-.boton.chico { padding: 9px 14px; font-size: 13.5px; }
+/* Chico es la LETRA y también el dibujo: 37 px de alto en vez de 44. Lo que no
+   se achica es el dedo —eso lo sostiene la zona de toque—, así que un botón de
+   37 px se ve prolijo Y se acierta. */
+.boton.chico { padding: 8px 13px; font-size: 13.5px; }
 
 .campo {
   width: 100%;
-  padding: 13px 15px;
+  /* El alto lo pone el mínimo táctil y no el relleno: así el campo se puede
+     apretar sin que deje de agarrarse con el pulgar. */
+  min-height: 44px;
+  padding: 12px 14px;
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid var(--borde);
   border-radius: var(--radio-chico);
@@ -242,7 +298,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 11px;
+  padding: var(--aire-1) 10px;
   border-radius: 999px;
   border: 1px solid var(--borde);
   background: var(--panel);
@@ -329,7 +385,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   border: 1px solid var(--borde-alto);
   box-shadow: none !important;
 }
-.leaflet-popup-content { margin: 12px 14px !important; }
+.leaflet-popup-content { margin: 10px 12px !important; }
 .leaflet-popup-close-button {
   color: var(--suave) !important;
   /* 44 px de blanco táctil sobre una cruz de 14: en el teléfono, cerrar el
@@ -465,6 +521,13 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
      tocan los mismos 44 px, se ven 37. */
   padding: 10px 0 30px;
   margin-bottom: -22px;
+  /* El margen negativo mete el asa ADENTRO del bloque de abajo, y ese bloque
+     se dibuja después: se quedaba con los últimos 22 px de la zona tocable y
+     el asa respondía en 22 y no en 44. Medido con elementFromPoint. Se la sube
+     encima, que no le saca nada a nadie: lo que tapa es la cabecera —el ave,
+     el nombre y el lugar—, donde no hay nada que tocar. */
+  position: relative;
+  z-index: 1;
   background: none;
   border: none;
   cursor: grab;
@@ -515,7 +578,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  padding: var(--aire-2) 12px calc(var(--aire-2) + env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgba(8, 17, 16, 0.98) 62%, transparent);
 }
 
@@ -548,7 +611,9 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   gap: 8px;
   max-width: calc(100% - 24px);
 }
-.pila-mapa .flotante { position: static; }
+/* `relative` y no `static`: acomoda igual, y le da a la zona de toque
+   contra qué medirse (con `static` se medía contra la pila entera). */
+.pila-mapa .flotante { position: relative; }
 /* La de "sin mosaicos" la dibuja el mapa, que no está adentro de la pila: se
    la manda al mismo rincón, arriba de la cuenta. */
 .sin-mosaicos { bottom: 78px; left: 12px; max-width: calc(100% - 24px); }
@@ -558,12 +623,11 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   z-index: 500;
   display: flex;
   align-items: center;
-  /* Las chapas que flotan sobre el mapa también se tocan: "Mi nido" medía
-     33 px de alto. Sobre un mapa, errarle a un botón significa arrastrar el
-     mapa sin querer, que es peor que no pasar nada. */
-  min-height: 44px;
+  /* Sobre un mapa errarle a una chapa significa arrastrar el mapa sin querer,
+     que es peor que no pasar nada: la zona de toque de 44 px acá no se negocia.
+     La chapa se dibuja de 38 y el dedo sigue teniendo 44. */
   gap: 8px;
-  padding: 8px 13px;
+  padding: 9px 12px;
   border-radius: 999px;
   background: rgba(8, 17, 16, 0.86);
   border: 1px solid var(--borde);
@@ -591,7 +655,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   left: 12px;
   bottom: 12px;
   max-width: min(360px, calc(100% - 24px));
-  padding: 11px 14px;
+  padding: 9px 12px;
   border-radius: 12px;
   background: rgba(10, 21, 20, 0.95);
   border: 1px solid rgba(248, 113, 113, 0.45);
@@ -615,7 +679,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   top: calc(58px + env(safe-area-inset-top));
   z-index: 600;
   max-width: min(460px, calc(100% - 24px));
-  padding: 13px 18px;
+  padding: var(--aire-3) 15px;
   border-radius: 14px;
   background: rgba(10, 21, 20, 0.97);
   border: 1px solid var(--esmeralda);
@@ -656,15 +720,15 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 .portada {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 0 20px 72px;
+  padding: 0 var(--aire-4) 56px;
 }
 
 .hero {
   display: grid;
-  gap: 44px;
+  gap: 34px;
   align-items: center;
   justify-items: center;
-  padding: 76px 0 32px;
+  padding: 56px 0 28px;
   text-align: center;
   /* La portada es una sola pantalla: si el hero no la llena, queda un vacío
      abajo que parece que la página se cortó. */
@@ -676,8 +740,8 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 @media (min-width: 940px) {
   .hero {
     grid-template-columns: 1fr 330px;
-    gap: 64px;
-    padding: 112px 0 56px;
+    gap: 52px;
+    padding: 84px 0 44px;
     text-align: left;
     justify-items: stretch;
   }
@@ -690,8 +754,8 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 22px;
-  padding: 10px 16px 10px 12px;
+  margin-bottom: 18px;
+  padding: var(--aire-2) 14px var(--aire-2) 10px;
   border-radius: 999px;
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.3);

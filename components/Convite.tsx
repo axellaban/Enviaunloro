@@ -124,7 +124,7 @@ export function Convite({
           borderRadius: "20px 20px 0 0",
           // Sin padding abajo: lo pone el pie pegajoso, que necesita llegar
           // hasta el borde para que su degradado tape lo que pasa por atrás.
-          padding: "18px 18px 0",
+          padding: "14px 14px 0",
           background: "rgba(10, 21, 20, 0.96)",
         }}
       >
@@ -160,7 +160,6 @@ export function Convite({
                 display: "flex",
                 gap: 14,
                 alignItems: "center",
-                padding: 14,
                 borderRadius: 12,
                 background: `${AVES[salido.ave].color}14`,
                 border: `1px solid ${AVES[salido.ave].color}44`,
@@ -191,7 +190,7 @@ export function Convite({
                 background: "rgba(0,0,0,.28)",
                 border: "1px solid var(--borde)",
                 borderRadius: 10,
-                padding: "10px 12px",
+                padding: "var(--aire-2) 10px",
                 marginBottom: 4,
               }}
             >
@@ -245,7 +244,7 @@ export function Convite({
                       // 48 de alto: entra cómodo en el mínimo táctil y deja
                       // seis aves en tres renglones sin comerse la pantalla.
                       minHeight: 48,
-                      padding: "8px 10px",
+                      padding: "7px 9px",
                       borderRadius: 12,
                       cursor: "pointer",
                       textAlign: "left",
@@ -379,8 +378,8 @@ function Pie({ children }: { children: React.ReactNode }) {
         position: "sticky",
         bottom: 0,
         marginTop: 8,
-        paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
-        paddingTop: 14,
+        paddingBottom: "calc(11px + env(safe-area-inset-bottom))",
+        paddingTop: 11,
         background:
           "linear-gradient(to bottom, rgba(10,21,20,0) 0%, rgba(10,21,20,.92) 22%, rgba(10,21,20,1) 45%)",
       }}

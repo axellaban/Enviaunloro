@@ -115,18 +115,19 @@ export function Panel(p: Props) {
 
       {/* data-pestanas: la hoja de abajo mide hasta acá para saber cuál es su
           altura mínima — la que deja ver quién sos, las pestañas y el botón. */}
-      <div data-pestanas style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+      <div data-pestanas style={{ display: "flex", gap: 6, padding: "0 12px 10px" }}>
         {pestañas.map((t) => {
           const activa = pestaña === t.id;
           return (
             <button
               key={t.id}
               onClick={() => setPestaña(t.id)}
+              // Son la navegación principal de la app y se tocan más que
+              // ninguna otra cosa, así que los 44 px del dedo no se negocian.
+              // La pestaña se dibuja de 37 y la zona de toque los pone igual.
+              className="toque-comodo"
               style={{
                 flex: 1,
-                // 44 px de alto, el mínimo táctil. Medían 35: son la navegación
-                // principal de la app y se tocan más que ninguna otra cosa.
-                minHeight: 44,
                 padding: "9px 4px",
                 borderRadius: 10,
                 cursor: "pointer",
@@ -160,7 +161,7 @@ export function Panel(p: Props) {
         })}
       </div>
 
-      <div className="scroll" style={{ flex: 1, minHeight: 0, padding: "0 14px 90px" }}>
+      <div className="scroll" style={{ flex: 1, minHeight: 0, padding: "0 12px 74px" }}>
         {pestaña === "vuelo" && (
           <>
             {soloLaVecina && <TraeAAlguien codigo={p.codigo} hayVuelo={enVuelo.length > 0} />}
@@ -238,7 +239,7 @@ export function Panel(p: Props) {
 
 function Cabecera({ yo }: { yo: NidoVista }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px 12px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px 10px" }}>
       <Ave especie={yo.ave} size={30} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontWeight: 750, fontSize: 15.5 }}>{yo.nombre}</p>
@@ -273,7 +274,7 @@ function TraeAAlguien({ codigo, hayVuelo }: { codigo: string; hayVuelo: boolean 
     <div
       className="tarjeta"
       style={{
-        padding: 16,
+        padding: "var(--aire-3)",
         marginBottom: 12,
         borderColor: "var(--esmeralda)",
         background: "rgba(16,185,129,.07)",
@@ -367,7 +368,7 @@ function TarjetaConvite({
   return (
     <div
       className="tarjeta"
-      style={{ padding: 14, marginBottom: 10, borderColor: `${a.color}55` }}
+      style={{ marginBottom: 10, borderColor: `${a.color}55` }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <Ave especie={convite.ave} size={30} aletea={estado === "yendo" || estado === "volviendo" || estado === "cancelado"} />
@@ -445,7 +446,12 @@ function TarjetaConvite({
               link deja de servir y no hay cómo volver atrás de eso. */}
           <button
             className="boton chico fantasma"
-            style={{ width: "100%", marginTop: 8 }}
+            // 12 y no 8: los dos botones se dibujan de 34 px y estiran la
+            // zona del dedo a 44, o sea 5 px para cada lado. Con 8 de aire las
+            // dos zonas se pisaban 2 px y el de abajo —que CANCELA el lorito—
+            // se quedaba con el borde del de arriba. Cualquier par de
+            // pastillas apiladas necesita 10 px o más entre ellas.
+            style={{ width: "100%", marginTop: 12 }}
             disabled={llamando}
             onClick={() => (porLlamar ? llamar() : setPorLlamar(true))}
             onBlur={() => setPorLlamar(false)}
@@ -489,7 +495,6 @@ function TarjetaVuelo({
         display: "block",
         width: "100%",
         textAlign: "left",
-        padding: 14,
         marginBottom: 10,
         cursor: "pointer",
         borderColor: `${a.color}55`,
@@ -559,7 +564,7 @@ function TarjetaVuelo({
         <div
           style={{
             marginTop: 10,
-            padding: "9px 11px",
+            padding: "8px 10px",
             borderRadius: 10,
             background: girando ? "rgba(244,114,182,.12)" : "rgba(255,255,255,.03)",
             border: `1px dashed ${girando ? "rgba(244,114,182,.5)" : "var(--borde)"}`,
@@ -612,7 +617,6 @@ function TarjetaVuelta({
         display: "block",
         width: "100%",
         textAlign: "left",
-        padding: 14,
         marginBottom: 10,
         cursor: "pointer",
         borderStyle: "dashed",
@@ -789,7 +793,6 @@ function TarjetaBuzon({
     <div
       className="tarjeta"
       style={{
-        padding: 14,
         marginBottom: 10,
         borderColor: sellado ? a.color : "var(--borde)",
         background: sellado ? `${a.color}14` : "var(--panel)",
@@ -889,7 +892,7 @@ function PorQueLlegoAsi({ loro }: { loro: LoroVista }) {
     <div
       style={{
         marginTop: 10,
-        padding: "9px 11px",
+        padding: "8px 10px",
         borderRadius: 10,
         background: `${color}14`,
         border: `1px dashed ${color}55`,
@@ -1093,7 +1096,7 @@ function FinalDelAve({ loro }: { loro: LoroVista }) {
         <div
           style={{
             marginTop: 10,
-            padding: "10px 12px",
+            padding: "var(--aire-2) 10px",
             borderRadius: 10,
             background: `${a.color}12`,
             borderLeft: `2px solid ${a.color}`,
@@ -1164,7 +1167,6 @@ function TarjetaPerdido({
     <div
       className="tarjeta"
       style={{
-        padding: 14,
         marginBottom: 10,
         borderStyle: "dashed",
         borderColor: "rgba(255,255,255,.14)",
@@ -1203,7 +1205,7 @@ function TarjetaPerdido({
           <p
             style={{
               marginTop: 10,
-              padding: "9px 11px",
+              padding: "8px 10px",
               borderRadius: 9,
               background: "rgba(0,0,0,.25)",
               fontSize: 13.5,
@@ -1282,7 +1284,6 @@ function Bandada({
         <div
           className="tarjeta"
           style={{
-            padding: 14,
             marginBottom: 14,
             borderColor: "var(--esmeralda)",
             background: "rgba(163, 230, 53, 0.06)",
@@ -1300,7 +1301,7 @@ function Bandada({
           </button>
         </div>
 
-        <div className="tarjeta" style={{ padding: 14, marginBottom: 14 }}>
+        <div className="tarjeta" style={{ marginBottom: 14 }}>
           <p className="etiqueta">Agregar por código</p>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             {/* Sin mayúsculas forzadas ni letras separadas: eso se veía bien con
@@ -1380,7 +1381,7 @@ function Bandada({
           ...AVES_LISTA.map((x) => duracionVuelo(km, x.id, escala))
         );
         return (
-          <div key={f.id} className="tarjeta" style={{ padding: 14, marginBottom: 10 }}>
+          <div key={f.id} className="tarjeta" style={{ marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button
                 onClick={() => alEnfocar(f.id)}
@@ -1562,7 +1563,7 @@ function MiNido({
   return (
     <>
       {/* --- código e invitación --- */}
-      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+      <div className="tarjeta" style={{ marginBottom: 12 }}>
         <p className="etiqueta">Tu código de nido</p>
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 12px" }}>
           <span
@@ -1593,7 +1594,7 @@ function MiNido({
       </div>
 
       {/* --- ubicación --- */}
-      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+      <div className="tarjeta" style={{ marginBottom: 12 }}>
         <p className="etiqueta">Dónde está tu nido</p>
         <p style={{ fontSize: 14, margin: "9px 0 4px" }}>
           {yo.lugar || "Sin nombre de lugar"}
@@ -1621,7 +1622,7 @@ function MiNido({
       </div>
 
       {/* --- aparecer en la vista del resto --- */}
-      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+      <div className="tarjeta" style={{ marginBottom: 12 }}>
         {/* La etiqueta entera es el objetivo táctil, no la casilla: 18 px de
             cuadradito son menos de la mitad del mínimo, y esto decide si tus
             vuelos aparecen en el mapa de desconocidos — errarle no puede ser
@@ -1668,7 +1669,7 @@ function MiNido({
           El ave se elige al mandar, no acá: tener además un ave "por defecto"
           en el perfil no cambiaba nada y hacía parecer que uno era dueño de una
           sola especie. */}
-      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+      <div className="tarjeta" style={{ marginBottom: 12 }}>
         <p className="etiqueta">Cómo te anuncia el ave</p>
         <input
           className="campo"
@@ -1688,7 +1689,7 @@ function MiNido({
       </div>
 
       {/* --- llave --- */}
-      <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+      <div className="tarjeta" style={{ marginBottom: 12 }}>
         <p className="etiqueta">Otro dispositivo</p>
         <button
           className="boton fantasma chico"
@@ -1729,7 +1730,7 @@ function MiNido({
           zona al mirar el mapa— que es la razón por la que se entiende sin
           manual. Ciento cincuenta palabras acá arriba competían con eso, en una
           pestaña que se abre para copiar un código. */}
-      <details className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+      <details className="tarjeta" style={{ marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
           Cómo funciona
         </summary>
@@ -1763,7 +1764,7 @@ function MiNido({
 
 function Vacio({ titulo, texto }: { titulo: string; texto: string }) {
   return (
-    <div style={{ textAlign: "center", padding: "38px 16px", color: "var(--suave)" }}>
+    <div style={{ textAlign: "center", padding: "28px 14px", color: "var(--suave)" }}>
       <div style={{ opacity: 0.35, display: "flex", justifyContent: "center", marginBottom: 12 }}>
         <Ave especie="loro" size={46} />
       </div>

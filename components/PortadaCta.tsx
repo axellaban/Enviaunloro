@@ -111,7 +111,7 @@ export function PortadaCta() {
         <Link
           href={destrabable ? `/nido?c=${encodeURIComponent(convite.llave)}` : "/nido"}
           className="boton"
-          style={{ padding: "15px 28px", fontSize: 16 }}
+          style={{ padding: "13px 24px", fontSize: 16 }}
         >
           {texto}
         </Link>
@@ -133,7 +133,7 @@ export function PortadaCta() {
 
   return (
     <Cta>
-      <Link href={destino} className="boton" style={{ padding: "15px 28px", fontSize: 16 }}>
+      <Link href={destino} className="boton" style={{ padding: "13px 24px", fontSize: 16 }}>
         {texto}
       </Link>
     </Cta>

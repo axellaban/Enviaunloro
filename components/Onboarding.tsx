@@ -69,7 +69,7 @@ export function Onboarding({
         minHeight: "100dvh",
         display: "grid",
         placeItems: "center",
-        padding: "24px 18px 40px",
+        padding: "18px 14px 32px",
       }}
     >
       <div style={{ width: "100%", maxWidth: 520 }}>
@@ -97,7 +97,7 @@ export function Onboarding({
           </div>
         </div>
 
-        <div className="tarjeta entra" key={paso} style={{ padding: 22 }}>
+        <div className="tarjeta entra" key={paso} style={{ padding: "var(--aire-4)" }}>
           {paso === 1 && (
             <>
               <p className="etiqueta">Paso 1 de 3</p>
@@ -241,7 +241,7 @@ export function Onboarding({
                         display: "flex",
                         alignItems: "center",
                         gap: 14,
-                        padding: "12px 14px",
+                        padding: "10px 12px",
                         borderRadius: 12,
                         cursor: "pointer",
                         textAlign: "left",

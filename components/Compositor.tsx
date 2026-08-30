@@ -96,7 +96,7 @@ export function Compositor({
           width: "min(560px, 100%)",
           maxHeight: "92dvh",
           borderRadius: "20px 20px 0 0",
-          padding: "18px 18px calc(18px + env(safe-area-inset-bottom))",
+          padding: "14px 14px calc(14px + env(safe-area-inset-bottom))",
           background: "rgba(10, 21, 20, 0.96)",
         }}
       >
@@ -145,7 +145,7 @@ export function Compositor({
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 6,
-                      padding: "8px 14px",
+                      padding: "7px 12px",
                       borderRadius: 999,
                       cursor: "pointer",
                       fontSize: 14,
@@ -196,7 +196,7 @@ export function Compositor({
                       flexDirection: "column",
                       alignItems: "flex-start",
                       gap: 2,
-                      padding: "10px 12px",
+                      padding: "var(--aire-2) 10px",
                       borderRadius: 12,
                       cursor: "pointer",
                       textAlign: "left",
@@ -235,7 +235,7 @@ export function Compositor({
               <p
                 style={{
                   margin: "-6px 0 14px",
-                  padding: a.rareza ? "9px 12px" : "2px 0 2px 11px",
+                  padding: a.rareza ? "8px 10px" : "2px 0 2px 10px",
                   borderRadius: a.rareza ? 10 : 0,
                   background: a.rareza ? `${a.color}14` : "none",
                   border: a.rareza ? `1px dashed ${a.color}55` : "none",
