@@ -22,7 +22,7 @@ import type { ConviteVista, LoroVista, NidoVista } from "../lib/vista";
 import { borrachera, ciudadDe, loQueEstaHaciendo } from "../lib/cerveceria";
 import { compartirConvite } from "./Convite";
 import { Ave } from "./Ave";
-import { Fiesta } from "./Fiesta";
+import { Fiesta, type Motivo } from "./Fiesta";
 import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
 import { coloresDeBandada } from "../lib/colorNido";
 
@@ -786,7 +786,7 @@ function TarjetaBuzon({
 }) {
   const [abriendo, setAbriendo] = useState(false);
   const [abierto, setAbierto] = useState(Boolean(loro.leido));
-  const [fiesta, setFiesta] = useState<"confeti" | "luto" | null>(null);
+  const [fiesta, setFiesta] = useState<Motivo | null>(null);
   const caja = useRef<HTMLDivElement>(null);
   const a = AVES[loro.ave];
   const enviado = loro.direccion === "enviado";
@@ -849,7 +849,7 @@ function TarjetaBuzon({
       // La ceremonia es de quien recibe, y solo la primera vez que abre. Quien
       // lo mandó ya sabe qué escribió: tirarle confeti sería tirárselo a sí
       // mismo.
-      if (a.rareza === "confeti") setFiesta("confeti");
+      if (a.rareza === "confeti") setFiesta("paloma");
       else if (a.rareza === "luto") setFiesta("luto");
     }
   }
@@ -914,7 +914,7 @@ function TarjetaBuzon({
         </div>
       )}
 
-      {fiesta && <Fiesta tipo={fiesta} alTerminar={() => setFiesta(null)} />}
+      {fiesta && <Fiesta motivo={fiesta} ave={loro.ave} alTerminar={() => setFiesta(null)} />}
     </div>
   );
 }

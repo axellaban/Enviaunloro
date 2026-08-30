@@ -1,229 +1,253 @@
 "use client";
 
-// Lo que pasa en la pantalla cuando se abre un ave que trae algo más que texto.
+// Lo que pasa en la PANTALLA ENTERA cuando la app tiene algo que festejar.
 //
-// Dos ceremonias sobre el mismo motor de partículas, porque son la misma idea
-// al revés: la paloma explota la pantalla en confeti, flores y chocolate; el
-// cuervo la apaga y le tira plumas negras encima, despacio. Que las dos duren
-// distinto no es un detalle — la alegría es un golpe y la mala noticia se
-// asienta.
+// Tres ceremonias sobre el mismo motor, porque son la misma idea con distinto
+// humor:
 //
-// Es un canvas y no cien divs animados por CSS: doscientas partículas en un
-// celular de gama media se ven mal de la segunda forma, y esto tiene que salir
-// bien justo en el momento en el que la persona está mirando.
+//   paloma  — entregó su mensaje: confeti, flores y bombones, con la paloma
+//             grande en el medio de la pantalla.
+//   barra   — alguien abrió el link de un convite y se encontró con que su
+//             lorito está de copetines: confeti, cerveza y las cotorras de la
+//             mesa, de fiesta.
+//   luto    — el cuervo. La única que NO festeja: apaga la pantalla y deja
+//             caer plumas negras, despacio. La alegría es un golpe y la mala
+//             noticia se asienta.
+//
+// Antes era un canvas de partículas que a propósito NO tapaba nada: se veía el
+// confeti y abajo se leía el mensaje. Ahora tapa, y es una decisión tomada:
+// son los dos momentos de toda la app que merecen la pantalla completa, y el
+// que quiere seguir la toca y se va. Igual se cierra sola.
+//
+// Son elementos del DOM animados por CSS y no un canvas. Lo que hace falta acá
+// no es física fina sino que caigan COSAS —un bombón, una rosa, una jarra— y
+// eso en un canvas obliga a dibujar emojis a mano. Ciento y pico de nodos que
+// solo mueven `transform` y `opacity` los resuelve el compositor sin tocar el
+// hilo principal.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { AVES, type AveId } from "../lib/aves";
+import { svgAve } from "./Ave";
 
-type Tipo = "confeti" | "luto";
+export type Motivo = "paloma" | "barra" | "luto";
 
-type Particula = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  giro: number;
-  vGiro: number;
-  tam: number;
-  color: string;
+type Receta = {
+  /** Cuánto dura la ceremonia entera, en ms. */
+  duracion: number;
+  /** Los colores del baño y de los papelitos. Vacío = sin baño de color. */
+  colores: string[];
+  /** Lo que cae, además de los papelitos. */
+  cosas: string[];
+  cuantosPapelitos: number;
+  cuantasCosas: number;
+  /** Cuánto tarda en cruzar la pantalla, en segundos. El luto cae lentísimo. */
+  caida: [number, number];
+  titulo: string;
   texto: string;
-  /** Cuánto se hamaca de costado y en qué momento de su vaivén va. */
-  vaiven: number;
-  fase: number;
 };
 
-const COLORES = ["#f472b6", "#fbbf24", "#22d3ee", "#a3e635", "#f43f5e", "#ffffff"];
-const REGALOS = ["🌹", "🍫", "💗", "🌷", "💐"];
-const PLUMAS = ["🖤", "🪶"];
-
-/** Cuánto dura cada ceremonia, en ms. */
-const DURACION: Record<Tipo, number> = { confeti: 3400, luto: 4200 };
+const RECETAS: Record<Motivo, Receta> = {
+  paloma: {
+    duracion: 5200,
+    colores: ["#f472b6", "#fb7185", "#fbbf24", "#a3e635", "#22d3ee", "#ffffff"],
+    cosas: ["🌹", "🍫", "💐", "🌷", "💗", "🍬", "✨", "🎀"],
+    cuantosPapelitos: 110,
+    cuantasCosas: 34,
+    caida: [2.4, 4.6],
+    titulo: "Llegó la paloma",
+    texto: "Te dejó flores y bombones en la ventana.",
+  },
+  barra: {
+    duracion: 5200,
+    colores: ["#fbbf24", "#f59e0b", "#a3e635", "#22d3ee", "#f472b6", "#ffffff"],
+    cosas: ["🍺", "🍻", "🥴", "🎉", "🎶", "🥨", "✨", "🕺"],
+    cuantosPapelitos: 110,
+    cuantasCosas: 34,
+    caida: [2.4, 4.6],
+    titulo: "Está de jarola",
+    texto: "Tu lorito te espera en una cervecería del barrio.",
+  },
+  luto: {
+    duracion: 4600,
+    // Sin baño de color: el cuervo apaga la pantalla, no la enciende.
+    colores: [],
+    cosas: ["🖤", "🪶"],
+    cuantosPapelitos: 0,
+    cuantasCosas: 46,
+    caida: [5.5, 8],
+    titulo: "",
+    texto: "",
+  },
+};
 
 /**
- * Cuánto tira para abajo, por cuadro.
+ * La escena del medio.
  *
- * El confeti estaba en 0,26 y eso no es una fiesta, es una piedra: medido con
- * el canvas, la pantalla llegaba al máximo a los 880 ms, a los 1600 ya no
- * quedaba nada y el ÚLTIMO SEGUNDO Y MEDIO de la ceremonia era un lienzo
- * vacío esperando que se cumpliera el reloj. Con 0,085 el papelito tarda unos
- * 2,8 s en cruzar la pantalla, que es lo que dura la ceremonia descontando el
- * desvanecido.
- *
- * El cuervo no se toca: sus plumas ya bajan lento, que es todo el punto.
+ * Es el ave de la app dibujada grande —no un emoji— porque es la protagonista
+ * del momento: la paloma que acaba de entregar, o el lorito que está tomando
+ * en la barra mientras vos armás tu nido. En la de la barra van además las
+ * cotorras de la mesa, que es lo que hace que se lea como una fiesta y no como
+ * un pájaro solo.
  */
-const GRAVEDAD: Record<Tipo, number> = { confeti: 0.085, luto: 0.012 };
+function escena(motivo: Motivo, ave: AveId): string {
+  const grande = `<span class="fiesta-ave">${svgAve(ave, 168, true)}</span>`;
+  if (motivo !== "barra") return `<span class="fiesta-mesa">${grande}</span>`;
+  return `<span class="fiesta-mesa">
+    <span class="fiesta-acompanante" style="animation-delay:.35s">
+      ${svgAve("cotorra", 88)}<span class="fiesta-copa">🍺</span>
+    </span>
+    ${grande}
+    <span class="fiesta-acompanante fiesta-espejo" style="animation-delay:.7s">
+      ${svgAve("cotorra", 82)}<span class="fiesta-copa">🍻</span>
+    </span>
+  </span>`;
+}
 
-export function Fiesta({ tipo, alTerminar }: { tipo: Tipo; alTerminar: () => void }) {
-  const lienzo = useRef<HTMLCanvasElement>(null);
-  const fin = useRef(alTerminar);
-  fin.current = alTerminar;
+export function Fiesta({
+  motivo,
+  ave,
+  alTerminar,
+}: {
+  motivo: Motivo;
+  /** El ave que protagoniza: decide el dibujo del medio. */
+  ave: AveId;
+  alTerminar: () => void;
+}) {
+  const r = RECETAS[motivo];
 
-  useEffect(() => {
-    const c = lienzo.current;
-    if (!c) return;
-
-    // Quien pidió menos movimiento no quiere doscientas partículas en la cara.
-    // Se le respeta y se sale enseguida, sin romper el flujo: el mensaje ya
-    // está abierto abajo.
-    const quieto =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (quieto) {
-      const t = setTimeout(() => fin.current(), 450);
-      return () => clearTimeout(t);
-    }
-
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const ancho = window.innerWidth;
-    const alto = window.innerHeight;
-    c.width = ancho * dpr;
-    c.height = alto * dpr;
-    const g = c.getContext("2d");
-    if (!g) return;
-    g.scale(dpr, dpr);
-
-    const p: Particula[] = [];
+  // Se sortea UNA vez. Recalculándolo en cada render, los papelitos saltarían
+  // de lugar en el medio de la caída.
+  const cae = useMemo(() => {
     const al = (a: number, b: number) => a + Math.random() * (b - a);
+    const papelitos = Array.from({ length: r.cuantosPapelitos }, (_, i) => ({
+      clave: `p${i}`,
+      izq: al(0, 100),
+      demora: al(0, 2.2),
+      dura: al(r.caida[0], r.caida[1]),
+      deriva: al(-16, 16),
+      giro: al(360, 1200) * (Math.random() < 0.5 ? -1 : 1),
+      ancho: al(6, 12),
+      alto: al(9, 18),
+      color: r.colores[i % Math.max(1, r.colores.length)],
+      redondo: Math.random() < 0.25,
+    }));
+    const emojis = Array.from({ length: r.cuantasCosas }, (_, i) => ({
+      clave: `c${i}`,
+      izq: al(0, 100),
+      demora: al(0, 2.8),
+      dura: al(r.caida[0] + 0.6, r.caida[1] + 0.6),
+      deriva: al(-14, 14),
+      giro: al(-70, 70),
+      tam: al(22, 46),
+      char: r.cosas[i % r.cosas.length],
+    }));
+    return { papelitos, emojis };
+  }, [r]);
 
-    if (tipo === "confeti") {
-      // Cae desde arriba, en todo el ancho y repartido en una franja ALTA: los
-      // de más arriba entran cuando los primeros ya se están yendo, y así la
-      // pantalla no se vacía de golpe a la mitad.
-      for (let i = 0; i < 180; i++) {
-        p.push({
-          x: al(0, ancho),
-          y: al(-alto * 1.15, -30),
-          vx: al(-0.5, 0.5),
-          vy: al(1.6, 3.4),
-          giro: al(0, 6.3),
-          vGiro: al(-0.24, 0.24),
-          tam: al(6, 13),
-          color: COLORES[i % COLORES.length],
-          texto: i % 7 === 0 ? REGALOS[i % REGALOS.length] : "",
-          vaiven: al(0.5, 1.4),
-          fase: al(0, 6.3),
-        });
-      }
-      // …y además revienta desde el centro, que es lo que se siente como fiesta
-      // y no como lluvia.
-      for (let i = 0; i < 95; i++) {
-        const ang = al(0, Math.PI * 2);
-        const fuerza = al(4, 12);
-        p.push({
-          x: ancho / 2,
-          y: alto * 0.46,
-          vx: Math.cos(ang) * fuerza,
-          vy: Math.sin(ang) * fuerza - 3,
-          giro: al(0, 6.3),
-          vGiro: al(-0.32, 0.32),
-          tam: al(6, 14),
-          color: COLORES[i % COLORES.length],
-          texto: i % 6 === 0 ? REGALOS[i % REGALOS.length] : "",
-          vaiven: al(0.4, 1.1),
-          fase: al(0, 6.3),
-        });
-      }
-    } else {
-      // El cuervo no explota nada: deja caer plumas, pocas y lentas.
-      for (let i = 0; i < 46; i++) {
-        p.push({
-          x: al(0, ancho),
-          y: al(-alto, -10),
-          vx: al(-0.35, 0.35),
-          vy: al(0.7, 1.9),
-          giro: al(0, 6.3),
-          vGiro: al(-0.05, 0.05),
-          tam: al(11, 22),
-          color: "#1b1830",
-          texto: PLUMAS[i % PLUMAS.length],
-          vaiven: al(0.6, 1.6),
-          fase: al(0, 6.3),
-        });
-      }
-    }
+  // Se cierra sola. Y se puede tocar para saltearla: nadie tendría que esperar
+  // a que termine una animación para leer lo que le mandaron.
+  //
+  // El aviso va por referencia y NO en las dependencias. Quien la muestra pasa
+  // un `() => setFiesta(null)` recién creado en cada render, así que con la
+  // función en las dependencias el reloj se reiniciaba en cada refresco del
+  // panel —que son varios por segundo— y la ceremonia no se cerraba nunca.
+  const avisar = useRef(alTerminar);
+  avisar.current = alTerminar;
+  useEffect(() => {
+    const t = setTimeout(() => avisar.current(), r.duracion);
+    return () => clearTimeout(t);
+  }, [r.duracion]);
 
-    const arranque = performance.now();
-    const total = DURACION[tipo];
-    let cuadro = 0;
-    let vivo = true;
+  // Va colgada del <body> y no de donde la muestran.
+  //
+  // `position: fixed` mide contra la ventana... salvo que algún ancestro tenga
+  // `transform`, `filter` o `backdrop-filter`: ahí ese ancestro pasa a ser el
+  // bloque contenedor y lo "fijo" queda preso adentro. Y eso es exactamente lo
+  // que pasa acá: las tarjetas de la app llevan `backdrop-filter`, y la hoja
+  // de abajo se arrastra con `transform`. Medido: la ceremonia salía de
+  // 404×174 px, del tamaño de la tarjeta del mensaje, en vez de tapar la
+  // pantalla.
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
+  if (!montado) return null;
 
-    const paso = (t: number) => {
-      if (!vivo) return;
-      const transcurrido = t - arranque;
-      const gravedad = GRAVEDAD[tipo];
-      // Los últimos 900 ms se van desvaneciendo, para que no desaparezcan de
-      // golpe a mitad de pantalla.
-      const opacidad = Math.max(0, Math.min(1, (total - transcurrido) / 900));
+  const a = AVES[ave];
 
-      g.clearRect(0, 0, ancho, alto);
-      g.globalAlpha = opacidad;
-
-      for (const q of p) {
-        q.vy += gravedad;
-        q.vx *= 0.995;
-        // El papelito no cae derecho: se hamaca. Sin esto, con la gravedad
-        // baja, doscientas partículas bajando en línea recta parecen lluvia.
-        q.x += q.vx + Math.sin(transcurrido / 260 + q.fase) * q.vaiven;
-        q.y += q.vy;
-        q.giro += q.vGiro;
-
-        g.save();
-        g.translate(q.x, q.y);
-        g.rotate(q.giro);
-        if (q.texto) {
-          g.font = `${q.tam * 1.9}px serif`;
-          g.textAlign = "center";
-          g.textBaseline = "middle";
-          g.fillText(q.texto, 0, 0);
-        } else {
-          g.fillStyle = q.color;
-          g.fillRect(-q.tam / 2, -q.tam / 4, q.tam, q.tam / 2);
-        }
-        g.restore();
-      }
-
-      if (transcurrido >= total) {
-        fin.current();
-        return;
-      }
-      cuadro = requestAnimationFrame(paso);
-    };
-    cuadro = requestAnimationFrame(paso);
-
-    return () => {
-      vivo = false;
-      cancelAnimationFrame(cuadro);
-    };
-  }, [tipo]);
-
-  return (
-    <>
-      {/* El cuervo apaga la pantalla mientras caen las plumas. La paloma no
-          tapa nada: lo que trajo se tiene que poder leer abajo del confeti. */}
-      {tipo === "luto" && (
+  return createPortal(
+    <div
+      className={`fiesta fiesta-${motivo}`}
+      onClick={alTerminar}
+      role="status"
+      aria-live="polite"
+      aria-label={r.titulo || `Llegó ${a.articulo} ${a.nombre.toLowerCase()}`}
+    >
+      {r.colores.length > 0 ? (
         <div
+          className="fiesta-bano"
           aria-hidden
           style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1900,
-            pointerEvents: "none",
-            background: "radial-gradient(circle at 50% 45%, transparent 20%, rgba(3,2,10,.82) 100%)",
-            animation: "aparecer .8s ease both",
+            background: `conic-gradient(from 0deg, ${[...r.colores, r.colores[0]].join(", ")})`,
           }}
         />
+      ) : (
+        <div className="fiesta-penumbra" aria-hidden />
       )}
-      <canvas
-        ref={lienzo}
-        aria-hidden
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 2000,
-          pointerEvents: "none",
-          width: "100%",
-          height: "100%",
-        }}
-      />
-    </>
+
+      <div className="fiesta-cosas" aria-hidden>
+        {cae.papelitos.map((p) => (
+          <span
+            key={p.clave}
+            className={`fiesta-papelito${p.redondo ? " fiesta-redondo" : ""}`}
+            style={
+              {
+                left: `${p.izq}%`,
+                background: p.color,
+                width: `${p.ancho}px`,
+                height: `${p.alto}px`,
+                animationDelay: `${p.demora}s`,
+                animationDuration: `${p.dura}s`,
+                "--deriva": `${p.deriva}vw`,
+                "--giro": `${p.giro}deg`,
+              } as React.CSSProperties
+            }
+          />
+        ))}
+        {cae.emojis.map((e) => (
+          <span
+            key={e.clave}
+            className="fiesta-cosa"
+            style={
+              {
+                left: `${e.izq}%`,
+                fontSize: `${e.tam}px`,
+                animationDelay: `${e.demora}s`,
+                animationDuration: `${e.dura}s`,
+                "--deriva": `${e.deriva}vw`,
+                "--giro": `${e.giro}deg`,
+              } as React.CSSProperties
+            }
+          >
+            {e.char}
+          </span>
+        ))}
+      </div>
+
+      {/* El cuervo no lleva tarjeta. Un cartel de felicitaciones arriba de una
+          mala noticia es exactamente lo que no hay que hacer. */}
+      {motivo !== "luto" && (
+        <div className="fiesta-tarjeta">
+          <div
+            className="fiesta-escena"
+            aria-hidden
+            dangerouslySetInnerHTML={{ __html: escena(motivo, ave) }}
+          />
+          <p className="fiesta-titulo">{r.titulo}</p>
+          <p className="fiesta-texto">{r.texto}</p>
+          <span className="fiesta-seguir">tocá para seguir</span>
+        </div>
+      )}
+    </div>,
+    document.body
   );
 }

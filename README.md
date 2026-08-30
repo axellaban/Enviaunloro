@@ -69,9 +69,37 @@ muestra pegado a la elección). Avisarlo después sería una trampa.
 - **El cuervo** trae malas noticias: llega casi tan rápido como el perico, y al
   abrirlo la pantalla se apaga y le caen plumas encima.
 
-Las dos ceremonias son el mismo motor de partículas al revés
-([`components/Fiesta.tsx`](components/Fiesta.tsx)): la alegría es un golpe y la
-mala noticia se asienta. Las dos respetan `prefers-reduced-motion`.
+### Las ceremonias
+
+Tres momentos se llevan la **pantalla entera** unos segundos
+([`components/Fiesta.tsx`](components/Fiesta.tsx)): un baño de color cónico
+girando de fondo, ciento y pico de papelitos y cosas cayendo con deriva y giro,
+y la escena en el medio. Se cierran solas, y se tocan para saltearlas — nadie
+tendría que esperar a que termine una animación para leer lo que le mandaron.
+
+- **La paloma entregó**: confeti, rosas, bombones y moños, con la paloma
+  dibujada grande en el medio.
+- **El lorito está de copetines**: cuando alguien abre el link de un convite y
+  se encuentra con que su ave está tomando en una cervecería. Cerveza,
+  pretzels, música y cornetas, y en el medio el lorito con dos cotorras
+  brindando. Es el momento que tiene que dar ganas de armar el nido, así que
+  es el que más grita. Salta una vez por pestaña, nunca para quien lo mandó.
+- **El cuervo** es la única que no festeja: sin baño de color y sin cartel,
+  apaga la pantalla y deja caer plumas negras, lentísimas. La alegría es un
+  golpe y la mala noticia se asienta.
+
+Son nodos del DOM animados por CSS y no un canvas: lo que hace falta no es
+física fina sino que caigan COSAS, y un bombón en un canvas hay que dibujarlo a
+mano. Todo lo que se mueve mueve `transform` y `opacity` y nada más, que es lo
+que lo deja en manos del compositor. Las tres respetan
+`prefers-reduced-motion`: el mensaje sí, la tormenta no.
+
+Y van **colgadas del `<body>` por un portal**. `position: fixed` mide contra la
+ventana salvo que un ancestro tenga `transform`, `filter` o `backdrop-filter`,
+y ahí ese ancestro pasa a ser el bloque contenedor: las tarjetas de la app
+llevan `backdrop-filter` y la hoja de abajo se arrastra con `transform`, así
+que sin el portal la ceremonia salía de 404×174 px —del tamaño de la tarjeta
+del mensaje— en vez de tapar la pantalla. Medido.
 
 ### El ave queda del otro lado
 
@@ -382,7 +410,7 @@ fondo claro no hay lugar para tres grises legibles, y que un valor esté
 estudiado no lo hace accesible.
 
 **Lo que no es CSS vive en `lib/tema.ts`**, y es la mitad del asunto: las rutas
-que Leaflet dibuja en SVG, el confeti del canvas y las aves se arman en
+que Leaflet dibuja en SVG, los papelitos de las ceremonias y las aves se arman en
 JavaScript y no leen una variable de CSS sin ayuda. Ahí están, medidos, los
 colores de las seis aves en los dos temas, los rótulos del mapa, las sombras y
 los mosaicos. El archivo explica los cuatro pasos que faltan para el
@@ -795,7 +823,7 @@ lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
                   mapa del mundo, con semillas separadas.
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
 lib/colorNido.ts  un color por persona, estable y sin choques en tu bandada.
-lib/tema.ts       los dos temas. Lo que no es CSS: aves, mapa, confeti.
+lib/tema.ts       los dos temas. Lo que no es CSS: aves, mapa, papelitos.
 lib/push.ts       los avisos con la app cerrada: VAPID, suscripciones, envío.
 lib/codigo.ts     el código de nido en palabras, y la compatibilidad con los
                   de seis caracteres de antes.
@@ -815,7 +843,7 @@ components/VistaMapa.tsx     el interruptor "Los tuyos / Del resto".
 components/Trayectoria.tsx   el arco de la portada: sale, entrega, vuelve.
 components/Onboarding.tsx  los tres pasos para tener nido.
 components/Ave.tsx         las seis aves dibujadas, una pose y seis siluetas.
-components/Fiesta.tsx      el confeti de la paloma y las plumas del cuervo.
+components/Fiesta.tsx      las tres ceremonias a pantalla completa.
 ```
 
 Las seis aves son SVG escritos a mano en

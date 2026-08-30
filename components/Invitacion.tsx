@@ -19,6 +19,7 @@
 
 import { useEffect, useState } from "react";
 import { Ave } from "./Ave";
+import { Fiesta } from "./Fiesta";
 import { AVES, type AveId } from "../lib/aves";
 import { ciudadDe } from "../lib/cerveceria";
 import { esCodigo } from "../lib/codigo";
@@ -44,6 +45,8 @@ export type ConviteEnPortada = {
 export function Invitacion({ alSaber }: { alSaber?: (nombre: string, codigo: string) => void }) {
   const [q, setQ] = useState<Quien | null>(null);
   const [c, setC] = useState<ConviteEnPortada | null>(null);
+  /** La ceremonia de la barra, cuando la hay. */
+  const [fiesta, setFiesta] = useState<AveId | null>(null);
 
   useEffect(() => {
     const llave = llaveDeConvite();
@@ -54,6 +57,32 @@ export function Invitacion({ alSaber }: { alSaber?: (nombre: string, codigo: str
       .then((j) => {
         if (!vivo || !j?.convite) return;
         setC({ ...j.convite, sosVos: Boolean(j.sosVos), esTuyo: Boolean(j.esTuyo) });
+        // Abrir el link y encontrarse con que hay un lorito tomando en una
+        // cervecería, esperándote, es EL momento de todo el convite: es lo que
+        // tiene que dar ganas de armar el nido. Así que la pantalla se pone de
+        // fiesta.
+        //
+        // Solo cuando de verdad está en la barra —yendo todavía no llegó, y
+        // volviendo ya se cansó— y nunca para quien lo mandó, que está
+        // probando que su propio link ande.
+        //
+        // Una vez por pestaña: se abre desde WhatsApp una sola vez, pero
+        // recargando la página el festejo repetido dejaría de ser un festejo.
+        const yaFue = `fiesta:${llave}`;
+        if (
+          j.convite.estado === "barra" &&
+          !j.sosVos &&
+          !j.esTuyo &&
+          !sessionStorage.getItem(yaFue)
+        ) {
+          try {
+            sessionStorage.setItem(yaFue, "1");
+          } catch {
+            // Modo privado, o el navegador con el almacenamiento bloqueado. La
+            // fiesta sale igual: lo único que se pierde es no repetirla.
+          }
+          setFiesta(j.convite.ave);
+        }
       })
       .catch(() => {});
     return () => {
@@ -83,7 +112,13 @@ export function Invitacion({ alSaber }: { alSaber?: (nombre: string, codigo: str
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (c) return <SaludoDeConvite c={c} />;
+  if (c)
+    return (
+      <>
+        <SaludoDeConvite c={c} />
+        {fiesta && <Fiesta motivo="barra" ave={fiesta} alTerminar={() => setFiesta(null)} />}
+      </>
+    );
   if (!q) return null;
   const { invita, yaEsAmigo, sosVos } = q;
   return (

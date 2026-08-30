@@ -420,6 +420,181 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 }
 .ave-tomada { animation: ave-tomada 1.9s ease-in-out infinite; }
 
+/* ---------- las ceremonias ----------
+
+   La pantalla entera, unos segundos, cuando la app tiene algo que festejar:
+   la paloma que entregó, y el lorito que está de copetines esperando a que
+   armes tu nido. Cubre TODO —baño de color girando, papelitos y cosas
+   cayendo, y la escena en el medio— y se va sola, o al toque.
+
+   Todo lo que se mueve acá mueve `transform` y `opacity` y nada más: eso lo
+   resuelve el compositor sin pasar por el hilo principal, que es lo que
+   permite tirar ciento y pico de nodos sin que se note en un teléfono. */
+.fiesta {
+  position: fixed;
+  inset: 0;
+  /* La escala de la app: 400 mapa · 500 chapas · 600 avisos · 900 modal ·
+     1900 ceremonias. Esto es lo único que puede taparlo todo. */
+  z-index: 1900;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  cursor: pointer;
+  animation: fiesta-entrar 0.25s ease-out;
+}
+@keyframes fiesta-entrar {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* El baño de color: el gradiente cónico gira y desenfocado barre la pantalla
+   entera. Poco blur y mucha saturación — acá el color TIENE que gritar; el
+   desenfoque solo suaviza el borde entre franjas. */
+.fiesta-bano {
+  position: absolute;
+  inset: -25%;
+  filter: blur(52px) saturate(1.5);
+  opacity: 0.85;
+  animation: fiesta-girar 3s linear infinite, fiesta-apagarse 5.2s ease-out forwards;
+}
+@keyframes fiesta-girar {
+  from { transform: rotate(0deg) scale(1.2); }
+  to { transform: rotate(360deg) scale(1.2); }
+}
+/* Entra de golpe, se sostiene fuerte, y recién al final se apaga para devolver
+   la app legible. */
+@keyframes fiesta-apagarse {
+  0% { opacity: 0; }
+  6% { opacity: 0.92; }
+  75% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+/* Lo del cuervo es lo contrario: en vez de encender la pantalla, la apaga. */
+.fiesta-penumbra {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, transparent 18%, rgba(3, 2, 10, 0.88) 100%);
+  animation: aparecer 0.8s ease both;
+}
+
+.fiesta-cosas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fiesta-papelito,
+.fiesta-cosa {
+  position: absolute;
+  top: -8vh;
+  will-change: transform, opacity;
+  animation-name: fiesta-caer;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+.fiesta-papelito { border-radius: 2px; }
+.fiesta-redondo { border-radius: 50%; }
+.fiesta-cosa {
+  line-height: 1;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+}
+
+@keyframes fiesta-caer {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  6%   { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translate3d(var(--deriva, 0), 118vh, 0) rotate(var(--giro, 360deg)); opacity: 0; }
+}
+
+/* La tarjeta del medio. Oscura y no blanca: es la app, no un cartel de otra
+   parte, y sobre el baño de color el fondo claro perdía el ave de vista. */
+.fiesta-tarjeta {
+  position: relative;
+  z-index: 2;
+  max-width: 22rem;
+  width: 100%;
+  background: rgba(6, 13, 12, 0.9);
+  border: 1px solid var(--borde-alto);
+  border-radius: 24px;
+  padding: 22px 22px 18px;
+  text-align: center;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 30px 70px -14px rgba(0, 0, 0, 0.8);
+  animation: fiesta-saltar 0.5s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+@keyframes fiesta-saltar {
+  0%   { transform: scale(0.5) rotate(-6deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* La escena: el ave grande y, en la de la barra, las cotorras a los costados.
+   Se encogen para que la mesa entre en un teléfono angosto sin desbordar. */
+.fiesta-mesa {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.fiesta-ave {
+  display: block;
+  animation: fiesta-bailar 0.9s ease-in-out infinite;
+}
+.fiesta-acompanante {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  align-self: center;
+  animation: ave-tomada 1.9s ease-in-out infinite;
+}
+.fiesta-espejo { transform: scaleX(-1); }
+.fiesta-copa {
+  position: absolute;
+  right: -6px;
+  bottom: 4px;
+  font-size: 26px;
+  line-height: 1;
+}
+.fiesta-espejo .fiesta-copa { transform: scaleX(-1); }
+@keyframes fiesta-bailar {
+  0%, 100% { transform: rotate(-9deg) scale(1); }
+  50%      { transform: rotate(9deg) scale(1.08); }
+}
+
+.fiesta-titulo {
+  font-size: 25px;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--texto);
+  margin-bottom: 8px;
+}
+.fiesta-texto {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--suave);
+  margin: 0;
+}
+.fiesta-seguir {
+  display: block;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--tenue);
+}
+
+/* Con movimiento reducido: el mensaje sí, la tormenta no. */
+@media (prefers-reduced-motion: reduce) {
+  .fiesta-cosas { display: none; }
+  .fiesta-bano { animation: fiesta-apagarse 5.2s ease-out forwards; }
+  .fiesta-ave,
+  .fiesta-acompanante,
+  .fiesta-tarjeta { animation: none; }
+}
+
 /* La música de la barra. Sube y se apaga, en loop: a distancia de mapa es lo
    único que dice "acá adentro está pasando algo" sin ocupar más lugar. */
 @keyframes cerveceria-nota {
