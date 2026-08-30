@@ -20,6 +20,7 @@
 import { useEffect, useState } from "react";
 import { Ave } from "./Ave";
 import { AVES, type AveId } from "../lib/aves";
+import { ciudadDe } from "../lib/cerveceria";
 import { esCodigo } from "../lib/codigo";
 
 type Invita = { nombre: string; lugar: string; ave: AveId };
@@ -132,7 +133,7 @@ function SaludoDeConvite({ c }: { c: ConviteEnPortada }) {
             {c.para ? <> a vos, {c.para}</> : null}.{" "}
             {enLaBarra ? (
               <>
-                Está esperando en una cervecería{c.barrio ? ` de ${c.barrio}` : ""}
+                Está esperando en una cervecería{c.barrio ? ` de ${ciudadDe(c.barrio)}` : ""}
                 {c.copetines > 0 ? ` y ya lleva ${c.copetines} copetín${c.copetines === 1 ? "" : "es"}` : ""}.
               </>
             ) : (

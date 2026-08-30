@@ -224,6 +224,14 @@ come el mensaje de bienvenida no es un chiste, es una invitación rota. Por la
 misma razón, **el lorito de convite no se pierde ni se enamora**: el 0,2 % y el
 romance del perico no corren acá. El ave ya tuvo su noche.
 
+**Y quien invitó se entera.** Cuando del otro lado arman el nido, a quien lo
+mandó le llega "Beto armó su nido, tu perico salió de la cervecería" — en la
+pantalla si la tiene abierta, y como aviso al teléfono si no (el push sale
+desde `/api/convite/reclamar`, no desde el despertador, porque eso pasa cuando
+la otra persona está usando la app). Sin ese aviso, del lado de quien invitó lo
+único que pasaba era que una tarjeta desaparecía en silencio: el premio por
+haber traído a alguien no se veía en ningún lado.
+
 **Lo que el link NO cuenta.** El texto no sale del servidor hasta que hay un
 nido que lo reciba. Si saliera, el link *sería* el mensaje y armar el nido no
 destrabaría nada. Tampoco salen las coordenadas de la cervecería: están a pocos
@@ -234,6 +242,13 @@ verifica campo por campo.
     lib/cerveceria.ts   dónde para, cuántos copetines, qué está haciendo.
     lib/convite.ts      el documento, el alta y el reclamo.
     components/Convite.tsx   escribirlo y pasar el link.
+
+Todavía no se puede arrepentir: un lorito soltado no se cancela. El tope de
+veinte abiertos por nido es lo que evita que eso se convierta en un depósito.
+
+No hace falta migrar nada para prenderlo: las tres tablas de Supabase son
+genéricas (`clave` → valor), así que las claves nuevas entran en las que ya
+están.
 
 Para verlo entero sin esperar seis horas a que el bicho se emborrache:
 

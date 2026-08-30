@@ -169,6 +169,19 @@ export default function Nido() {
         continue;
       }
 
+      // Un convite que se destrabó. Este SÍ le corresponde a quien lo mandó, y
+      // es el momento más importante de toda la mecánica: la persona que
+      // invitaste armó su nido. Sin esto, lo único que pasaba de tu lado era
+      // que una tarjeta desaparecía en silencio y aparecía otra, y el premio
+      // por haber invitado a alguien no se veía en ningún lado.
+      if (mio && nuevo && l.parada && ahora === "vuelo") {
+        const falta = formatearDuracion(l.llegada - ahoraServidor());
+        const texto = `${l.otro.nombre} armó su nido. Tu ${a.nombre.toLowerCase()} salió de la cervecería y llega en ${falta}.`;
+        mostrarAviso(`🎉 ${texto}`);
+        avisar("Se sumó a tu bandada 🦜", texto);
+        continue;
+      }
+
       // Los avisos de despegue y aterrizaje son solo para lo que viene hacia
       // vos: de lo que mandás ya te enteraste al mandarlo.
       if (mio) continue;

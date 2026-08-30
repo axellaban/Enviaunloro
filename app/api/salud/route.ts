@@ -13,6 +13,7 @@
 import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
 import { diagnosticar, rolDeClaveSupabase } from "../../../lib/store";
 import { estadoDeBandada } from "../../../lib/datos";
+import { convitesDe } from "../../../lib/convite";
 import { probarGeocode } from "../../../lib/geocode";
 import { hayPush } from "../../../lib/push";
 
@@ -70,6 +71,18 @@ export async function GET(req: Request) {
     );
   }
 
+  // Los loritos de convite. El síntoma de que algo no anda con ellos es un ave
+  // que "no salió nunca", y desde afuera eso se ve igual que un link que nadie
+  // abrió. Acá se distingue: cuántos hay esperando y cuántos ya se destrabaron.
+  const convites = yo
+    ? await convitesDe(yo.id)
+        .then((cs) => ({
+          esperando: cs.filter((c) => !c.reclamado).length,
+          reclamados: cs.filter((c) => c.reclamado).length,
+        }))
+        .catch(() => null)
+    : null;
+
   // Nominatim, preguntándole a Nominatim. Es lo único de la app que depende de
   // un servicio ajeno y gratuito, y cuando deja de andar el síntoma es un nido
   // sin nombre de lugar — que también es lo que se ve si de verdad no hay
@@ -102,6 +115,7 @@ export async function GET(req: Request) {
     ...d,
     avisos,
     bandada,
+    convites,
     push,
     geocode: geo,
     variables: {

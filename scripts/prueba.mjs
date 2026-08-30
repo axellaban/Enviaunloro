@@ -380,6 +380,14 @@ chequear(
     "quien lo mandó lo ve esperando, y puede releer lo que escribió"
   );
 
+  // Y que se vea desde afuera si algo no anda: "el ave no salió nunca" y "nadie
+  // abrió el link" se ven idénticos si /api/salud no lo cuenta.
+  const salud = await emisor.llamar("/api/salud");
+  chequear(
+    salud.convites?.esperando === 1 && salud.convites?.reclamados === 0,
+    "/api/salud dice cuántos loritos hay esperando en la barra"
+  );
+
   // Y ahora lo que de verdad importa: qué se cuenta por el link.
   const afuera = cliente("Afuera");
   const publico = await afuera.llamar(`/api/convite?c=${encodeURIComponent(llave)}`);

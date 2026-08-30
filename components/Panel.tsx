@@ -19,7 +19,7 @@ import { avanceVuelo, duracionVuelo } from "../lib/vuelo";
 import { pedir, pedirUbicacion, useTic } from "../lib/cliente";
 import type { Suerte } from "../lib/datos";
 import type { ConviteVista, LoroVista, NidoVista } from "../lib/vista";
-import { borrachera, loQueEstaHaciendo } from "../lib/cerveceria";
+import { borrachera, ciudadDe, loQueEstaHaciendo } from "../lib/cerveceria";
 import { compartirConvite } from "./Convite";
 import { Ave } from "./Ave";
 import { Fiesta } from "./Fiesta";
@@ -334,7 +334,7 @@ function TarjetaConvite({
           </p>
           <p style={{ color: "var(--tenue)", fontSize: 12 }}>
             {enLaBarra
-              ? `En una cervecería${convite.lugar ? ` de ${convite.lugar}` : ""}`
+              ? `En una cervecería${convite.lugar ? ` de ${ciudadDe(convite.lugar)}` : ""}`
               : `Yendo a la cervecería · ${cuentaRegresiva(convite.llegadaPosada - ahora)}`}
           </p>
         </div>
@@ -780,7 +780,7 @@ function PorQueLlegoAsi({ loro }: { loro: LoroVista }) {
         : "La cotorra lo repitió tanto que se le mezcló";
   const nota = barra
     ? `Estuvo esperando en una cervecería${
-        loro.parada?.lugar ? ` de ${loro.parada.lugar}` : ""
+        loro.parada?.lugar ? ` de ${ciudadDe(loro.parada.lugar)}` : ""
       } a que armaras tu nido, y se tomó ${copetines} copetín${
         copetines === 1 ? "" : "es"
       }. El mensaje está entero: lo que le sobra es el hipo.`

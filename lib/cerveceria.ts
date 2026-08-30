@@ -61,6 +61,19 @@ export function dondeLaCerveceria(nido: Punto, semilla: string, ave: AveId): Pun
   return desplazar(nido, kmHastaLaParada(ave), rumboDeLaParada(semilla));
 }
 
+/**
+ * Cómo se nombra la cervecería.
+ *
+ * El geocodificador devuelve "Buenos Aires, Argentina", y "en una cervecería de
+ * Buenos Aires, Argentina" se lee como una dirección postal, no como un bar. La
+ * barra está a pocos kilómetros: el país sobra siempre y la ciudad alcanza —y a
+ * veces sale premio, porque un ave rápida cruza al partido de al lado y la
+ * cervecería queda "de Vicente López".
+ */
+export function ciudadDe(lugar: string): string {
+  return (lugar || "").split(",")[0].trim();
+}
+
 // ---------- los copetines ----------
 
 /** Cada cuánto se pide otra. */
