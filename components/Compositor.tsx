@@ -293,9 +293,17 @@ export function Compositor({
               <p style={{ color: "#fca5a5", fontSize: 13.5, marginBottom: 12 }}>{error}</p>
             )}
 
+            {/* El verde de acción de la app, y no el color del ave. Lo pintaba
+                del color del ave, que suena lindo y en la práctica hacía que el
+                botón más importante de la pantalla apareciera de un verde que
+                ya no existe en ningún otro lado —el del loro, #10b981, que es
+                el viejo verde de los CTA— o de un violeta con el cuervo. El
+                ave ya se ve: está elegida arriba, dibujada al lado y va a
+                pintar su propia línea en el mapa. El botón es la acción, y la
+                acción tiene un solo color en toda la app. */}
             <button
               className="boton"
-              style={{ width: "100%", background: a.color }}
+              style={{ width: "100%" }}
               disabled={!texto.trim() || !para || enviando}
               onClick={soltar}
             >

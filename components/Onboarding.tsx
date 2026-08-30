@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { AVES_COTIDIANAS, type AveId } from "../lib/aves";
+import { AVES_LISTA, type AveId } from "../lib/aves";
 import type { Punto } from "../lib/geo";
 import { pedir, pedirUbicacion } from "../lib/cliente";
 import type { NidoVista } from "../lib/vista";
@@ -225,13 +225,13 @@ export function Onboarding({
               <p className="etiqueta">Paso 3 de 3</p>
               <h2 style={{ fontSize: 21, margin: "10px 0 6px" }}>Elegí tu ave</h2>
               <p style={{ color: "var(--suave)", fontSize: 14.5, marginBottom: 16 }}>
-                Cuanto más rápido vuela, menos le entra en la cabeza. Podés cambiar
-                de ave en cada mensaje — y adentro te esperan dos más, una paloma
-                y un cuervo, para cuando haga falta.
+                Es con la que te vas a presentar, y cuanto más rápido vuela menos
+                le entra en la cabeza. Podés cambiar de ave en cada mensaje: esta
+                es la que va a salir por defecto.
               </p>
 
               <div style={{ display: "grid", gap: 10 }}>
-                {AVES_COTIDIANAS.map((a) => {
+                {AVES_LISTA.map((a) => {
                   const elegida = ave === a.id;
                   return (
                     <button

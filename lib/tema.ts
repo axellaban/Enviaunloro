@@ -101,3 +101,61 @@ export const PINTURA: Record<Tema, {
 
 /** Atajo para el tema activo. */
 export const pintura = PINTURA[TEMA];
+
+// ---------- probar mosaicos sin redeployar ----------
+//
+// "Quiero ver cómo queda" es una pregunta razonable y hasta ahora la única
+// forma de contestarla era cambiar una constante, buildear y deployar. Con
+// esto se prueba en vivo: /nido?mapa=calle y listo. La elección queda guardada
+// en el navegador, así que se sigue viendo al navegar, y se vuelve con
+// ?mapa=noche.
+//
+// La lista es CERRADA a propósito. El nombre entra por la URL y termina
+// adentro de la dirección de donde se piden los mosaicos: si se aceptara
+// cualquier cosa, un link preparado podría hacer que el mapa de otra persona
+// cargue imágenes de donde el que armó el link quiera.
+
+export type Mosaico = { carto: string; mapbox: string; nombre: string };
+
+export const MOSAICOS: Record<string, Mosaico> = {
+  /** El de siempre: selva de noche. */
+  noche: { carto: "dark_all", mapbox: "dark-v11", nombre: "De noche" },
+  /** Gris clarito, sin color: el que usa el tema claro. */
+  claro: { carto: "light_all", mapbox: "light-v11", nombre: "Claro" },
+  /** Voyager: verdes de parque, agua celeste, calles grises. El que más se
+   *  parece a los mapas de un teléfono. */
+  calle: { carto: "rastertiles/voyager", mapbox: "streets-v12", nombre: "De calle" },
+  /** Voyager sin nombres de lugares encima. */
+  limpio: {
+    carto: "rastertiles/voyager_nolabels",
+    mapbox: "navigation-day-v1",
+    nombre: "De calle, sin rótulos",
+  },
+};
+
+const GUARDADO = "loros:mapa";
+
+/**
+ * Qué mosaicos usar. Sale de `?mapa=`, si no de lo último elegido, si no del
+ * tema. Solo corre en el navegador; en el servidor devuelve el del tema.
+ */
+export function mosaicoElegido(): Mosaico {
+  const porDefecto: Mosaico = {
+    carto: pintura.mosaicoCarto,
+    mapbox: pintura.mosaicoMapbox,
+    nombre: TEMA === "oscuro" ? "De noche" : "Claro",
+  };
+  if (typeof window === "undefined") return porDefecto;
+  try {
+    const pedido = new URLSearchParams(window.location.search).get("mapa");
+    if (pedido && MOSAICOS[pedido]) {
+      window.localStorage.setItem(GUARDADO, pedido);
+      return MOSAICOS[pedido];
+    }
+    const guardado = window.localStorage.getItem(GUARDADO);
+    if (guardado && MOSAICOS[guardado]) return MOSAICOS[guardado];
+  } catch {
+    // Navegador con el almacenamiento bloqueado: se sigue con el del tema.
+  }
+  return porDefecto;
+}

@@ -30,7 +30,7 @@ export type AveId =
  *   olvida  — la cotorra habla tanto que se le mezclan las palabras.
  *   romance — el perico se enamora en el camino y llega tarde y retocado.
  *   confeti — la paloma explota la pantalla al abrirse.
- *   luto    — el cuervo solo trae malas noticias, y se le nota.
+ *   luto    — el cuervo solo trae desgracias, y se le nota.
  */
 export type Rareza = "olvida" | "romance" | "confeti" | "luto";
 
@@ -125,10 +125,10 @@ export const AVES: Record<AveId, Ave> = {
     velocidadKmh: 70,
     maxCaracteres: 250,
     color: "#a78bfa",
-    lema: "El de las malas noticias",
+    lema: "El de las desgracias",
     rareza: "luto",
     aviso:
-      "Para malas noticias. Del otro lado se abre de negro. No lo mandes de vivo.",
+      "Para comunicar desgracias. Del otro lado se abre de negro. No lo mandes de vivo.",
   },
 };
 
@@ -143,22 +143,6 @@ export const AVES_LISTA: Ave[] = [
   AVES.guacamayo,
   AVES.paloma,
   AVES.cuervo,
-];
-
-/**
- * Las de todos los días.
- *
- * El onboarding elige entre estas cuatro y no entre las seis: la paloma y el
- * cuervo son de ocasión —una es para declararse y el otro para dar una mala
- * noticia— y ponerlas al lado del loro común, el primer día, es pedirle a
- * alguien que elija su ave habitual entre dos que no va a usar nunca. Aparecen
- * enteras en la pantalla de escribir, que es donde importan.
- */
-export const AVES_COTIDIANAS: Ave[] = [
-  AVES.perico,
-  AVES.cotorra,
-  AVES.loro,
-  AVES.guacamayo,
 ];
 
 export function esAveId(x: unknown): x is AveId {
