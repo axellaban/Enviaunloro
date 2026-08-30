@@ -49,7 +49,7 @@ import {
 import { aveHtml } from "./Ave";
 import type { ConviteVista, LoroVista, NidoVista, VueloMundo } from "../lib/vista";
 import { coloresDeBandada, MI_COLOR } from "../lib/colorNido";
-import { mosaicoElegido, pintura } from "../lib/tema";
+import { mosaicoElegido, pinturaDelMapa } from "../lib/tema";
 
 const MAPBOX = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -94,15 +94,15 @@ function iconoNido(n: NidoVista, esMio: boolean, color: string): L.DivIcon {
   // tiene que aparentar que sí.
   const cuerpo = esMio
     ? `<span style="position:absolute;inset:0;border-radius:99px;background:${color};animation:latido 2.4s ease-out infinite"></span>
-       <span style="position:absolute;inset:0;border-radius:99px;background:${color};border:2px solid ${pintura.anilloNido};box-shadow:0 0 12px ${color}88"></span>`
-    : `<span style="position:absolute;inset:3px;border-radius:99px;background:${color};opacity:.75;border:2px solid ${pintura.anilloNido}"></span>`;
+       <span style="position:absolute;inset:0;border-radius:99px;background:${color};border:2px solid ${pinturaDelMapa().anilloNido};box-shadow:0 0 12px ${color}88"></span>`
+    : `<span style="position:absolute;inset:3px;border-radius:99px;background:${color};opacity:.75;border:2px solid ${pinturaDelMapa().anilloNido}"></span>`;
   return L.divIcon({
     className: "marcador-nido",
     iconSize: [14, 14],
     iconAnchor: [7, 7],
     html: `<div style="position:relative;width:14px;height:14px">
       ${cuerpo}
-      <span style="position:absolute;left:50%;top:17px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 ui-sans-serif,system-ui;color:${pintura.rotuloMapa};text-shadow:${pintura.rotuloHalo};padding:4px 6px">${escapar(
+      <span style="position:absolute;left:50%;top:17px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 ui-sans-serif,system-ui;color:${pinturaDelMapa().rotuloMapa};text-shadow:${pinturaDelMapa().rotuloHalo};padding:4px 6px">${escapar(
         esMio ? "Tu nido" : n.nombre
       )}</span>
     </div>`,
@@ -123,7 +123,7 @@ function iconoAve(especie: AveId, grados: number): L.DivIcon {
     // El rotado va en un div interno: el externo lo posiciona Leaflet con su
     // propio transform y pisarlo rompe el mapa.
     html: `<div style="position:relative;width:34px;height:28px;display:grid;place-items:center">
-      <div data-rot style="transform:rotate(${grados}deg);filter:${pintura.sombraAve}">${aveHtml(
+      <div data-rot style="transform:rotate(${grados}deg);filter:${pinturaDelMapa().sombraAve}">${aveHtml(
         especie,
         34
       )}</div>${carga}
@@ -138,7 +138,7 @@ function iconoPerica(): L.DivIcon {
     iconSize: [30, 26],
     iconAnchor: [15, 13],
     html: `<div style="position:relative;width:30px;height:26px;display:grid;place-items:center">
-      <div style="filter:${pintura.sombraAve} hue-rotate(-95deg) saturate(1.5)">${aveHtml(
+      <div style="filter:${pinturaDelMapa().sombraAve} hue-rotate(-95deg) saturate(1.5)">${aveHtml(
         "perico",
         30
       )}</div>
@@ -159,7 +159,7 @@ function iconoPosada(ave: AveId): L.DivIcon {
     iconSize: [34, 30],
     iconAnchor: [17, 15],
     html: `<div style="position:relative;width:34px;height:30px;display:grid;place-items:center">
-      <div style="filter:${pintura.sombraAve}">${aveHtml(ave, 28)}</div>
+      <div style="filter:${pinturaDelMapa().sombraAve}">${aveHtml(ave, 28)}</div>
       <span style="position:absolute;left:-2px;top:-10px;font-size:15px">🍺</span>
     </div>`,
   });
@@ -224,6 +224,9 @@ function loQueSeDibuja(
 
 type CapaVuelo = {
   completa: L.Polyline;
+  /** El contorno oscuro abajo de lo recorrido. Solo sobre mapa claro: ahí una
+   *  línea lima de 3,5 px se pierde contra el gris. null sobre mapa oscuro. */
+  contorno: L.Polyline | null;
   recorrida: L.Polyline;
   ave: L.Marker;
   puntos: Punto[];
@@ -295,6 +298,10 @@ export default function Mapa({
   // ---- crear el mapa una sola vez ----
   useEffect(() => {
     if (!contenedor.current || mapa.current) return;
+    // Para que el CSS sepa qué hay abajo. Lo que Leaflet pinta cuando todavía
+    // no llegaron los mosaicos tiene que parecerse a los mosaicos que vienen:
+    // si no, cada paneo abre agujeros negros en un mapa claro.
+    contenedor.current.dataset.mapa = mosaicoElegido().claro ? "claro" : "oscuro";
     const m = L.map(contenedor.current, {
       zoomControl: true,
       worldCopyJump: true,
@@ -403,11 +410,11 @@ export default function Mapa({
             n.id,
             L.circle([n.lat, n.lng], {
               radius: n.radioKm * 1000,
-              color: colores.get(n.id) ?? pintura.zonaSinColor,
+              color: colores.get(n.id) ?? pinturaDelMapa().zonaSinColor,
               weight: 1,
               opacity: 0.35,
               dashArray: "4 7",
-              fillColor: colores.get(n.id) ?? pintura.zonaSinColor,
+              fillColor: colores.get(n.id) ?? pinturaDelMapa().zonaSinColor,
               fillOpacity: 0.07,
               interactive: false,
             }).addTo(m)
@@ -504,6 +511,7 @@ export default function Mapa({
     const capa = capas.current.get(clave);
     if (!capa) return;
     capa.completa.remove();
+    capa.contorno?.remove();
     capa.recorrida.remove();
     capa.ave.remove();
     for (const f of capa.flores) f.remove();
@@ -584,12 +592,23 @@ export default function Mapa({
         completa: L.polyline(latlngs, {
           color,
           weight: 1.5,
-          opacity: v.vuelta ? 0.18 : 0.3,
+          opacity: v.vuelta ? pinturaDelMapa().opacidadRutaVuelta : pinturaDelMapa().opacidadRuta,
           // La vuelta se dibuja más fina y más punteada: es el mismo mensaje
           // volviendo, no uno nuevo, y no tiene que competir con las idas.
           dashArray: v.vuelta ? "2 10" : "3 9",
           interactive: false,
         }).addTo(m),
+        // Se crea antes que `recorrida` para quedar debajo: Leaflet apila en
+        // el orden en que se agregan.
+        contorno: pinturaDelMapa().contorno
+          ? L.polyline([], {
+              color: pinturaDelMapa().contorno!,
+              weight: v.vuelta ? 4.5 : 6,
+              opacity: 1,
+              lineCap: "round",
+              interactive: false,
+            }).addTo(m)
+          : null,
         recorrida: L.polyline([], {
           color,
           weight: v.vuelta ? 2 : 3.5,
@@ -647,6 +666,7 @@ export default function Mapa({
           .map((p) => [p.lat, p.lng] as [number, number]);
         trozo.push([pos.lat, pos.lng]);
         capa.recorrida.setLatLngs(trozo);
+        capa.contorno?.setLatLngs(trozo);
 
         const el = capa.ave.getElement()?.querySelector("[data-rot]") as HTMLElement | null;
         if (el) el.style.transform = orientar(grados + rumboRef.current);
@@ -789,7 +809,7 @@ export default function Mapa({
           <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
             <g transform={`rotate(${-rumboMapa} 12 12)`}>
               <path d="M12 3 L16 13 L12 11 Z" fill="#f87171" />
-              <path d="M12 21 L8 11 L12 13 Z" fill="${pintura.nidoSinColor}" />
+              <path d="M12 21 L8 11 L12 13 Z" fill="${pinturaDelMapa().nidoSinColor}" />
             </g>
           </svg>
         </button>

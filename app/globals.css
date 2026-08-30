@@ -277,6 +277,13 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   font-family: var(--fuente);
   outline: none;
 }
+/* El fondo del mapa sigue al MOSAICO y no al tema de la app: el panel puede
+   ser oscuro y el mapa claro al mismo tiempo, que es como está ahora. Sin
+   esto, cada paneo abría un rectángulo negro adelante de los mosaicos que
+   todavía no habían llegado. */
+.leaflet-container[data-mapa="claro"] {
+  background: #eae7e2 !important;
+}
 /* Los controles de Leaflet vienen con look de 2011. */
 .leaflet-control-zoom a {
   /* Leaflet los dibuja de 30 px. En un teléfono eso es dos tercios del mínimo

@@ -19,8 +19,9 @@
 //      la UI de CSS ya cambia: fondos, bordes, textos, botones, la hoja de
 //      abajo, el mapa de Leaflet.
 //   2. Pasar `tema` a `coloresDeBandada()` y a los lugares marcados abajo.
-//   3. Cambiar los mosaicos del mapa: `dark_all` ↔ `light_all` en CARTO, y
-//      `dark-v11` ↔ `light-v11` en Mapbox (components/Mapa.tsx).
+//   3. Los mosaicos del mapa ya no hacen falta tocarlos: van por su cuenta
+//      (MOSAICOS, más abajo) y de fábrica ya son claros. El mapa y el panel
+//      son dos cosas distintas y hoy no coinciden: panel oscuro, mapa claro.
 //   4. Guardar la elección donde vos quieras y leerla al arrancar.
 //
 // Lo que falta para que sea completo está en el README, sección "El color".
@@ -71,9 +72,6 @@ export const PINTURA: Record<Tema, {
   zonaSinColor: string;
   /** El confeti de la paloma. Sin blanco en claro: sería invisible. */
   confeti: string[];
-  /** Los mosaicos del mapa. */
-  mosaicoCarto: string;
-  mosaicoMapbox: string;
 }> = {
   oscuro: {
     rotuloMapa: "#e9f3f0",
@@ -83,8 +81,6 @@ export const PINTURA: Record<Tema, {
     nidoSinColor: "#e9f3f0",
     zonaSinColor: "#cbd5e1",
     confeti: ["#f472b6", "#fbbf24", "#22d3ee", "#a3e635", "#f43f5e", "#ffffff"],
-    mosaicoCarto: "dark_all",
-    mosaicoMapbox: "dark-v11",
   },
   claro: {
     rotuloMapa: "#111",
@@ -94,68 +90,120 @@ export const PINTURA: Record<Tema, {
     nidoSinColor: "#111827",
     zonaSinColor: "#6b7280",
     confeti: ["#db2777", "#d97706", "#0891b2", "#65a30d", "#e11d48", "#7c3aed"],
-    mosaicoCarto: "light_all",
-    mosaicoMapbox: "light-v11",
   },
 };
 
 /** Atajo para el tema activo. */
 export const pintura = PINTURA[TEMA];
 
-// ---------- probar mosaicos sin redeployar ----------
+// ---------- los mosaicos del mapa ----------
 //
-// "Quiero ver cómo queda" es una pregunta razonable y hasta ahora la única
-// forma de contestarla era cambiar una constante, buildear y deployar. Con
-// esto se prueba en vivo: /nido?mapa=calle y listo. La elección queda guardada
-// en el navegador, así que se sigue viendo al navegar, y se vuelve con
-// ?mapa=noche.
+// EL MAPA TIENE SU PROPIA PINTURA, y no la del tema de la app. Son dos cosas
+// distintas y confundirlas fue el error obvio: el panel puede ser oscuro y el
+// mapa claro al mismo tiempo, y de hecho así está ahora. Lo que decide si el
+// nombre de un nido lleva halo negro o blanco no es el color del panel: es el
+// color de lo que hay abajo del rótulo.
+//
+// Y se pueden probar en vivo, sin redeployar: /nido?mapa=calle y listo. La
+// elección queda guardada en el navegador y se vuelve con ?mapa=claro.
 //
 // La lista es CERRADA a propósito. El nombre entra por la URL y termina
 // adentro de la dirección de donde se piden los mosaicos: si se aceptara
 // cualquier cosa, un link preparado podría hacer que el mapa de otra persona
 // cargue imágenes de donde el que armó el link quiera.
 
-export type Mosaico = { carto: string; mapbox: string; nombre: string };
+export type Mosaico = {
+  carto: string;
+  mapbox: string;
+  nombre: string;
+  /** Si el fondo es claro. De esto sale con qué pintura se dibuja encima. */
+  claro: boolean;
+};
 
 export const MOSAICOS: Record<string, Mosaico> = {
-  /** El de siempre: selva de noche. */
-  noche: { carto: "dark_all", mapbox: "dark-v11", nombre: "De noche" },
-  /** Gris clarito, sin color: el que usa el tema claro. */
-  claro: { carto: "light_all", mapbox: "light-v11", nombre: "Claro" },
+  /** Gris clarito, casi sin color: el fondo se calla y los vuelos hablan. */
+  claro: { carto: "light_all", mapbox: "light-v11", nombre: "Claro", claro: true },
   /** Voyager: verdes de parque, agua celeste, calles grises. El que más se
    *  parece a los mapas de un teléfono. */
-  calle: { carto: "rastertiles/voyager", mapbox: "streets-v12", nombre: "De calle" },
+  calle: { carto: "rastertiles/voyager", mapbox: "streets-v12", nombre: "De calle", claro: true },
   /** Voyager sin nombres de lugares encima. */
   limpio: {
     carto: "rastertiles/voyager_nolabels",
     mapbox: "navigation-day-v1",
     nombre: "De calle, sin rótulos",
+    claro: true,
   },
+  /** La selva de noche, que fue el default hasta acá. */
+  noche: { carto: "dark_all", mapbox: "dark-v11", nombre: "De noche", claro: false },
 };
+
+/** Cuál viene de fábrica. Es la única línea que hay que tocar para cambiarlo. */
+export const MOSAICO_POR_DEFECTO = "claro";
 
 const GUARDADO = "loros:mapa";
 
 /**
  * Qué mosaicos usar. Sale de `?mapa=`, si no de lo último elegido, si no del
- * tema. Solo corre en el navegador; en el servidor devuelve el del tema.
+ * de fábrica.
+ *
+ * Se resuelve UNA vez y queda cacheado: lo consultan los dibujantes de íconos,
+ * que corren muchas veces, y no tiene sentido volver a leer el almacenamiento
+ * del navegador cada vez. Cambiar de mosaico pide recargar igual, porque la
+ * capa de fondo se crea al montar el mapa.
  */
+let elegido: Mosaico | null = null;
+
 export function mosaicoElegido(): Mosaico {
-  const porDefecto: Mosaico = {
-    carto: pintura.mosaicoCarto,
-    mapbox: pintura.mosaicoMapbox,
-    nombre: TEMA === "oscuro" ? "De noche" : "Claro",
-  };
+  if (elegido) return elegido;
+  const porDefecto = MOSAICOS[MOSAICO_POR_DEFECTO];
   if (typeof window === "undefined") return porDefecto;
+  let cual = porDefecto;
   try {
     const pedido = new URLSearchParams(window.location.search).get("mapa");
     if (pedido && MOSAICOS[pedido]) {
       window.localStorage.setItem(GUARDADO, pedido);
-      return MOSAICOS[pedido];
+      cual = MOSAICOS[pedido];
+    } else {
+      const guardado = window.localStorage.getItem(GUARDADO);
+      if (guardado && MOSAICOS[guardado]) cual = MOSAICOS[guardado];
     }
-    const guardado = window.localStorage.getItem(GUARDADO);
-    if (guardado && MOSAICOS[guardado]) return MOSAICOS[guardado];
   } catch {
-    // Navegador con el almacenamiento bloqueado: se sigue con el del tema.
+    // Navegador con el almacenamiento bloqueado: se sigue con el de fábrica.
   }
-  return porDefecto;
+  elegido = cual;
+  return cual;
+}
+
+/**
+ * Con qué pintar lo que va ENCIMA del mapa.
+ *
+ * Casi todo sigue al MOSAICO y no al tema: un rótulo con halo negro sobre un
+ * mapa claro no se lee, aunque el panel de al lado sea oscuro.
+ *
+ * El anillo del nido es la excepción, y no por capricho: no separa el punto del
+ * mapa, separa el punto de lo que tenga al lado, y el punto sale de la paleta
+ * del TEMA. Con la paleta brillante —la oscura— el anillo va oscuro sobre
+ * cualquier fondo; con la paleta oscura del tema claro iría blanco. Cada valor
+ * sigue a aquello con lo que de verdad tiene que contrastar.
+ *
+ * Y sobre mapa claro las rutas necesitan ayuda. Los colores de las aves están
+ * elegidos para brillar contra un fondo casi negro: el lima del perico da 1,5:1
+ * sobre gris claro, o sea una línea que casi no está. La respuesta no es
+ * cambiarles el color —el color del ave es el mismo en la tarjeta, en el mapa y
+ * en el bicho, y romper eso rompe lo único que deja seguir un vuelo sin leer—
+ * sino la de cualquier mapa de verdad: un contorno oscuro abajo de la línea de
+ * color. La línea sigue siendo del ave y se ve sobre lo que sea.
+ */
+export function pinturaDelMapa() {
+  const claro = mosaicoElegido().claro;
+  return {
+    ...PINTURA[claro ? "claro" : "oscuro"],
+    anilloNido: PINTURA[TEMA].anilloNido,
+    /** El contorno de la ruta. null en mapa oscuro: ahí no hace falta. */
+    contorno: claro ? "rgba(8, 20, 18, .45)" : null,
+    /** La ruta entera, la que todavía no recorrió. Sobre claro hay que
+     *  levantarla: a 0,3 de opacidad un punteado lima se pierde en el gris. */
+    opacidadRuta: claro ? 0.55 : 0.3,
+    opacidadRutaVuelta: claro ? 0.34 : 0.18,
+  };
 }

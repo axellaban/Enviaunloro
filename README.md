@@ -457,7 +457,38 @@ no.
 ## El mapa
 
 Leaflet, con mosaicos de CARTO sobre OpenStreetMap (sin API key) o de Mapbox si
-hay token. Dos cosas que no son de fábrica:
+hay token.
+
+**El mapa es claro y el panel oscuro**, y eso no es un descuido: son dos cosas
+distintas. Lo que decide si el nombre de un nido lleva halo negro o blanco no
+es el color del panel de al lado, es el color de lo que hay abajo del rótulo.
+Así que la pintura de todo lo que va encima del mapa —rótulos, halos, anillos,
+sombras— sigue al **mosaico**, no al tema (`pinturaDelMapa()`, en
+`lib/tema.ts`).
+
+Con una excepción que vale la pena entender: el anillo del nido sigue al TEMA.
+No separa el punto del mapa, separa el punto de lo que tenga al lado, y el
+punto sale de la paleta del tema. Cada valor sigue a aquello con lo que de
+verdad tiene que contrastar.
+
+Y sobre mapa claro **las rutas llevan un contorno oscuro abajo**. Los colores
+de las seis aves están elegidos para brillar contra un fondo casi negro: el
+lima del perico da 1,5:1 sobre gris claro, o sea una línea que casi no está. La
+respuesta no es cambiarles el color —el color del ave es el mismo en la
+tarjeta, en el mapa y en el bicho, y romper eso rompe lo único que deja seguir
+un vuelo de un vistazo— sino la de cualquier mapa de verdad: un contorno. La
+línea sigue siendo del ave y se ve sobre lo que sea.
+
+Se pueden probar otros mosaicos en vivo, sin redeployar: `?mapa=calle` (el
+Voyager de CARTO, el que más se parece a los mapas de un teléfono),
+`?mapa=limpio` (el mismo sin nombres de lugares), `?mapa=noche` (la selva de
+noche, que fue el default hasta acá) y `?mapa=claro` para volver. La elección
+queda guardada en el navegador. La lista es cerrada a propósito: el nombre
+termina adentro de la dirección de donde se piden los mosaicos, así que si se
+aceptara cualquier cosa, un link preparado podría hacer que el mapa de otra
+persona cargue imágenes de donde el que armó el link quiera.
+
+Dos cosas más que no son de fábrica:
 
 - **La posición de las aves no viene del servidor.** Sale de la fórmula: con la
   hora de salida, la de llegada y los dos puntos alcanza. El servidor se
