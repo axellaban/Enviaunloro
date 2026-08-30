@@ -28,6 +28,10 @@ export type Tramo = {
   vuelta: boolean;
   /** true si es de alguien que no conocés: se dibuja distinto y sin nidos. */
   ajeno?: boolean;
+  /** El loro que salió convertido en pollera: lo que se dibuja no es un ave.
+   *  Va en las DOS patas —ida y vuelta—: si vuelve siendo loro, el chiste se
+   *  rompe a mitad de camino. */
+  pollera?: boolean;
 };
 
 /** Todo lo que en este instante está cruzando el mapa. */
@@ -39,6 +43,7 @@ export function tramosEnElAire(loros: LoroVista[], ahora: number): Tramo[] {
         clave: l.id,
         loroId: l.id,
         ave: l.ave,
+        pollera: l.pollera,
         origen: l.origen,
         destino: l.destino,
         distanciaKm: l.distanciaKm,
@@ -55,6 +60,7 @@ export function tramosEnElAire(loros: LoroVista[], ahora: number): Tramo[] {
         clave: `${l.id}@vuelta`,
         loroId: l.id,
         ave: l.ave,
+        pollera: l.pollera,
         origen: l.destino,
         destino: l.origen,
         distanciaKm: l.distanciaKm,

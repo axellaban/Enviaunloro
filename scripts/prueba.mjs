@@ -569,6 +569,34 @@ try {
   chequear(false, "bloquea escribirle a un nido ajeno");
 } catch (e) { chequear(String(e).includes("403"), "bloquea escribirle a un nido ajeno"); }
 
+// --- la pollera: la gracia del loro ---
+//
+// El chiste es del LORO y de nadie más. Pedirla con otra ave no rompe nada, y
+// eso es justamente lo que hay que verificar: sale el ave de siempre, sin
+// error y sin pollera.
+{
+  const betoId = anaAhora.amigos.find((a) => a.nombre === "Beto").id;
+  const conPollera = await ana.llamar("/api/loros", {
+    para: betoId, ave: "loro", texto: "Sabés bien por qué.", pollera: true,
+  });
+  chequear(conPollera.loro.pollera === true, "el loro se puede convertir en pollera");
+
+  const sinPedirla = await ana.llamar("/api/loros", {
+    para: betoId, ave: "loro", texto: "Este es un loro de los de siempre.",
+  });
+  chequear(sinPedirla.loro.pollera === false, "y sin pedirla, sale loro");
+
+  const otraAve = await ana.llamar("/api/loros", {
+    para: betoId, ave: "guacamayo", texto: "Un guacamayo con ínfulas.", pollera: true,
+  });
+  chequear(otraAve.loro.pollera === false, "ninguna otra ave se convierte, aunque se lo pidan");
+
+  // Y del otro lado tiene que llegar igual: el chiste es el envoltorio, nunca
+  // el mensaje.
+  const deBeto = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPollera.loro.id);
+  chequear(Boolean(deBeto) && deBeto.pollera === true, "y del otro lado también es una pollera");
+}
+
 // --- exceso de caracteres ---
 try {
   await ana.llamar("/api/loros", {

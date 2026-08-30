@@ -116,6 +116,19 @@ export type Loro = {
   /** Interno de Doña Cotorra: si ya devolvió el ave con su respuesta. */
   respondido?: boolean;
   /**
+   * El loro se convirtió en pollera antes de salir.
+   *
+   * Es del LORO y de nadie más: es su gracia, la que tiene en vez de una
+   * rareza. Lo que cruza el mapa entonces no es un ave sino una pollera, y del
+   * otro lado llueven polleras al abrirlo. El mensaje no se toca — el chiste
+   * es el envoltorio, no el contenido.
+   *
+   * Va escrito en el vuelo y no calculado después, por lo mismo que todo acá:
+   * si se decidiera al mirar, el mismo loro sería pollera para uno y no para
+   * el otro.
+   */
+  pollera?: boolean;
+  /**
    * La parada en la cervecería, si este loro viene de un convite.
    *
    * Un lorito mandado a alguien que todavía no estaba en la app no despega
@@ -600,6 +613,8 @@ export async function enviarLoro(datos: {
    * despegaba de una cervecería en la que ya no estaba.
    */
   desde?: Punto;
+  /** Que salga convertido en pollera. Solo el loro puede. */
+  pollera?: boolean;
 }): Promise<ResultadoEnvio> {
   const texto = datos.texto.trim();
   if (!texto) return { ok: false, error: "El loro no puede volar sin nada que decir." };
@@ -681,6 +696,9 @@ export async function enviarLoro(datos: {
     suerteEn: null,
     regreso: null,
     parada,
+    // Solo el loro. Pedirlo con otra ave no es un error que valga la pena
+    // contarle a nadie: se ignora y sale el ave de siempre.
+    pollera: datos.ave === "loro" && datos.pollera === true,
   };
 
   await escribirDoc(claveLoro(loro.id), loro);

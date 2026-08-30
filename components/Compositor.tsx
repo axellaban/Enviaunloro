@@ -40,6 +40,8 @@ export function Compositor({
     destinoInicial || amigos[0]?.id || ""
   );
   const [ave, setAve] = useState<AveId>(aveInicial ?? yo.ave);
+  /** La gracia del loro: sale convertido en pollera. Solo él puede. */
+  const [pollera, setPollera] = useState(false);
   const [texto, setTexto] = useState(textoInicial ?? "");
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -50,6 +52,10 @@ export function Compositor({
   const km = para?.distanciaKm ?? 0;
 
   const a = AVES[ave];
+  // El interruptor queda prendido aunque después se cambie de ave: se apaga
+  // solo acá, al leerlo. Así, ir a mirar otra ave y volver al loro no pierde
+  // lo que ya se había elegido.
+  const enPollera = pollera && ave === "loro";
   const sobra = a.maxCaracteres - texto.length;
   const duracion = duracionVuelo(km, ave, escala);
 
@@ -59,14 +65,16 @@ export function Compositor({
     setError("");
     try {
       await pedir("/api/loros", {
-        datos: { para: para.id, ave, texto: texto.trim() },
+        datos: { para: para.id, ave, texto: texto.trim(), pollera: enPollera },
       });
       alEnviado(
-        `Tu ${a.nombre.toLowerCase()} ${a.articulo === "la" ? "salió" : "despegó"} hacia ${
-          para.nombre
-        }. Aterriza en ${formatearDuracion(duracion)}${
-          a.rareza === "romance" ? ", si no se distrae en el camino." : "."
-        }`
+        enPollera
+          ? `Tu pollera salió hacia ${para.nombre}. Aterriza en ${formatearDuracion(duracion)}.`
+          : `Tu ${a.nombre.toLowerCase()} ${a.articulo === "la" ? "salió" : "despegó"} hacia ${
+              para.nombre
+            }. Aterriza en ${formatearDuracion(duracion)}${
+              a.rareza === "romance" ? ", si no se distrae en el camino." : "."
+            }`
       );
     } catch (e: any) {
       setError(e?.message || "No se pudo soltar el ave.");
@@ -249,6 +257,43 @@ export function Compositor({
               </p>
             )}
 
+            {/* La gracia del loro. Va acá, pegada a su aviso —que es el que la
+                anuncia— y solo con el loro elegido: en las otras cinco no
+                existe, y un interruptor apagado que nunca se puede prender es
+                peor que no tenerlo. */}
+            {ave === "loro" && (
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  margin: "-6px 0 14px",
+                  padding: "9px 11px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  background: enPollera ? "rgba(244,114,182,.12)" : "var(--panel)",
+                  border: `1px ${enPollera ? "solid" : "dashed"} ${
+                    enPollera ? "#f472b6" : "var(--borde-alto)"
+                  }`,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={enPollera}
+                  onChange={(e) => setPollera(e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: "#f472b6", flex: "0 0 auto" }}
+                />
+                <span style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                  <strong style={{ color: enPollera ? "#f9a8d4" : "var(--texto)" }}>
+                    Me convierto en pollera.
+                  </strong>{" "}
+                  <span style={{ color: "var(--suave)" }}>
+                    Para mandarle a tu amigo más pollera.
+                  </span>
+                </span>
+              </label>
+            )}
+
             <textarea
               className="campo"
               rows={4}
@@ -290,7 +335,7 @@ export function Compositor({
                 margin: "-6px 0 14px",
               }}
             >
-              2 de cada 1000 no llegan.
+              2 de cada 1000 se pierden en el camino.
             </p>
 
             {error && (
@@ -313,9 +358,11 @@ export function Compositor({
             >
               {enviando
                 ? "Despegando…"
-                : `Soltar ${a.articulo} ${a.nombre.toLowerCase()} · llega en ${formatearDuracion(
-                    duracion
-                  )}${a.rareza === "romance" ? "+" : ""}`}
+                : enPollera
+                  ? `Soltar la pollera · llega en ${formatearDuracion(duracion)}`
+                  : `Soltar ${a.articulo} ${a.nombre.toLowerCase()} · llega en ${formatearDuracion(
+                      duracion
+                    )}${a.rareza === "romance" ? "+" : ""}`}
             </button>
         </>
       </div>

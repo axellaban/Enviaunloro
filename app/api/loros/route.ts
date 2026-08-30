@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     para,
     ave: aveValida(b?.ave, yo.ave),
     texto: String(b?.texto ?? ""),
+    pollera: b?.pollera === true,
   });
   if (!r.ok) return error(r.error);
 

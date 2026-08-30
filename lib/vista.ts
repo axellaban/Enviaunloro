@@ -103,6 +103,9 @@ export type LoroVista = {
    * con hipo.
    */
   parada: Parada | null;
+  /** El loro salió convertido en pollera: lo que vuela es una pollera, y al
+   *  abrirlo del otro lado llueven polleras. */
+  pollera: boolean;
 };
 
 /**
@@ -246,6 +249,7 @@ export function verLoro(
     respuesta: enviado ? (volvio ? respuestaLlega : null) : (l.respuesta ?? null),
     respuestaEntregada: !enviado && volvio && respuestaCambio ? respuestaLlega : null,
     parada: l.parada ?? null,
+    pollera: Boolean(l.pollera),
     // Se avisa que trae algo, sin decir qué: es lo que hace que valga la pena
     // mirar el mapa mientras vuelve.
     traeRespuesta: hayRespuesta,

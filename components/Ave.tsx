@@ -194,6 +194,45 @@ export function svgAve(especie: AveId, size = 40, aletea = false): string {
   }" aria-hidden="true">${DIBUJOS[especie]}</svg>`;
 }
 
+/**
+ * La pollera.
+ *
+ * No es un ave, y viaja en lugar de una: el loro —el que se llama loro a
+ * secas— se puede convertir en pollera antes de salir, y entonces lo que
+ * cruza el mapa es esto. Vive acá, con las aves, porque ocupa exactamente su
+ * lugar: el mismo viewBox, la misma pose mirando a la derecha, el mismo tamaño
+ * en el marcador. Si viviera en otro archivo, el día que cambie el encuadre de
+ * las aves esta se quedaría atrás.
+ *
+ * Mira a la derecha como ellas: al vuelo lo rota el mapa según el rumbo, y una
+ * pollera que apunte al otro lado volaría de culo.
+ */
+export function svgPollera(size = 40, ondea = false): string {
+  return `<svg width="${size}" height="${size * 0.83}" viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="ave${
+    ondea ? " ave-viva" : ""
+  }" aria-hidden="true">
+<!-- Las rayas de viento, atrás: es lo que la hace estar volando y no colgada
+     de un perchero. Van a la izquierda porque va para la derecha. -->
+<path class="rastro" d="M22 34 L4 30 M20 46 L1 46 M24 58 L7 63" stroke="#f472b6" stroke-width="3.4" stroke-linecap="round" opacity="0.5"/>
+<!-- El cuerpo: angosto en la cintura y abierto en el ruedo. Es lo único que
+     hace que se lea POLLERA y no campana, gorro ni paraguas. -->
+<path class="ala" d="M46 26 L78 26 L102 82 C86 89 66 91 46 89 C36 90 26 88 20 84 Z" fill="#f472b6"/>
+<!-- La luz de adelante, media falda, para que tenga volumen. -->
+<path d="M46 26 L62 26 L58 88 C44 89 32 87 22 84 Z" fill="#fb7185"/>
+<!-- Los pliegues. Tres alcanzan; con más se vuelve una reja. -->
+<path d="M56 28 C52 48 48 68 42 87" stroke="#be185d" stroke-width="2.6" fill="none" opacity="0.45" stroke-linecap="round"/>
+<path d="M66 28 C66 48 68 68 72 89" stroke="#be185d" stroke-width="2.6" fill="none" opacity="0.45" stroke-linecap="round"/>
+<path d="M76 28 C80 48 88 66 96 84" stroke="#be185d" stroke-width="2.4" fill="none" opacity="0.4" stroke-linecap="round"/>
+<!-- El ruedo, ondeado y más oscuro: el borde de abajo es lo que se mueve. -->
+<path d="M20 84 C30 89 42 91 54 90 C68 89 86 87 102 82 C103 87 102 91 100 94 C84 99 66 100 52 99 C40 98 28 95 19 90 Z" fill="#be185d"/>
+<!-- La cintura, arriba, con su cinto y la hebilla. -->
+<path d="M44 20 L80 20 L79 30 L45 30 Z" fill="#9d174d"/>
+<rect x="40" y="12" width="44" height="11" rx="5.5" fill="#4c0519"/>
+<rect x="56" y="13.5" width="12" height="8" rx="2.5" fill="#fbbf24"/>
+<rect x="60" y="15.5" width="4" height="4" rx="1" fill="#78350f"/>
+</svg>`;
+}
+
 export function Ave({
   especie,
   size = 40,
@@ -211,5 +250,17 @@ export function Ave({
   );
 }
 
+export function Pollera({ size = 40, ondea = false }: { size?: number; ondea?: boolean }) {
+  return (
+    <span
+      style={{ display: "inline-flex", lineHeight: 0 }}
+      dangerouslySetInnerHTML={{ __html: svgPollera(size, ondea) }}
+    />
+  );
+}
+
 /** Alias histórico: el marcador de Leaflet arma su HTML con esto. */
 export const aveHtml = (especie: AveId, size = 34) => svgAve(especie, size, true);
+
+/** Lo mismo, para lo que vuela en lugar de un ave. */
+export const polleraHtml = (size = 34) => svgPollera(size, true);

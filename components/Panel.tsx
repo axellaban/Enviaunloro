@@ -21,7 +21,7 @@ import type { Suerte } from "../lib/datos";
 import type { ConviteVista, LoroVista, NidoVista } from "../lib/vista";
 import { borrachera, ciudadDe, loQueEstaHaciendo } from "../lib/cerveceria";
 import { compartirConvite } from "./Convite";
-import { Ave } from "./Ave";
+import { Ave, Pollera } from "./Ave";
 import { Fiesta, type Motivo } from "./Fiesta";
 import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
 import { coloresDeBandada } from "../lib/colorNido";
@@ -501,7 +501,7 @@ function TarjetaVuelo({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <Ave especie={loro.ave} size={30} aletea />
+        <DibujoDelVuelo loro={loro} size={30} aletea />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14.5, fontWeight: 700 }}>
             {enviado ? `${a.nombre} → ${loro.otro.nombre}` : `${a.nombre} de ${loro.otro.nombre}`}
@@ -626,7 +626,7 @@ function TarjetaVuelta({
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         {/* Espejada: vuelve, no va. */}
         <span style={{ display: "inline-flex", transform: "scaleX(-1)" }}>
-          <Ave especie={loro.ave} size={30} aletea />
+          <DibujoDelVuelo loro={loro} size={30} aletea />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14.5, fontWeight: 700 }}>
@@ -699,6 +699,29 @@ const HISTORIAL_LARGO = 2;
  * recuerdo de lo que voló: esconderlo detrás de un toque es cobrarle peaje a lo
  * único que la app guarda.
  */
+/**
+ * Lo que se dibuja de un vuelo: su ave, o una pollera si el loro salió
+ * convertido. Está acá y no en cada tarjeta porque son cuatro: la de vuelo, la
+ * de la vuelta, la del buzón y la del ave perdida. Si el mapa muestra una
+ * pollera rosa cruzando y la tarjeta de al lado muestra un loro verde, el
+ * chiste se cae en la mitad.
+ */
+function DibujoDelVuelo({
+  loro,
+  size,
+  aletea = false,
+}: {
+  loro: LoroVista;
+  size: number;
+  aletea?: boolean;
+}) {
+  return loro.pollera ? (
+    <Pollera size={size} ondea={aletea} />
+  ) : (
+    <Ave especie={loro.ave} size={size} aletea={aletea} />
+  );
+}
+
 function Buzon({
   llegados,
   refrescar,
@@ -849,7 +872,10 @@ function TarjetaBuzon({
       // La ceremonia es de quien recibe, y solo la primera vez que abre. Quien
       // lo mandó ya sabe qué escribió: tirarle confeti sería tirárselo a sí
       // mismo.
-      if (a.rareza === "confeti") setFiesta("paloma");
+      // La pollera manda sobre la rareza del ave, pero eso hoy no colisiona
+      // con nada: solo el loro se convierte, y el loro no tiene rareza.
+      if (loro.pollera) setFiesta("pollera");
+      else if (a.rareza === "confeti") setFiesta("paloma");
       else if (a.rareza === "luto") setFiesta("luto");
     }
   }
@@ -865,7 +891,7 @@ function TarjetaBuzon({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Ave especie={loro.ave} size={26} />
+        <DibujoDelVuelo loro={loro} size={26} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 700 }}>
             {enviado ? `Para ${loro.otro.nombre}` : `De ${loro.otro.nombre}`}
@@ -1241,7 +1267,7 @@ function TarjetaPerdido({
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ opacity: 0.3, filter: "grayscale(1)", display: "inline-flex" }}>
-          <Ave especie={loro.ave} size={26} />
+          <DibujoDelVuelo loro={loro} size={26} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: "var(--suave)" }}>

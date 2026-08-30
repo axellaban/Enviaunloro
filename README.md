@@ -19,7 +19,7 @@ diseño del producto: elegir el ave es parte del mensaje.
 | **Cuervo** 🖤 | 70 km/h | 250 caracteres | El de las malas noticias | llega de negro |
 | **Cotorra** 💬 | 60 km/h | 400 caracteres | La charlatana | te mezcla el mensaje |
 | **Paloma** 💌 | 50 km/h | 600 caracteres | La romántica | explota en confeti |
-| **Loro** 🦜 | 40 km/h | 1000 caracteres | El clásico | entrega tal cual |
+| **Loro** 🦜 | 40 km/h | 1000 caracteres | El clásico | se convierte en pollera |
 | **Guacamayo** 👑 | 25 km/h | 2000 caracteres | El ceremonioso | tarda, y ese es el punto |
 
 Y el 0,2% de los loros no llega nunca. Es poco. No es cero.
@@ -68,6 +68,15 @@ muestra pegado a la elección). Avisarlo después sería una trampa.
   cuando la abren del otro lado la pantalla explota en confeti.
 - **El cuervo** trae malas noticias: llega casi tan rápido como el perico, y al
   abrirlo la pantalla se apaga y le caen plumas encima.
+- **El loro** —el que se llama loro a secas— no hace nada raro con el mensaje,
+  y por eso es el único que tiene un interruptor: **se convierte en pollera**.
+  Lo que cruza el mapa entonces no es un ave sino una pollera, en rosa, que va
+  derecha en vez de apuntar adonde vuela —un ave apunta porque tiene pico; una
+  pollera apuntando al noreste es una pollera dada vuelta— y al abrirlo del
+  otro lado llueven polleras en toda la pantalla. El mensaje no se toca: el
+  chiste es el envoltorio, no el contenido. Es la única gracia que se elige en
+  vez de sortearse, y la única que solo puede tener un ave: pedirla con otra se
+  ignora en silencio y sale el ave de siempre.
 
 ### Las ceremonias
 
@@ -84,6 +93,9 @@ tendría que esperar a que termine una animación para leer lo que le mandaron.
   pretzels, música y cornetas, y en el medio el lorito con dos cotorras
   brindando. Es el momento que tiene que dar ganas de armar el nido, así que
   es el que más grita. Salta una vez por pestaña, nunca para quien lo mandó.
+- **La lluvia de polleras**: cuando el loro salió convertido. Llueven polleras
+  de verdad —el mismo dibujo que cruzó el mapa, no un emoji— y en el medio hay
+  una enorme.
 - **El cuervo** es la única que no festeja: sin baño de color y sin cartel,
   apaga la pantalla y deja caer plumas negras, lentísimas. La alegría es un
   golpe y la mala noticia se asienta.

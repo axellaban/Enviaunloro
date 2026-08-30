@@ -502,6 +502,18 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   line-height: 1;
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
 }
+/* Las polleras que llueven no son un carácter sino el mismo SVG que cruzó el
+   mapa, así que necesitan portarse como caja y no como texto.
+
+   Se llama "falda" y no "pollera" por una razón que costó encontrar: la raíz
+   de la ceremonia lleva la clase del motivo —`fiesta fiesta-pollera`— así que
+   una regla `.fiesta-pollera` le pegaba también a ella y le pisaba el
+   `display: flex`. La tarjeta se iba al borde de arriba en vez de quedar en el
+   medio, y solo en esta ceremonia. Medido: top 24 donde correspondía 338. */
+.fiesta-falda {
+  display: block;
+  line-height: 0;
+}
 
 @keyframes fiesta-caer {
   0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }

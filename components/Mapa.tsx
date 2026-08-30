@@ -46,7 +46,7 @@ import {
   tramosEnElAire,
   type Tramo,
 } from "../lib/tramos";
-import { aveHtml } from "./Ave";
+import { aveHtml, polleraHtml } from "./Ave";
 import type { ConviteVista, LoroVista, NidoVista, VueloMundo } from "../lib/vista";
 import { coloresDeBandada, MI_COLOR } from "../lib/colorNido";
 import { mosaicoElegido, pinturaDelMapa } from "../lib/tema";
@@ -110,11 +110,15 @@ function iconoNido(n: NidoVista, esMio: boolean, color: string): L.DivIcon {
   });
 }
 
-function iconoAve(especie: AveId, grados: number): L.DivIcon {
+/** El rosa de la pollera. El mismo de su dibujo, para que la ruta y lo que
+ *  vuela por ella sean la misma cosa. */
+const COLOR_POLLERA = "#f472b6";
+
+function iconoAve(especie: AveId, grados: number, pollera = false): L.DivIcon {
   // La paloma no viaja sola: lleva el corazón de chocolate colgando. Va PEGADO
   // al ave y fuera del div que rota, o giraría de cabeza a mitad de vuelo.
   const carga =
-    especie === "paloma"
+    !pollera && especie === "paloma"
       ? `<span style="position:absolute;left:50%;top:19px;transform:translateX(-50%);font-size:13px;filter:drop-shadow(0 1px 3px #000)">🍫</span>`
       : "";
   return L.divIcon({
@@ -123,11 +127,16 @@ function iconoAve(especie: AveId, grados: number): L.DivIcon {
     iconAnchor: [17, 14],
     // El rotado va en un div interno: el externo lo posiciona Leaflet con su
     // propio transform y pisarlo rompe el mapa.
+    //
+    // Y la pollera NO rota. Un ave apunta adonde va porque tiene pico; una
+    // pollera apuntando al noreste es una pollera dada vuelta. Se queda
+    // derecha y cruza el mapa ondeando, que además es más gracioso.
     html: `<div style="position:relative;width:34px;height:28px;display:grid;place-items:center">
-      <div data-rot style="transform:rotate(${grados}deg);filter:${pinturaDelMapa().sombraAve}">${aveHtml(
-        especie,
-        34
-      )}</div>${carga}
+      <div${pollera ? "" : " data-rot"} style="transform:rotate(${
+        pollera ? 0 : grados
+      }deg);filter:${pinturaDelMapa().sombraAve}">${
+        pollera ? polleraHtml(34) : aveHtml(especie, 34)
+      }</div>${carga}
     </div>`,
   });
 }
@@ -686,7 +695,9 @@ export default function Mapa({
     if (!m) return;
 
     for (const v of loQueSeDibuja(vista, vuelos, mundo, convites, ahoraRef.current())) {
-      const color = AVES[v.ave].color;
+      // La pollera vuela con su propio color y no con el verde del loro: si la
+      // ruta sigue siendo la de siempre, en el mapa no se nota que cambió nada.
+      const color = v.pollera ? COLOR_POLLERA : AVES[v.ave].color;
       const existente = capas.current.get(v.clave);
 
       // El desvío del perico no viene desde el principio: aparece recién cuando
@@ -776,7 +787,7 @@ export default function Mapa({
           interactive: false,
         }).addTo(m),
         ave: L.marker([v.origen.lat, v.origen.lng], {
-          icon: iconoAve(v.ave, 0),
+          icon: iconoAve(v.ave, 0, v.pollera),
           interactive: false,
           zIndexOffset: 500,
         }).addTo(m),

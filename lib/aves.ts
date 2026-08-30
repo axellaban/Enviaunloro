@@ -72,7 +72,7 @@ export const AVES: Record<AveId, Ave> = {
     lema: "El express",
     rareza: "romance",
     aviso:
-      "Ojo: a veces se enamora en el camino, llega tarde y ella le toca el mensaje.",
+      "Ojo: a veces se distrae en el camino con alguna cotorra que lo enamora.",
   },
   cotorra: {
     id: "cotorra",
@@ -84,7 +84,7 @@ export const AVES: Record<AveId, Ave> = {
     lema: "La charlatana",
     rareza: "olvida",
     aviso:
-      "De tanto repetirlo se le mezcla. Llega como un teléfono descompuesto.",
+      "De tanto repetirlo se le mezcla. Se le olvida la mitad.",
   },
   loro: {
     id: "loro",
@@ -94,7 +94,7 @@ export const AVES: Record<AveId, Ave> = {
     maxCaracteres: 1000,
     color: "#10b981",
     lema: "El clásico",
-    aviso: "El bueno conocido: no hace nada raro. Llega tal cual lo escribiste, cuando dice.",
+    aviso: "Es un loro… un re loro. Puede convertirse en pollera.",
   },
   guacamayo: {
     id: "guacamayo",
@@ -115,8 +115,7 @@ export const AVES: Record<AveId, Ave> = {
     color: "#f472b6",
     lema: "La romántica",
     rareza: "confeti",
-    aviso:
-      "Va dejando flores, y al abrirla la pantalla del otro lado explota en confeti.",
+    aviso: "Para mensajes románticos. Entrega con flores y chocolate.",
   },
   cuervo: {
     id: "cuervo",
@@ -127,8 +126,7 @@ export const AVES: Record<AveId, Ave> = {
     color: "#a78bfa",
     lema: "El de las desgracias",
     rareza: "luto",
-    aviso:
-      "Para comunicar desgracias. Del otro lado se abre de negro. No lo mandes de vivo.",
+    aviso: "Para comunicar desgracias.",
   },
 };
 

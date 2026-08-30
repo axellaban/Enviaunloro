@@ -10,6 +10,8 @@
 //   barra   — alguien abrió el link de un convite y se encontró con que su
 //             lorito está de copetines: confeti, cerveza y las cotorras de la
 //             mesa, de fiesta.
+//   pollera — el loro que salió convertido en pollera. Llueven polleras, y
+//             en el medio hay una sola, enorme.
 //   luto    — el cuervo. La única que NO festeja: apaga la pantalla y deja
 //             caer plumas negras, despacio. La alegría es un golpe y la mala
 //             noticia se asienta.
@@ -28,9 +30,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AVES, type AveId } from "../lib/aves";
-import { svgAve } from "./Ave";
+import { svgAve, svgPollera } from "./Ave";
 
-export type Motivo = "paloma" | "barra" | "luto";
+export type Motivo = "paloma" | "barra" | "pollera" | "luto";
 
 type Receta = {
   /** Cuánto dura la ceremonia entera, en ms. */
@@ -68,6 +70,18 @@ const RECETAS: Record<Motivo, Receta> = {
     titulo: "Está de jarola",
     texto: "Tu lorito te espera en una cervecería del barrio.",
   },
+  pollera: {
+    duracion: 5200,
+    colores: ["#f472b6", "#fb7185", "#be185d", "#fbbf24", "#a3e635", "#ffffff"],
+    // Lo que llueve son polleras, y eso NO es un emoji: se dibujan aparte, con
+    // el mismo SVG que cruzó el mapa. Estos van de acompañamiento.
+    cosas: ["💃", "💅", "💖", "✨", "👠", "💋"],
+    cuantosPapelitos: 90,
+    cuantasCosas: 22,
+    caida: [2.4, 4.6],
+    titulo: "Se convirtió en pollera",
+    texto: "Te lo mandaron así. Vos sabrás por qué.",
+  },
   luto: {
     duracion: 4600,
     // Sin baño de color: el cuervo apaga la pantalla, no la enciende.
@@ -91,7 +105,10 @@ const RECETAS: Record<Motivo, Receta> = {
  * un pájaro solo.
  */
 function escena(motivo: Motivo, ave: AveId): string {
-  const grande = `<span class="fiesta-ave">${svgAve(ave, 168, true)}</span>`;
+  const grande =
+    motivo === "pollera"
+      ? `<span class="fiesta-ave">${svgPollera(168, true)}</span>`
+      : `<span class="fiesta-ave">${svgAve(ave, 168, true)}</span>`;
   if (motivo !== "barra") return `<span class="fiesta-mesa">${grande}</span>`;
   return `<span class="fiesta-mesa">
     <span class="fiesta-acompanante" style="animation-delay:.35s">
@@ -142,8 +159,23 @@ export function Fiesta({
       tam: al(22, 46),
       char: r.cosas[i % r.cosas.length],
     }));
-    return { papelitos, emojis };
-  }, [r]);
+    // Las polleras que llueven. Van aparte de los emojis porque no son un
+    // carácter sino el mismo dibujo que acaba de cruzar el mapa: que llueva
+    // otra cosa rompería el chiste justo en el remate.
+    const polleras =
+      motivo === "pollera"
+        ? Array.from({ length: 26 }, (_, i) => ({
+            clave: `f${i}`,
+            izq: al(0, 100),
+            demora: al(0, 2.8),
+            dura: al(2.8, 5),
+            deriva: al(-16, 16),
+            giro: al(-140, 140),
+            tam: al(34, 76),
+          }))
+        : [];
+    return { papelitos, emojis, polleras };
+  }, [r, motivo]);
 
   // Se cierra sola. Y se puede tocar para saltearla: nadie tendría que esperar
   // a que termine una animación para leer lo que le mandaron.
@@ -211,6 +243,22 @@ export function Fiesta({
                 "--giro": `${p.giro}deg`,
               } as React.CSSProperties
             }
+          />
+        ))}
+        {cae.polleras.map((f) => (
+          <span
+            key={f.clave}
+            className="fiesta-cosa fiesta-falda"
+            style={
+              {
+                left: `${f.izq}%`,
+                animationDelay: `${f.demora}s`,
+                animationDuration: `${f.dura}s`,
+                "--deriva": `${f.deriva}vw`,
+                "--giro": `${f.giro}deg`,
+              } as React.CSSProperties
+            }
+            dangerouslySetInnerHTML={{ __html: svgPollera(f.tam) }}
           />
         ))}
         {cae.emojis.map((e) => (
