@@ -8,7 +8,7 @@
 // reloj del servidor. No hace falta que llegue nada del backend para que se
 // mueva.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AVES, AVES_LISTA } from "../lib/aves";
 import {
   cuentaRegresiva,
@@ -710,6 +710,29 @@ function Buzon({
   alReenviar: (loro: LoroVista) => void;
   escala: number;
 }) {
+  // Mismo criterio que el contador de la pestaña, y por el mismo motivo: un ave
+  // perdida no se puede abrir, así que no puede estar "sin abrir".
+  const esSinAbrir = (l: LoroVista) => l.direccion === "recibido" && l.llego && !l.leido;
+
+  // Lo que encontraste sin abrir se queda ARRIBA aunque lo abras, hasta que te
+  // vayas de la pestaña.
+  //
+  // Antes no: abrir un loro lo mandaba abajo de todos los que todavía no
+  // habías abierto, o sea que la app te sacaba de las manos justo lo que
+  // acababas de destapar. Con las otras aves se disimula —lo ves moverse y lo
+  // seguís con el ojo— pero con la paloma no: te tira confeti tres segundos y
+  // medio encima, y cuando la ceremonia termina el mensaje ya no está donde lo
+  // dejaste. Medido: la tarjeta terminaba cuarta de cuatro, media pantalla
+  // más abajo.
+  //
+  // Un `ref` y no un estado porque no se dibuja nada distinto por esto: es
+  // memoria de en qué orden entró la lista. Acumular ids es idempotente, así
+  // que repetir el render no cambia nada. Y se olvida solo: la pestaña se
+  // desmonta al cambiar de solapa, y ahí sí se reordena, que es cuando no
+  // estás mirando.
+  const arriba = useRef(new Set<string>());
+  for (const l of llegados) if (esSinAbrir(l)) arriba.current.add(l.id);
+
   if (llegados.length === 0) {
     return (
       <Vacio
@@ -719,11 +742,8 @@ function Buzon({
     );
   }
 
-  // Mismo criterio que el contador de la pestaña, y por el mismo motivo: un ave
-  // perdida no se puede abrir, así que no puede estar "sin abrir".
-  const esSinAbrir = (l: LoroVista) => l.direccion === "recibido" && l.llego && !l.leido;
-  const sinAbrir = llegados.filter(esSinAbrir);
-  const vistos = llegados.filter((l) => !esSinAbrir(l));
+  const sinAbrir = llegados.filter((l) => arriba.current.has(l.id));
+  const vistos = llegados.filter((l) => !arriba.current.has(l.id));
   const tarjeta = (l: LoroVista) => (
     <TarjetaBuzon key={l.id} loro={l} refrescar={refrescar} alReenviar={alReenviar} escala={escala} />
   );
@@ -737,8 +757,12 @@ function Buzon({
 
   return (
     <>
+      {/* "Recién llegados" y no "Sin abrir": el grupo se queda quieto mientras
+          estás en la pestaña, así que abrir uno no lo saca de acá — y un
+          título que dijera "sin abrir" empezaría a mentir apenas abrís el
+          primero. */}
       <p className="etiqueta" style={{ margin: "2px 0 8px" }}>
-        Sin abrir · {sinAbrir.length}
+        Recién llegados · {sinAbrir.length}
       </p>
       {sinAbrir.map(tarjeta)}
       <p className="etiqueta" style={{ margin: "18px 0 8px" }}>
@@ -763,22 +787,63 @@ function TarjetaBuzon({
   const [abriendo, setAbriendo] = useState(false);
   const [abierto, setAbierto] = useState(Boolean(loro.leido));
   const [fiesta, setFiesta] = useState<"confeti" | "luto" | null>(null);
+  const caja = useRef<HTMLDivElement>(null);
   const a = AVES[loro.ave];
   const enviado = loro.direccion === "enviado";
   const sellado = !enviado && !abierto;
 
   if (loro.perdido) return <TarjetaPerdido loro={loro} alReenviar={alReenviar} />;
 
+  // Al abrirse, la tarjeta crece: aparecen el texto y la fila de tres botones.
+  // Si estaba cerca del borde de abajo, lo que acabás de destapar queda atrás
+  // del pie. Medido: 58 px, justo la fila de botones.
+  //
+  // No sirve scrollIntoView. El pie FLOTA encima de la caja que hace scroll —
+  // es un `position: absolute` con degradado— así que para el navegador la
+  // tarjeta entra perfecta y no mueve nada. Hay que medir contra dónde
+  // arranca el pie y correr la lista a mano.
+  //
+  // Se corre lo mínimo, y nunca tanto como para que el encabezado se vaya por
+  // arriba: primero se tiene que seguir viendo de quién es.
+  function acomodar() {
+    const el = caja.current;
+    if (!el) return;
+    const quieto =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Dos cuadros: uno para que React pinte la tarjeta ya abierta, otro para
+    // medirla con su alto nuevo.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const lista = el.closest<HTMLElement>(".scroll");
+        if (!lista) return;
+        const pie = document.querySelector(".pie-panel");
+        const tarjeta = el.getBoundingClientRect();
+        const marco = lista.getBoundingClientRect();
+        const suelo = Math.min(marco.bottom, pie ? pie.getBoundingClientRect().top : marco.bottom);
+        const sobra = tarjeta.bottom - suelo;
+        if (sobra <= 0) return;
+        const aireArriba = Math.max(0, tarjeta.top - marco.top);
+        lista.scrollBy({
+          top: Math.min(sobra + 8, aireArriba),
+          behavior: quieto ? "auto" : "smooth",
+        });
+      })
+    );
+  }
+
   async function abrir() {
     setAbriendo(true);
     try {
       await pedir("/api/loros/leer", { datos: { id: loro.id } });
       setAbierto(true);
+      acomodar();
       refrescar();
     } catch {
       // Aunque falle el registro de "leído", el texto ya está de este lado:
       // no tiene sentido esconderlo por un error de red.
       setAbierto(true);
+      acomodar();
     } finally {
       setAbriendo(false);
       // La ceremonia es de quien recibe, y solo la primera vez que abre. Quien
@@ -791,6 +856,7 @@ function TarjetaBuzon({
 
   return (
     <div
+      ref={caja}
       className="tarjeta"
       style={{
         marginBottom: 10,
