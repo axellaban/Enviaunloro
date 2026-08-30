@@ -419,6 +419,7 @@ chequear(
     await new Promise((r) => setTimeout(r, 12_000));
   }
 
+  const antesDelReclamo = Date.now();
   const reclamo = await receptor.llamar("/api/convite/reclamar", { c: llave });
   chequear(reclamo.de === "Convidante", "abrir el link con nido propio destraba el lorito");
   const vuelo = reclamo.loro;
@@ -427,6 +428,15 @@ chequear(
   chequear(
     vuelo.parada.salida >= vuelo.parada.llegada,
     "y que se levantó de la mesa después de haberse sentado"
+  );
+  // No sale corriendo apenas abren el link: se queda un minuto más terminando.
+  // Es el mejor momento de todo esto —alguien acaba de armar su nido y lo
+  // primero que ve es un ave en una barra— y si el ave saliera en el acto no
+  // llegaría a verlo nadie.
+  const minimo = 60_000 / escala;
+  chequear(
+    vuelo.salida - antesDelReclamo >= minimo * 0.9,
+    `y que no sale hasta dentro de al menos un minuto (${Math.round((vuelo.salida - antesDelReclamo) / (minimo / 60))} s de reloj de la app)`
   );
 
   const jezEnVuelo = await receptor.llamar("/api/estado");

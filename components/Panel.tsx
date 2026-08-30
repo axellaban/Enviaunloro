@@ -392,6 +392,10 @@ function TarjetaVuelo({
   const falta = Math.max(0, loro.llegada - ahora);
   const enviado = loro.direccion === "enviado";
   const suyo = enviado ? "tu" : "el";
+  // Un lorito de convite recién destrabado todavía no despegó: se queda un
+  // minuto más en la barra. Decir "en camino" con el bicho sentado en una
+  // cervecería es la clase de mentira chica que después nadie entiende.
+  const enLaBarra = Boolean(loro.parada) && ahora < loro.salida;
 
   return (
     <button
@@ -414,8 +418,17 @@ function TarjetaVuelo({
             {enviado ? `${a.nombre} → ${loro.otro.nombre}` : `${a.nombre} de ${loro.otro.nombre}`}
           </p>
           <p style={{ color: "var(--tenue)", fontSize: 12 }}>
-            {girando ? "Detenido" : enviado ? "En camino" : "Viene hacia vos"} ·{" "}
-            {formatearDistancia(loro.distanciaKm * (1 - t))} por delante
+            {enLaBarra ? (
+              <>
+                🍺 Terminando el copetín · sale en{" "}
+                {cuentaRegresiva(loro.salida - ahora)}
+              </>
+            ) : (
+              <>
+                {girando ? "Detenido" : enviado ? "En camino" : "Viene hacia vos"} ·{" "}
+                {formatearDistancia(loro.distanciaKm * (1 - t))} por delante
+              </>
+            )}
           </p>
         </div>
         <span

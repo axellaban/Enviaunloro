@@ -74,6 +74,25 @@ export function ciudadDe(lugar: string): string {
   return (lugar || "").split(",")[0].trim();
 }
 
+/**
+ * Lo que se queda en la barra DESPUÉS de que abren el link.
+ *
+ * Podría salir en el acto y no estaría mal, pero se perdería el mejor momento
+ * que tiene esto: alguien acaba de armar su nido, entra al mapa por primera
+ * vez, y lo primero que ve es un ave sentada en una cervecería terminando el
+ * copetín antes de salir para su casa. Un minuto es poco para molestar y
+ * suficiente para que se entienda que el bicho estuvo ahí.
+ *
+ * Cuenta desde que abren el link y no desde que el ave llegó a la barra: si
+ * contara desde que llegó, quien abre el link tres días después no vería nada.
+ */
+export const MINUTOS_MINIMOS_EN_LA_BARRA = 1;
+
+/** Lo mismo en milisegundos, con la escala de tiempo aplicada. */
+export function esperaMinimaEnLaBarra(escala = 1): number {
+  return Math.round((MINUTOS_MINIMOS_EN_LA_BARRA * 60_000) / (escala > 0 ? escala : 1));
+}
+
 // ---------- los copetines ----------
 
 /** Cada cuánto se pide otra. */

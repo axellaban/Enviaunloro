@@ -176,7 +176,7 @@ export default function Nido() {
       // por haber invitado a alguien no se veía en ningún lado.
       if (mio && nuevo && l.parada && ahora === "vuelo") {
         const falta = formatearDuracion(l.llegada - ahoraServidor());
-        const texto = `${l.otro.nombre} armó su nido. Tu ${a.nombre.toLowerCase()} salió de la cervecería y llega en ${falta}.`;
+        const texto = `${l.otro.nombre} armó su nido. Tu ${a.nombre.toLowerCase()} está pagando la cuenta y llega en ${falta}.`;
         mostrarAviso(`🎉 ${texto}`);
         avisar("Se sumó a tu bandada 🦜", texto);
         continue;
@@ -191,11 +191,14 @@ export default function Nido() {
         // El que sale de una cervecería no "viene en camino" y ya: estuvo
         // esperando a que armaras tu nido, y eso es lo primero que esa persona
         // lee de la app. Contarlo como un vuelo más se come toda la historia.
+        const enLaBarra = ahoraServidor() < l.salida;
         const texto = l.parada
-          ? `${a.nombre} de ${l.otro.nombre} salió de la cervecería. Llega en ${falta}.`
+          ? enLaBarra
+            ? `${a.nombre} de ${l.otro.nombre} está terminando el copetín. Llega en ${falta}.`
+            : `${a.nombre} de ${l.otro.nombre} salió de la cervecería. Llega en ${falta}.`
           : `${a.nombre} de ${l.otro.nombre} viene en camino. Llega en ${falta}.`;
         mostrarAviso(`${l.parada ? "🍺" : "🪶"} ${texto}`);
-        avisar(l.parada ? "Tu lorito salió de la barra 🍺" : "Viene un loro en camino 🦜", texto);
+        avisar(l.parada ? "Tu lorito viene de la barra 🍺" : "Viene un loro en camino 🦜", texto);
       } else if (ahora.startsWith("llego") && (antes === "vuelo" || reciente)) {
         const texto = `${a.nombre} de ${l.otro.nombre} aterrizó en tu nido.`;
         mostrarAviso(`🪶 ${texto}`);
@@ -270,7 +273,7 @@ export default function Nido() {
         await est.refrescar();
         const a = AVES[r.loro.ave];
         mostrarAviso(
-          `🍺 ${a.nombre} de ${r.de} salió de la cervecería. Llega en ${formatearDuracion(
+          `🍺 ${a.nombre} de ${r.de} está terminando el copetín. Llega en ${formatearDuracion(
             Math.max(0, r.loro.llegada - est.ahoraServidor())
           )}.`
         );
@@ -355,6 +358,7 @@ export default function Nido() {
           vuelos={est.loros}
           mundo={mundo.vuelos}
           convites={est.convites}
+          escala={est.escala}
           vista={vista}
           ahoraServidor={est.ahoraServidor}
           foco={foco}

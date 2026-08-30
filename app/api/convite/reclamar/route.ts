@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   const ave = AVES[r.loro.ave].nombre.toLowerCase();
   void empujarUnaVez(r.loro.de, `convite:${r.convite.id}`, {
     titulo: "Se sumó a tu bandada 🦜",
-    cuerpo: `${yo.nombre} armó su nido. Tu ${ave} salió de la cervecería y llega en ${formatearDuracion(
+    cuerpo: `${yo.nombre} armó su nido. Tu ${ave} está pagando la cuenta y llega en ${formatearDuracion(
       Math.max(0, r.loro.llegada - Date.now())
     )}.`,
     tag: `loro:${r.loro.id}`,

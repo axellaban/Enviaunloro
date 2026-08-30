@@ -212,6 +212,15 @@ de llegada. Y un pájaro quieto en tu propio nido no le cuenta nada a nadie. La
 parada resuelve las dos cosas: hay algo que ver desde el primer segundo, y hay
 un lugar concreto del que el ave va a salir.
 
+**Se queda un minuto más.** Cuando abren el link, el ave no sale corriendo: se
+queda al menos un minuto terminando el copetín, contado desde que abrieron —no
+desde que llegó a la barra, o quien abre el link tres días después no vería
+nada—. Es el mejor momento de todo esto: alguien acaba de armar su nido, entra
+al mapa por primera vez y lo primero que ve es un bicho sentado en un boliche
+antes de salir para su casa. Y por eso la cervecería es un LUGAR en el mapa
+—cartel propio, resplandor, nombre debajo, el ave bamboleándose encima— y no un
+pajarito más con un vasito al lado.
+
 **Los copetines.** El ave está en una cervecería, así que toma. Cuanto más
 tardan en abrir el link, más tomada llega: se demora hasta un 35 % más y
 entrega el mensaje con hipo (`lib/olvido.ts`). La espera —que en cualquier otra

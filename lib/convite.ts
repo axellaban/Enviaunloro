@@ -33,6 +33,7 @@ import { AVES } from "./aves";
 import {
   borrachera,
   dondeLaCerveceria,
+  esperaMinimaEnLaBarra,
   MINUTOS_HASTA_LA_PARADA,
   type Parada,
 } from "./cerveceria";
@@ -229,12 +230,19 @@ export async function reclamarConvite(
   await emparejar(c.de, quien.id);
 
   const ahora = Date.now();
-  // No sale antes de haber llegado. Si abrieron el link a los treinta
-  // segundos, el ave todavía está en el aire rumbo a la barra: llega, no se
-  // toma nada y sigue viaje.
-  const salida = Math.max(ahora, c.llegadaPosada);
+  const escala = escalaGlobal();
+  // Cuándo se levanta de la mesa. Dos pisos, y los dos importan:
+  //
+  //   No antes de haber LLEGADO. Si abrieron el link a los treinta segundos,
+  //   el ave todavía está en el aire rumbo a la barra; llega y recién ahí se
+  //   pone a terminar. No se teletransporta ni pega la vuelta.
+  //
+  //   Y no antes de un minuto DESDE QUE ABRIERON EL LINK. Es el mejor momento
+  //   de todo esto: alguien acaba de armar su nido y lo primero que ve en su
+  //   mapa es un ave terminando el copetín antes de salir para su casa.
+  const salida = Math.max(c.llegadaPosada, ahora + esperaMinimaEnLaBarra(escala));
   const espera = salida - c.llegadaPosada;
-  const b = borrachera(espera, escalaGlobal());
+  const b = borrachera(espera, escala);
 
   const parada: Parada = {
     punto: c.posada,

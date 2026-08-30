@@ -205,5 +205,11 @@ export function pinturaDelMapa() {
      *  levantarla: a 0,3 de opacidad un punteado lima se pierde en el gris. */
     opacidadRuta: claro ? 0.55 : 0.3,
     opacidadRutaVuelta: claro ? 0.34 : 0.18,
+    /** La zona de privacidad alrededor de un nido ajeno. Mismo problema: sobre
+     *  un mapa claro un círculo punteado al 0,35 con relleno al 0,07 no está.
+     *  Y esa zona no es decoración —es el tamaño de lo que no sabemos— así que
+     *  si no se ve, el mapa promete una precisión que no tiene. */
+    opacidadZona: claro ? 0.6 : 0.35,
+    opacidadZonaRelleno: claro ? 0.13 : 0.07,
   };
 }

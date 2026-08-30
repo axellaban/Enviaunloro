@@ -340,6 +340,26 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 .globo-nido .globo-donde { color: var(--suave); font-size: 12px; }
 .globo-nido .boton { margin-top: 7px; width: 100%; }
 
+/* El cartel de la cervecería respira, y el ave que está adentro se bambolea.
+   Son dos ritmos distintos a propósito: si latieran juntos parecerían una sola
+   cosa parpadeando, y lo que se quiere contar es que ahí hay un lugar y adentro
+   hay alguien tomando. */
+@keyframes cerveceria-late {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.07); }
+}
+.cerveceria-cartel { animation: cerveceria-late 2.6s ease-in-out infinite; }
+
+@keyframes ave-tomada {
+  0%, 100% { transform: rotate(-7deg) translateY(0); }
+  50%      { transform: rotate(7deg) translateY(-2px); }
+}
+.ave-tomada { animation: ave-tomada 1.9s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cerveceria-cartel, .ave-tomada { animation: none; }
+}
+
 .marcador-nido, .marcador-ave { background: none !important; border: none !important; }
 
 /* ---------- scrollbar ---------- */

@@ -50,6 +50,7 @@ import { aveHtml } from "./Ave";
 import type { ConviteVista, LoroVista, NidoVista, VueloMundo } from "../lib/vista";
 import { coloresDeBandada, MI_COLOR } from "../lib/colorNido";
 import { mosaicoElegido, pinturaDelMapa } from "../lib/tema";
+import { borrachera } from "../lib/cerveceria";
 
 const MAPBOX = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -148,19 +149,48 @@ function iconoPerica(): L.DivIcon {
 }
 
 /**
- * El ave posada en la cervecería, esperando a que abran su link.
+ * La cervecería: un LUGAR en el mapa, no un pájaro con un vasito al lado.
  *
- * Quieta y con un chop al lado: en el mapa hay que poder distinguir de un
- * vistazo un ave que vuela de una que está sentada en una barra hace dos días.
+ * Es el único punto del mapa que no es el nido de nadie, y tiene que leerse
+ * como lo que es —un boliche donde hay un ave esperando— de un vistazo y desde
+ * lejos. Por eso va con cartel propio, resplandor y nombre debajo, como los
+ * nidos: si fuera un ícono chiquito más, sería otro pájaro en el mapa.
+ *
+ * El cartel cuelga POR DEBAJO del punto y el ave se para justo encima, así que
+ * las dos cosas se ven juntas sin taparse: el bicho arriba de la barra.
+ */
+function iconoCerveceria(nivel: number, rotulo: string): L.DivIcon {
+  const pin = pinturaDelMapa();
+  const jarana = nivel >= 0.75;
+  return L.divIcon({
+    className: "marcador-ave",
+    iconSize: [92, 76],
+    // El ancla queda arriba del cartel: el punto de verdad es donde se posa el
+    // ave, y la barra se dibuja abajo.
+    iconAnchor: [46, 8],
+    html: `<div style="position:relative;width:92px;height:76px">
+      <span style="position:absolute;left:50%;top:30px;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:99px;background:radial-gradient(circle,rgba(251,191,36,.42),rgba(251,191,36,0) 68%)"></span>
+      <span class="cerveceria-cartel" style="position:absolute;left:50%;top:30px;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:13px;background:linear-gradient(160deg,#fbbf24,#f59e0b);border:2px solid ${pin.anilloNido};box-shadow:0 3px 12px rgba(0,0,0,.4);display:grid;place-items:center;font-size:19px;line-height:1">🍻</span>
+      <span style="position:absolute;left:calc(50% + 13px);top:8px;font-size:15px;line-height:1">${jarana ? "🥴" : "🎵"}</span>
+      <span style="position:absolute;left:50%;top:54px;transform:translateX(-50%);white-space:nowrap;font:700 10.5px/1 ui-sans-serif,system-ui;color:${pin.rotuloMapa};text-shadow:${pin.rotuloHalo};padding:3px 5px">${escapar(rotulo)}</span>
+    </div>`,
+  });
+}
+
+/**
+ * El ave posada en la barra. Se para justo arriba del cartel y se bambolea:
+ * en el mapa hay que poder distinguir de un vistazo un ave que vuela de una
+ * que está sentada en una cervecería hace dos días.
  */
 function iconoPosada(ave: AveId): L.DivIcon {
   return L.divIcon({
     className: "marcador-ave",
     iconSize: [34, 30],
-    iconAnchor: [17, 15],
-    html: `<div style="position:relative;width:34px;height:30px;display:grid;place-items:center">
+    // Apoyada sobre el cartel, que cuelga 22 px por debajo del punto: el ave
+    // tiene que tocarlo, no flotar arriba.
+    iconAnchor: [17, 13],
+    html: `<div class="ave-tomada" style="position:relative;width:34px;height:30px;display:grid;place-items:center">
       <div style="filter:${pinturaDelMapa().sombraAve}">${aveHtml(ave, 28)}</div>
-      <span style="position:absolute;left:-2px;top:-10px;font-size:15px">🍺</span>
     </div>`,
   });
 }
@@ -246,6 +276,7 @@ export default function Mapa({
   vuelos,
   mundo,
   convites = [],
+  escala = 1,
   vista = "tuyos",
   ahoraServidor,
   foco,
@@ -260,6 +291,8 @@ export default function Mapa({
   mundo?: VueloMundo[];
   /** Los loritos de convite: van hasta la cervecería y ahí se quedan. */
   convites?: ConviteVista[];
+  /** La escala de tiempo del servidor, para contar copetines igual que el panel. */
+  escala?: number;
   vista?: "tuyos" | "resto";
   ahoraServidor: () => number;
   /** "<id>#<nonce>": id de un loro o de un nido para centrar la cámara. El
@@ -278,7 +311,7 @@ export default function Mapa({
   const zonas = useRef(new Map<string, L.Circle>());
   const capas = useRef(new Map<string, CapaVuelo>());
   /** Las aves posadas en una cervecería. No son vuelos: no avanzan. */
-  const posadas = useRef(new Map<string, L.Marker>());
+  const posadas = useRef(new Map<string, { cartel: L.Marker; ave: L.Marker | null }>());
   const encuadrado = useRef(false);
   const alElegirRef = useRef(alElegirPunto);
   alElegirRef.current = alElegirPunto;
@@ -412,10 +445,10 @@ export default function Mapa({
               radius: n.radioKm * 1000,
               color: colores.get(n.id) ?? pinturaDelMapa().zonaSinColor,
               weight: 1,
-              opacity: 0.35,
+              opacity: pinturaDelMapa().opacidadZona,
               dashArray: "4 7",
               fillColor: colores.get(n.id) ?? pinturaDelMapa().zonaSinColor,
-              fillOpacity: 0.07,
+              fillOpacity: pinturaDelMapa().opacidadZonaRelleno,
               interactive: false,
             }).addTo(m)
           );
@@ -438,13 +471,17 @@ export default function Mapa({
 
     // Encuadre inicial: una sola vez, cuando ya hay algo que encuadrar. Después
     // manda la persona — nada peor que un mapa que te devuelve al centro solo.
+    // La cervecería entra en el encuadre inicial. Sin esto, quien acaba de
+    // soltar un lorito abre el mapa y ve sus nidos y nada más: el ave, que es
+    // lo único que pasó, queda fuera de pantalla.
     if (!encuadrado.current && todos.length > 0) {
       encuadrado.current = true;
       // Leaflet encuadra contra el tamaño que CREE que tiene el contenedor. Si
       // los datos llegan antes de que se entere del tamaño real, calcula el
       // zoom para una caja equivocada y deja los dos nidos pegados.
       m.invalidateSize();
-      if (todos.length === 1 && todos[0].radioKm === 0) {
+      const barras = vista === "tuyos" ? convites.map((c) => c.posada) : [];
+      if (todos.length === 1 && todos[0].radioKm === 0 && barras.length === 0) {
         m.setView([todos[0].lat, todos[0].lng], 13);
       } else {
         // El encuadre tiene que abarcar las ZONAS, no los puntos: si se calcula
@@ -461,10 +498,11 @@ export default function Mapa({
             limites.extend([n.lat, n.lng]);
           }
         }
+        for (const b of barras) limites.extend([b.lat, b.lng]);
         m.fitBounds(limites, { padding: [50, 50], maxZoom: 14 });
       }
     }
-  }, [yo, amigos, vista]);
+  }, [yo, amigos, convites, vista]);
 
   /**
    * El globo que aparece al tocar el nido de alguien de tu bandada.
@@ -542,8 +580,11 @@ export default function Mapa({
             circulo: L.circle([centro.lat, centro.lng], {
               radius: radioGiro(v.distanciaKm) * 1000,
               color: AVES.paloma.color,
-              weight: 1.5,
-              opacity: 0.75,
+              // Sobre mapa claro el rosa da 2,4:1 y un punteado de 1,5 px se
+              // pierde. Es el rastro de lo único raro que está pasando en el
+              // mapa: si no se ve, la demora del perico no tiene explicación.
+              weight: pinturaDelMapa().contorno ? 2.5 : 1.5,
+              opacity: pinturaDelMapa().contorno ? 1 : 0.75,
               dashArray: "3 5",
               fill: false,
               interactive: false,
@@ -685,32 +726,53 @@ export default function Mapa({
         if (!vivos.has(clave)) borrarCapa(clave);
       }
 
-      // Las aves posadas en la cervecería. Se manejan acá y no en un efecto
-      // porque el momento en que un lorito pasa de volar a estar sentado en
-      // una barra lo decide el reloj, no una consulta al servidor: es el mismo
-      // criterio con el que se podan los tramos.
-      const enLaBarra = new Set<string>();
+      // Las cervecerías. Se manejan acá y no en un efecto porque el momento en
+      // que un lorito pasa de volar a estar sentado en una barra lo decide el
+      // reloj, no una consulta al servidor: mismo criterio que la poda.
+      //
+      // Hay barra en dos casos, y los dos tienen que verse igual: un convite
+      // que todavía nadie abrió, y un lorito recién destrabado que se queda un
+      // minuto más terminando el copetín. En el segundo el ave la dibuja la
+      // capa de vuelo —está parada en el origen— así que acá va solo el cartel;
+      // dibujarla dos veces la pondría en negrita sin querer.
+      const barras = new Map<string, { punto: Punto; ave: AveId | null; nivel: number }>();
       const mapaActual = mapa.current;
       if (vista === "tuyos" && mapaActual) {
         for (const c of convites) {
           if (ahora < c.llegadaPosada) continue;
-          enLaBarra.add(c.id);
-          if (!posadas.current.has(c.id)) {
-            posadas.current.set(
-              c.id,
-              L.marker([c.posada.lat, c.posada.lng], {
-                icon: iconoPosada(c.ave),
-                interactive: false,
-                zIndexOffset: 460,
-              }).addTo(mapaActual)
-            );
-          }
+          barras.set(`convite:${c.id}`, {
+            punto: c.posada,
+            ave: c.ave,
+            nivel: borrachera(ahora - c.llegadaPosada, escala).nivel,
+          });
+        }
+        for (const l of vuelos) {
+          if (!l.parada || ahora >= l.salida || ahora < l.parada.llegada) continue;
+          barras.set(`loro:${l.id}`, { punto: l.parada.punto, ave: null, nivel: l.parada.nivel });
         }
       }
-      for (const [id, marcador] of posadas.current) {
-        if (!enLaBarra.has(id)) {
-          marcador.remove();
-          posadas.current.delete(id);
+      for (const [clave, b] of barras) {
+        if (posadas.current.has(clave)) continue;
+        posadas.current.set(clave, {
+          cartel: L.marker([b.punto.lat, b.punto.lng], {
+            icon: iconoCerveceria(b.nivel, "La cervecería"),
+            interactive: false,
+            zIndexOffset: 440,
+          }).addTo(mapaActual!),
+          ave: b.ave
+            ? L.marker([b.punto.lat, b.punto.lng], {
+                icon: iconoPosada(b.ave),
+                interactive: false,
+                zIndexOffset: 470,
+              }).addTo(mapaActual!)
+            : null,
+        });
+      }
+      for (const [clave, m] of posadas.current) {
+        if (!barras.has(clave)) {
+          m.cartel.remove();
+          m.ave?.remove();
+          posadas.current.delete(clave);
         }
       }
 
@@ -722,7 +784,7 @@ export default function Mapa({
       vivo = false;
       cancelAnimationFrame(cuadro);
     };
-  }, [vuelos, mundo, convites, vista]);
+  }, [vuelos, mundo, convites, escala, vista]);
 
   // ---- al cambiar de vista, encuadrar lo que hay ----
   //
