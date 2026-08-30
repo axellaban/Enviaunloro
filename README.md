@@ -723,6 +723,30 @@ abra la app, la amistad vuelve para las dos.
 No recupera a alguien a quien agregaste por código y con quien nunca
 intercambiaste un loro. De eso no quedó rastro.
 
+**Y no recupera a quien sacaste a mano.** En *Bandada*, cada tarjeta tiene una
+cruz chiquita —chica de dibujo, de 44 px al dedo— que a dos toques saca a esa
+persona de tu bandada. Corta por los **dos lados**: una baja de un solo lado
+dejaría a la otra persona con tu zona, tu distancia y un botón para mandarte
+loros, o sea sin sacar nada. Lo que ya está en el aire aterriza igual — el ave
+salió y el mensaje está escrito; hacerla desaparecer sería mentirle a quien la
+soltó.
+
+El rescate de acá arriba es justamente lo que hacía que esto no funcionara: si
+sacabas a la única persona que tenías, tu conjunto quedaba vacío, el rescate se
+disparaba, encontraba los loros que se habían mandado y la volvía a poner. La
+decisión se deshacía sola en la consulta siguiente. Por eso las bajas se anotan
+—en las dos puntas, `echados:<id>`— y el rescate las saltea: **está para
+recuperar lo que se perdió, no para deshacer lo que decidiste.** Volver a
+sumarse con el código borra la marca, que es la forma explícita de arrepentirse.
+
+Un detalle que apareció al probarlo: los loros que ya estaban en el historial
+sacaban el nombre de la otra persona de la bandada, así que al sacarla pasaban
+a decir "Alguien". El buzón es el recuerdo de lo que voló; llenarlo de
+desconocidos porque alguien ya no está en tu lista es perder tu propia historia
+y no proteger nada — el nombre ya lo tenías. `/api/estado` carga también los
+nidos que aparecen en el buzón y ya no están en la bandada, y para quien no
+sacó a nadie eso no cuesta ni una lectura.
+
 La lección no es "probá la migración". Es más incómoda: **un borrado nunca debe
 depender de una escritura que no sabe fallar.** El bug no estuvo en la
 migración, estuvo en que la capa de abajo devolvía `void`.

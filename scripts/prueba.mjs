@@ -569,6 +569,71 @@ try {
   chequear(false, "bloquea escribirle a un nido ajeno");
 } catch (e) { chequear(String(e).includes("403"), "bloquea escribirle a un nido ajeno"); }
 
+// --- sacar a alguien de la bandada ---
+//
+// Lo que de verdad se chequea acá es que la baja NO SE DESHAGA SOLA. El
+// rescate de bandada reconstruye amistades leyendo el historial de loros, y
+// Ana y Beto ya se mandaron varios: sin la marca de baja, la primera consulta
+// con la bandada vacía los volvía a emparejar.
+{
+  const carlos = cliente("Carlos");
+  const nCarlos = await carlos.llamar("/api/nido", {
+    nombre: "Carlos", ave: "loro", lat: -34.55, lng: -58.45,
+  });
+  const anaAntes = await ana.llamar("/api/estado");
+  await carlos.llamar("/api/amigos", { codigo: anaAntes.codigo });
+  chequear(
+    (await carlos.llamar("/api/estado")).amigos.some((a) => a.nombre === "Ana"),
+    "Carlos sumó a Ana"
+  );
+  chequear(
+    (await ana.llamar("/api/estado")).amigos.some((a) => a.nombre === "Carlos"),
+    "y del lado de Ana también está"
+  );
+
+  // Se mandan un loro, que es lo que deja rastro en el historial.
+  const idAna = anaAntes.yo.id;
+  await carlos.llamar("/api/loros", { para: idAna, ave: "perico", texto: "Hola Ana." });
+
+  const idCarlos = (await ana.llamar("/api/estado")).amigos.find((a) => a.nombre === "Carlos").id;
+  await ana.llamar("/api/amigos", { id: idCarlos }, "DELETE");
+  chequear(
+    !(await ana.llamar("/api/estado")).amigos.some((a) => a.nombre === "Carlos"),
+    "Ana lo saca y deja de verlo"
+  );
+  chequear(
+    !(await carlos.llamar("/api/estado")).amigos.some((a) => a.nombre === "Ana"),
+    "y del otro lado también: corta por los dos"
+  );
+  // Carlos quedó con la bandada vacía salvo su vecina, así que si el rescate
+  // se dispara es acá.
+  const deCarlos = await carlos.llamar("/api/estado");
+  chequear(
+    !deCarlos.amigos.some((a) => a.nombre === "Ana"),
+    "y no vuelve sola por el rescate del historial"
+  );
+  chequear(
+    deCarlos.loros.some((l) => l.otro.nombre === "Ana"),
+    "el loro que ya estaba en el aire sigue su viaje"
+  );
+
+  // Y volver a sumarse con el código deshace la baja.
+  await carlos.llamar("/api/amigos", { codigo: anaAntes.codigo });
+  chequear(
+    (await carlos.llamar("/api/estado")).amigos.some((a) => a.nombre === "Ana"),
+    "y sumándose de nuevo con el código vuelven a verse"
+  );
+
+  // Nadie puede cortar amistades ajenas.
+  try {
+    const idBeto = (await ana.llamar("/api/estado")).amigos.find((a) => a.nombre === "Beto").id;
+    await carlos.llamar("/api/amigos", { id: idBeto }, "DELETE");
+    chequear(false, "no se puede sacar a alguien que no es de tu bandada");
+  } catch (e) {
+    chequear(String(e).includes("404"), "no se puede sacar a alguien que no es de tu bandada");
+  }
+}
+
 // --- la pollera: la gracia del loro ---
 //
 // El chiste es del LORO y de nadie más. Pedirla con otra ave no rompe nada, y

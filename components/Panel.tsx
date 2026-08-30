@@ -1353,6 +1353,8 @@ function Bandada({
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  /** A quién está apuntando el botón de sacar. Uno por vez. */
+  const [porSacar, setPorSacar] = useState<string | null>(null);
   // El mismo reparto que hace el mapa, con la misma entrada: así el punto de
   // acá y el punto de allá son el mismo color sin tener que coordinarse.
   const colores = coloresDeBandada(amigos.map((a) => a.id));
@@ -1440,6 +1442,21 @@ function Bandada({
     </>
   );
 
+  async function sacar(id: string) {
+    setOcupado(true);
+    setError("");
+    setMensaje("");
+    try {
+      await pedir("/api/amigos", { datos: { id }, metodo: "DELETE" });
+      setPorSacar(null);
+      refrescar();
+    } catch (e: any) {
+      setError(e?.message || "No se pudo sacar.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   async function agregar() {
     setOcupado(true);
     setError("");
@@ -1524,7 +1541,49 @@ function Bandada({
                   </p>
                 )}
               </button>
+
+              {/* Chiquito de dibujo y de 44 px al dedo, como el resto de la
+                  app: lo que se ve es una cruz gris, lo que se toca es toda
+                  esta esquina.
+
+                  Dos toques, como llamar de vuelta a un lorito: corta por los
+                  DOS lados y no hay cómo deshacerlo salvo volviéndose a sumar
+                  con el código. Y se desarma solo al perder el foco, para que
+                  no quede una cruz roja armada esperando un dedo distraído. */}
+              <button
+                className="toque-comodo"
+                onClick={() => (porSacar === f.id ? sacar(f.id) : setPorSacar(f.id))}
+                onBlur={() => setPorSacar((q) => (q === f.id ? null : q))}
+                disabled={ocupado}
+                // Corto a propósito. "Sacar a Sandra de tu bandada" se lee
+                // entero en cada tarjeta y además choca con el nombre de la
+                // pestaña: el contexto ya dice de dónde se la saca.
+                aria-label={porSacar === f.id ? `Confirmar: sacar a ${f.nombre}` : `Sacar a ${f.nombre}`}
+                style={{
+                  flex: "0 0 auto",
+                  alignSelf: "flex-start",
+                  minWidth: 44,
+                  padding: "4px 6px",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  font: "inherit",
+                  fontSize: porSacar === f.id ? 12.5 : 15,
+                  fontWeight: porSacar === f.id ? 700 : 400,
+                  lineHeight: 1.2,
+                  color: porSacar === f.id ? "#fca5a5" : "var(--tenue)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {porSacar === f.id ? "¿Seguro?" : "✕"}
+              </button>
             </div>
+
+            {porSacar === f.id && (
+              <p style={{ color: "#fca5a5", fontSize: 12, lineHeight: 1.5, marginTop: 6 }}>
+                Se dejan de ver los dos. Lo que ya está en el aire llega igual.
+              </p>
+            )}
             {/* A lo ancho y debajo, no al costado: al costado, un botón con
                 texto de verdad le come la mitad a un nombre de lugar largo
                 —"Municipio de San Francisco del Monte de Oro"— y en las

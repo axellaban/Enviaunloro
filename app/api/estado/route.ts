@@ -15,6 +15,7 @@ import {
   atenderVecina,
   buzon,
   escalaGlobal,
+  nidos,
   vecinaTienePendiente,
   type Nido,
 } from "../../../lib/datos";
@@ -67,9 +68,29 @@ export async function GET(req: Request) {
     loros = await buzon(yo.id);
   }
 
-  const nidos = new Map<string, Nido>([[yo.id, yo]]);
-  for (const a of bandada) nidos.set(a.id, a);
-  const vistas = loros.map((l) => verLoro(l, yo.id, nidos, ahora));
+  const mapaDeNidos = new Map<string, Nido>([[yo.id, yo]]);
+  for (const a of bandada) mapaDeNidos.set(a.id, a);
+
+  // Los nidos que aparecen en el buzón y ya no están en la bandada.
+  //
+  // Pasa cuando sacaste a alguien: los loros que se mandaron siguen en el
+  // historial, pero su nombre salía de la bandada y sin ella la tarjeta pasaba
+  // a decir "Alguien". El buzón es el recuerdo de lo que voló; que se llene de
+  // desconocidos porque una persona ya no está en tu lista es perder tu propia
+  // historia, no proteger nada — el nombre ya lo tenías.
+  //
+  // No cuesta una lectura por consulta: para quien no sacó a nadie el conjunto
+  // queda vacío y no se pide nada.
+  const faltantes = new Set<string>();
+  for (const l of loros) {
+    const otro = l.de === yo.id ? l.para : l.de;
+    if (otro && !mapaDeNidos.has(otro)) faltantes.add(otro);
+  }
+  if (faltantes.size > 0) {
+    for (const [id, n] of await nidos([...faltantes])) mapaDeNidos.set(id, n);
+  }
+
+  const vistas = loros.map((l) => verLoro(l, yo.id, mapaDeNidos, ahora));
 
   return ok({
     ahora,

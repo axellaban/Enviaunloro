@@ -242,6 +242,21 @@ const claveCodigo = (c: string) => `codigo:${normalizarCodigo(c)}`;
 const claveAmigos = (id: string) => `bandada:${id}`;
 /** La bandada de antes, como documento. Solo se lee, nunca se escribe. */
 const claveAmigosViejo = (id: string) => `amigos:${id}`;
+/**
+ * A quién sacaste de tu bandada, a mano.
+ *
+ * Existe por una sola razón, y sin ella "sacar a alguien" no funcionaría: el
+ * rescate de más abajo reconstruye la bandada leyendo el historial de loros.
+ * Si sacás a la única persona que tenías, tu conjunto queda vacío, el rescate
+ * se dispara, encuentra los loros que se mandaron y la vuelve a poner. La
+ * decisión se deshacía sola en la consulta siguiente.
+ *
+ * El rescate está para recuperar datos perdidos; una baja a propósito no es un
+ * dato perdido. Esto los distingue. Se anota en las DOS puntas: si quedara
+ * anotado de un solo lado, el rescate del otro los volvería a emparejar —y
+ * emparejar escribe los dos lados— con lo que la baja se caía igual.
+ */
+const claveEchados = (id: string) => `echados:${id}`;
 const claveBuzon = (id: string) => `buzon:${id}`;
 const claveLoro = (id: string) => `loro:${id}`;
 /** Turnos únicos. Ver `reservar` en lib/store.ts. */
@@ -453,6 +468,9 @@ async function rescatarBandada(id: string): Promise<{ ids: string[]; persistió:
       if (otro && otro !== id) otros.add(otro);
     } catch {}
   }
+  // Los que sacaste a mano no vuelven. El rescate recupera lo que se perdió,
+  // no lo que decidiste.
+  for (const echado of await store().leerConjunto(claveEchados(id))) otros.delete(echado);
   if (otros.size === 0) return { ids: [], persistió: true };
 
   const entraron = await Promise.all([...otros].map((otro) => emparejar(id, otro)));
@@ -563,12 +581,38 @@ export async function amigos(id: string): Promise<Nido[]> {
  * la base resuelve el choque, así que seis personas tocando el mismo link en
  * el mismo segundo quedan las seis.
  */
+/**
+ * Sacar a alguien de la bandada. Corta por los dos lados.
+ *
+ * No es una asimetría lo que se quiere: si te saco, no quiero que me sigas
+ * viendo en el mapa. Una baja de un solo lado dejaría a la otra persona con tu
+ * zona, tu distancia y un botón para mandarte loros — o sea, sin sacar nada.
+ *
+ * Lo que ya está en el aire NO se toca. El ave salió, el mensaje está escrito
+ * y aterriza igual: hacerla desaparecer sería contarle una mentira a quien la
+ * soltó. Se dejan de ver de acá en adelante.
+ */
+export async function desemparejar(a: string, b: string): Promise<void> {
+  await Promise.all([
+    store().borrarDeConjunto(claveAmigos(a), b),
+    store().borrarDeConjunto(claveAmigos(b), a),
+    store().agregarAConjunto(claveEchados(a), b),
+    store().agregarAConjunto(claveEchados(b), a),
+  ]);
+}
+
 export async function emparejar(a: string, b: string): Promise<boolean> {
   // Devuelve si las DOS puntas entraron. Una amistad a medias es una amistad
   // rota, y quien llama tiene que poder distinguirla de una que anduvo.
+  // Y se borra la marca de baja: volver a sumarse con el código es la forma
+  // explícita de deshacerla, y tiene que alcanzar. Sin esto, dos personas que
+  // se sacaron y se arrepintieron quedaban emparejadas pero marcadas, y el
+  // primer rescate que corriera las separaba de nuevo.
   const lados = await Promise.all([
     store().agregarAConjunto(claveAmigos(a), b),
     store().agregarAConjunto(claveAmigos(b), a),
+    store().borrarDeConjunto(claveEchados(a), b).then(() => true),
+    store().borrarDeConjunto(claveEchados(b), a).then(() => true),
   ]);
   return lados.every(Boolean);
 }
