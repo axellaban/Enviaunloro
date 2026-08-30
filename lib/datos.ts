@@ -381,19 +381,19 @@ export async function actualizarUbicacion(id: string, punto: Punto): Promise<Nid
 
 // ---------- amistades ----------
 
-/**
- * Con quién estás conectado.
- *
- * Lee el conjunto nuevo Y el documento viejo, y los une. La bandada era un
- * documento con un array hasta que se descubrió que agregar a alguien era
- * leer-modificar-escribir: dos personas tocando tu link al mismo tiempo leían
- * la misma lista y la segunda pisaba a la primera. Ahora se escribe siempre en
- * el conjunto, pero los nidos que ya existían tienen su bandada en el
- * documento, y perderla al actualizar sería cambiar un bug por otro peor.
- */
-/** Nidos que ya sabemos que no tienen bandada del formato viejo. Evita
- *  preguntar por un documento que no está, en el endpoint más consultado. */
-const sinBandadaVieja = new Set<string>();
+// ---------- amistades ----------
+//
+// La bandada era un documento con un array hasta que se descubrió que agregar
+// a alguien era leer-modificar-escribir: dos personas tocando tu link en el
+// mismo segundo leían la misma lista y la segunda pisaba a la primera. Ahora
+// cada amistad es su propia fila en un conjunto y no hay nada que pisar.
+//
+// La migración del formato viejo VIVIÓ ACÁ y ya no está: producción reporta
+// cero bandadas en formato viejo (`enFormatoViejo` en /api/salud), así que
+// leer ese documento en cada consulta era pagar un viaje a la base, en el
+// endpoint más consultado de la app, para no encontrar nunca nada. El
+// detector sigue en `estadoDeBandada`, que corre a pedido: si alguna vez
+// vuelve a dar distinto de cero, la migración está en el historial de git.
 
 /** Nidos a los que ya se les intentó el rescate en esta instancia. */
 const yaRescatado = new Set<string>();
@@ -453,63 +453,25 @@ async function rescatarBandada(id: string): Promise<{ ids: string[]; persistió:
   return { ids: [...otros], persistió };
 }
 
+/** Con quién estás conectado. Una sola lectura, que es la del conjunto. */
 export async function idsAmigos(id: string): Promise<string[]> {
-  if (sinBandadaVieja.has(id)) {
-    const actuales = await store().leerConjunto(claveAmigos(id));
-    if (actuales.length > 0 || yaRescatado.has(id)) return actuales;
-    const r = await rescatarBandada(id);
-    // Solo se marca si de verdad quedó guardado. Marcar un rescate que no
-    // persistió es prometerle al nido que ya está resuelto y no volver a
-    // mirarlo nunca: se verían las amistades una vez y desaparecerían en la
-    // consulta siguiente.
-    if (r.persistió) {
-      if (yaRescatado.size > 5000) yaRescatado.clear();
-      yaRescatado.add(id);
-    }
-    return r.ids.length ? r.ids : actuales;
+  const nuevos = await store().leerConjunto(claveAmigos(id));
+  if (nuevos.length > 0 || yaRescatado.has(id)) return nuevos;
+
+  // Bandada vacía: puede ser un nido recién hecho, o uno al que la migración
+  // rota le borró todo. El rescate distingue mirando el historial de loros, y
+  // no cuesta nada para quien de verdad no tiene a nadie. Se queda —aunque
+  // aquel bug ya esté arreglado— porque el día que la base falle a mitad de
+  // camino esto es lo único que devuelve una bandada.
+  const r = await rescatarBandada(id);
+  // Solo se marca si de verdad quedó guardado. Marcar un rescate que no
+  // persistió es prometerle al nido que ya está resuelto y no volver a mirarlo
+  // nunca: se verían las amistades una vez y desaparecerían en la siguiente.
+  if (r.persistió) {
+    if (yaRescatado.size > 5000) yaRescatado.clear();
+    yaRescatado.add(id);
   }
-
-  const [nuevos, viejos] = await Promise.all([
-    store().leerConjunto(claveAmigos(id)),
-    leerDoc<string[]>(claveAmigosViejo(id)),
-  ]);
-
-  if (viejos?.length) {
-    // Migración del formato viejo. El documento se borra SOLO si todas las
-    // escrituras confirmaron. Antes se borraba pase lo que pase, y ahí estuvo
-    // el daño: una escritura que fallaba en silencio y un borrado que igual
-    // se ejecutaba. Si algo falla, el documento se queda donde está y se
-    // reintenta en la próxima consulta — costará una consulta de más, que es
-    // infinitamente más barato que perder una bandada.
-    const entraron = await Promise.all(
-      viejos.map((otro) => store().agregarAConjunto(claveAmigos(id), otro))
-    );
-    if (entraron.every(Boolean)) {
-      await store().borrar(claveAmigosViejo(id));
-      sinBandadaVieja.add(id);
-    } else {
-      console.error(
-        `[bandada] no se pudo migrar la de ${id}: el documento viejo queda intacto`
-      );
-    }
-    return [...new Set([...nuevos, ...viejos])];
-  }
-
-  if (sinBandadaVieja.size > 5000) sinBandadaVieja.clear();
-  sinBandadaVieja.add(id);
-
-  // Bandada vacía y sin documento viejo: puede ser un nido recién hecho, o uno
-  // al que la migración rota le borró todo. El rescate distingue mirando el
-  // historial, y no cuesta nada para quien de verdad no tiene a nadie.
-  if (nuevos.length === 0 && !yaRescatado.has(id)) {
-    const r = await rescatarBandada(id);
-    if (r.persistió) {
-      if (yaRescatado.size > 5000) yaRescatado.clear();
-      yaRescatado.add(id);
-    }
-    if (r.ids.length) return r.ids;
-  }
-  return nuevos;
+  return r.ids.length ? r.ids : nuevos;
 }
 
 /**
@@ -524,6 +486,10 @@ export async function estadoDeBandada(id: string): Promise<{
   enFormatoViejo: number;
   enHistorial: number;
 }> {
+  // El documento viejo se sigue mirando ACÁ y en ningún otro lado: la
+  // migración se sacó de `idsAmigos` porque en producción no encuentra nada
+  // nunca, pero este endpoint corre a pedido y es el único lugar donde
+  // enterarse sale barato. Si alguna vez da distinto de cero, avisá.
   const [conjunto, viejo, buzon] = await Promise.all([
     store().leerConjunto(claveAmigos(id)),
     leerDoc<string[]>(claveAmigosViejo(id)),

@@ -176,6 +176,11 @@ p { margin: 0; }
   align-items: center;
   justify-content: center;
   gap: 8px;
+  /* 44 px es el mínimo táctil, y acá se pone UNA vez para todos: la variante
+     chica daba 36 y se usa en los botones más importantes de la app —
+     "Envíale un lorito", "Compartir mi nido", "Pasarle el link"—, que son
+     justo los que hay que poder tocar sin apuntar. */
+  min-height: 44px;
   padding: 13px 20px;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -202,6 +207,9 @@ p { margin: 0; }
 }
 .boton.fantasma:hover:not(:disabled) { background: var(--panel-alto); }
 
+/* Chico es la LETRA, no el objetivo: el alto lo sigue poniendo el mínimo
+   táctil de arriba. Un botón de 36 px se ve prolijo en una captura y se falla
+   con el pulgar. */
 .boton.chico { padding: 9px 14px; font-size: 13.5px; }
 
 .campo {
@@ -359,6 +367,17 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 @media (prefers-reduced-motion: reduce) {
   .cerveceria-cartel, .ave-tomada { animation: none; }
 }
+
+/* El nombre que perdió el codazo. Con opacidad y no con display: un rótulo
+   sin caja no se puede medir, y el pase siguiente no sabría si ya podría
+   volver a mostrarse. */
+.marcador-nido.sin-rotulo [data-rotulo],
+.marcador-ave.sin-rotulo [data-rotulo] {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.marcador-nido [data-rotulo],
+.marcador-ave [data-rotulo] { transition: opacity 0.15s ease; }
 
 .marcador-nido, .marcador-ave { background: none !important; border: none !important; }
 

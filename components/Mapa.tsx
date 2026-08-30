@@ -103,7 +103,7 @@ function iconoNido(n: NidoVista, esMio: boolean, color: string): L.DivIcon {
     iconAnchor: [7, 7],
     html: `<div style="position:relative;width:14px;height:14px">
       ${cuerpo}
-      <span style="position:absolute;left:50%;top:17px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 ui-sans-serif,system-ui;color:${pinturaDelMapa().rotuloMapa};text-shadow:${pinturaDelMapa().rotuloHalo};padding:4px 6px">${escapar(
+      <span data-rotulo style="position:absolute;left:50%;top:17px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 ui-sans-serif,system-ui;color:${pinturaDelMapa().rotuloMapa};text-shadow:${pinturaDelMapa().rotuloHalo};padding:4px 6px">${escapar(
         esMio ? "Tu nido" : n.nombre
       )}</span>
     </div>`,
@@ -172,7 +172,7 @@ function iconoCerveceria(nivel: number, rotulo: string): L.DivIcon {
       <span style="position:absolute;left:50%;top:30px;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:99px;background:radial-gradient(circle,rgba(251,191,36,.42),rgba(251,191,36,0) 68%)"></span>
       <span class="cerveceria-cartel" style="position:absolute;left:50%;top:30px;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:13px;background:linear-gradient(160deg,#fbbf24,#f59e0b);border:2px solid ${pin.anilloNido};box-shadow:0 3px 12px rgba(0,0,0,.4);display:grid;place-items:center;font-size:19px;line-height:1">🍻</span>
       <span style="position:absolute;left:calc(50% + 13px);top:8px;font-size:15px;line-height:1">${jarana ? "🥴" : "🎵"}</span>
-      <span style="position:absolute;left:50%;top:54px;transform:translateX(-50%);white-space:nowrap;font:700 10.5px/1 ui-sans-serif,system-ui;color:${pin.rotuloMapa};text-shadow:${pin.rotuloHalo};padding:3px 5px">${escapar(rotulo)}</span>
+      <span data-rotulo style="position:absolute;left:50%;top:54px;transform:translateX(-50%);white-space:nowrap;font:700 10.5px/1 ui-sans-serif,system-ui;color:${pin.rotuloMapa};text-shadow:${pin.rotuloHalo};padding:3px 5px">${escapar(rotulo)}</span>
     </div>`,
   });
 }
@@ -544,6 +544,54 @@ export default function Mapa({
     return caja;
   }
 
+  /**
+   * Los nombres que no entran, se callan.
+   *
+   * Doña Cotorra se planta a trescientos metros de tu nido, así que en cuanto
+   * el mapa se aleja un poco los dos nombres quedan uno encima del otro y no
+   * se lee ninguno —"Doña hidorra"—. Dos nombres pisados son peores que uno
+   * solo: el que se pierde no es el de abajo, son los dos.
+   *
+   * Se resuelve como en cualquier mapa: por prioridad y a los codazos. El tuyo
+   * nunca se calla, después la bandada, después la vecina de práctica, y al
+   * final la cervecería. Cada rótulo que no choca con ninguno de los que ya se
+   * quedaron, se queda; el que choca, se apaga.
+   *
+   * Se apagan con opacidad y no con `display`, y no es un detalle: un rótulo
+   * sin caja no se puede medir, y el pase siguiente no sabría si ya podría
+   * volver. Así se mide siempre y prende y apaga solo al alejar y acercar.
+   */
+  function acomodarRotulos() {
+    const m = mapa.current;
+    if (!m) return;
+    const candidatos: { el: HTMLElement; caja: DOMRect; prioridad: number }[] = [];
+    const juntar = (marcador: L.Marker | undefined, prioridad: number) => {
+      const raiz = marcador?.getElement();
+      const el = raiz?.querySelector("[data-rotulo]") as HTMLElement | null;
+      if (raiz && el) candidatos.push({ el: raiz, caja: el.getBoundingClientRect(), prioridad });
+    };
+    for (const [id, marcador] of nidos.current) {
+      juntar(marcador, id === yo?.id ? 0 : amigos.find((a) => a.id === id)?.bot ? 2 : 1);
+    }
+    for (const [, barra] of posadas.current) juntar(barra.cartel, 3);
+
+    candidatos.sort((a, b) => a.prioridad - b.prioridad);
+    const quedan: DOMRect[] = [];
+    for (const c of candidatos) {
+      // Un par de píxeles de aire: dos nombres que se tocan justo tampoco se
+      // leen como dos nombres.
+      const choca = quedan.some(
+        (q) =>
+          c.caja.left < q.right + 3 &&
+          c.caja.right > q.left - 3 &&
+          c.caja.top < q.bottom + 2 &&
+          c.caja.bottom > q.top - 2
+      );
+      c.el.classList.toggle("sin-rotulo", choca);
+      if (!choca) quedan.push(c.caja);
+    }
+  }
+
   /** Saca del mapa todo lo que dibuja un tramo. */
   function borrarCapa(clave: string) {
     const capa = capas.current.get(clave);
@@ -670,6 +718,7 @@ export default function Mapa({
   useEffect(() => {
     let vivo = true;
     let cuadro = 0;
+    let ultimoAcomodo = 0;
 
     const paso = () => {
       if (!vivo) return;
@@ -774,6 +823,14 @@ export default function Mapa({
           m.ave?.remove();
           posadas.current.delete(clave);
         }
+      }
+
+      // Los rótulos, cuatro veces por segundo. Alcanza de sobra para que no se
+      // note —el mapa no se mueve más rápido que eso a ojo— y evita medir cajas
+      // sesenta veces por segundo.
+      if (ahora - ultimoAcomodo > 250) {
+        ultimoAcomodo = ahora;
+        acomodarRotulos();
       }
 
       cuadro = requestAnimationFrame(paso);

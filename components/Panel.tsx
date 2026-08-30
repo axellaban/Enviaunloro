@@ -1178,6 +1178,89 @@ function Bandada({
   // El mismo reparto que hace el mapa, con la misma entrada: así el punto de
   // acá y el punto de allá son el mismo color sin tener que coordinarse.
   const colores = coloresDeBandada(amigos.map((a) => a.id));
+  // Toda la bandada es la vecina de práctica: no hay nada que listar todavía.
+  const soloLaVecina = amigos.every((a) => a.bot);
+
+  /**
+   * Las dos formas de sumar gente, más la nota de privacidad.
+   *
+   * Es un ELEMENTO y no un componente definido acá adentro, y la diferencia no
+   * es de estilo: un componente declarado dentro del render es un tipo nuevo en
+   * cada pasada, así que React desmonta y vuelve a montar todo lo de adentro —
+   * y el campo del código perdería el foco en cada tecla.
+   */
+  const sumar = (
+    <>
+        {/* Arriba del código a propósito. Agregar por código exige que la otra
+            persona YA esté adentro, o sea que sirve para la mitad de la agenda
+            de cualquiera. Esto sirve para la otra mitad, que es la que hace
+            crecer esto. */}
+        <div
+          className="tarjeta"
+          style={{
+            padding: 14,
+            marginBottom: 14,
+            borderColor: "var(--esmeralda)",
+            background: "rgba(163, 230, 53, 0.06)",
+          }}
+        >
+          <p style={{ fontSize: 15, fontWeight: 750, marginBottom: 5 }}>
+            ¿No está en la app?
+          </p>
+          <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--suave)" }}>
+            Escribile igual. El ave sale ahora y espera en una cervecería hasta que
+            abra el link y arme su nido — tomando, si tarda.
+          </p>
+          <button className="boton" style={{ width: "100%", marginTop: 12 }} onClick={alConvidar}>
+            Enviarle un lorito igual
+          </button>
+        </div>
+
+        <div className="tarjeta" style={{ padding: 14, marginBottom: 14 }}>
+          <p className="etiqueta">Agregar por código</p>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            {/* Sin mayúsculas forzadas ni letras separadas: eso se veía bien con
+                seis caracteres al azar y se lee pésimo con dos palabras. El
+                servidor normaliza igual, así que da lo mismo cómo se tipee. */}
+            <input
+              className="campo"
+              style={{ fontFamily: "var(--mono)" }}
+              placeholder="loroparlanchin"
+              maxLength={LARGO_MAXIMO}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && esCodigo(codigo)) agregar();
+              }}
+            />
+            <button className="boton" onClick={agregar} disabled={!esCodigo(codigo) || ocupado}>
+              Sumar
+            </button>
+          </div>
+          {mensaje && (
+            <p style={{ color: "var(--esmeralda-alto)", fontSize: 13, marginTop: 10 }}>{mensaje}</p>
+          )}
+          {error && <p style={{ color: "#fca5a5", fontSize: 13, marginTop: 10 }}>{error}</p>}
+        </div>
+
+        <p
+          style={{
+            fontSize: 12,
+            lineHeight: 1.55,
+            color: "var(--tenue)",
+            margin: "0 2px 14px",
+          }}
+        >
+          🔒 En el mapa nadie ve tu dirección: de cada nido ajeno se dibuja una
+          zona de {formatearDistancia(amigos.find((f) => f.radioKm > 0)?.radioKm ?? 0.3)}, no
+          un punto. La distancia y el tiempo de vuelo sí son exactos.
+        </p>
+
+    </>
+  );
 
   async function agregar() {
     setOcupado(true);
@@ -1199,73 +1282,12 @@ function Bandada({
 
   return (
     <>
-      {/* Arriba del código a propósito. Agregar por código exige que la otra
-          persona YA esté adentro, o sea que sirve para la mitad de la agenda
-          de cualquiera. Esto sirve para la otra mitad, que es la que hace
-          crecer esto. */}
-      <div
-        className="tarjeta"
-        style={{
-          padding: 14,
-          marginBottom: 14,
-          borderColor: "var(--esmeralda)",
-          background: "rgba(163, 230, 53, 0.06)",
-        }}
-      >
-        <p style={{ fontSize: 15, fontWeight: 750, marginBottom: 5 }}>
-          ¿No está en la app?
-        </p>
-        <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--suave)" }}>
-          Escribile igual. El ave sale ahora y espera en una cervecería hasta que
-          abra el link y arme su nido — tomando, si tarda.
-        </p>
-        <button className="boton" style={{ width: "100%", marginTop: 12 }} onClick={alConvidar}>
-          Enviarle un lorito igual
-        </button>
-      </div>
-
-      <div className="tarjeta" style={{ padding: 14, marginBottom: 14 }}>
-        <p className="etiqueta">Agregar por código</p>
-        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          {/* Sin mayúsculas forzadas ni letras separadas: eso se veía bien con
-              seis caracteres al azar y se lee pésimo con dos palabras. El
-              servidor normaliza igual, así que da lo mismo cómo se tipee. */}
-          <input
-            className="campo"
-            style={{ fontFamily: "var(--mono)" }}
-            placeholder="loroparlanchin"
-            maxLength={LARGO_MAXIMO}
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && esCodigo(codigo)) agregar();
-            }}
-          />
-          <button className="boton" onClick={agregar} disabled={!esCodigo(codigo) || ocupado}>
-            Sumar
-          </button>
-        </div>
-        {mensaje && (
-          <p style={{ color: "var(--esmeralda-alto)", fontSize: 13, marginTop: 10 }}>{mensaje}</p>
-        )}
-        {error && <p style={{ color: "#fca5a5", fontSize: 13, marginTop: 10 }}>{error}</p>}
-      </div>
-
-      <p
-        style={{
-          fontSize: 12,
-          lineHeight: 1.55,
-          color: "var(--tenue)",
-          margin: "0 2px 14px",
-        }}
-      >
-        🔒 En el mapa nadie ve tu dirección: de cada nido ajeno se dibuja una
-        zona de {formatearDistancia(amigos.find((f) => f.radioKm > 0)?.radioKm ?? 0.3)}, no
-        un punto. La distancia y el tiempo de vuelo sí son exactos.
-      </p>
+      {/* Las tarjetas de sumar gente van ARRIBA solo mientras no haya bandada:
+          ahí no hay nada que listar y lo único que corresponde es traer a
+          alguien. Con bandada de verdad, lo primero de una pestaña que se
+          llama "Bandada" tiene que ser la bandada — antes había que pasar dos
+          tarjetas y un párrafo de privacidad para ver a la primera persona. */}
+      {soloLaVecina && sumar}
 
       {amigos.map((f) => {
         const km = f.distanciaKm ?? 0;
@@ -1341,6 +1363,13 @@ function Bandada({
           </div>
         );
       })}
+
+      {/* Y con bandada, las formas de sumar más gente van al final: quien ya
+          tiene doce personas entra acá para ver a las doce, no para agregar
+          una decimotercera. */}
+      {!soloLaVecina && (
+        <div style={{ marginTop: 4 }}>{sumar}</div>
+      )}
     </>
   );
 }
@@ -1509,14 +1538,26 @@ function MiNido({
 
       {/* --- aparecer en la vista del resto --- */}
       <div className="tarjeta" style={{ padding: 14, marginBottom: 12 }}>
+        {/* La etiqueta entera es el objetivo táctil, no la casilla: 18 px de
+            cuadradito son menos de la mitad del mínimo, y esto decide si tus
+            vuelos aparecen en el mapa de desconocidos — errarle no puede ser
+            fácil. El padding negativo lo agranda sin mover el dibujo. */}
         <label
-          style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            cursor: "pointer",
+            minHeight: 44,
+            margin: -6,
+            padding: 6,
+          }}
         >
           <input
             type="checkbox"
             checked={enElMundo}
             onChange={(e) => cambiarMundo(e.target.checked)}
-            style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--esmeralda)" }}
+            style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: "var(--esmeralda)" }}
           />
           <span>
             <span style={{ display: "block", fontSize: 14, fontWeight: 700 }}>

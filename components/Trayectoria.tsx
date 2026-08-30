@@ -2,6 +2,11 @@
 
 // El arco de la portada: el producto entero, contado en catorce segundos.
 //
+// Los grises de acá van escritos a mano y no como tokens de CSS porque esto es
+// SVG. Eso los tuvo escondidos de la auditoría de contraste, que leía `color` y
+// no `fill`: los rótulos quedaron en el #5d7873 viejo —4,11:1, abajo del 4,5
+// que pide texto chico— mucho después de que el token se hubiera corregido.
+//
 // El perico sale de tu nido con un mensaje encima, cruza TODO el arco, lo
 // entrega del otro lado —y recién ahí se puede leer—, y después se vuelve
 // vacío.
@@ -267,7 +272,7 @@ function Nido({
       <text
         x={x}
         y={y + 26}
-        fill="#5d7873"
+        fill="#8ba39d"
         fontSize="12.5"
         textAnchor="middle"
         fontFamily="ui-sans-serif, system-ui"

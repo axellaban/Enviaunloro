@@ -266,7 +266,7 @@ export function TelefonoHero() {
           />
 
           {/* Barra de abajo */}
-          <g fill="#5d7873" fontSize="9.5" textAnchor="middle" fontFamily="ui-sans-serif, system-ui">
+          <g fill="#8ba39d" fontSize="9.5" textAnchor="middle" fontFamily="ui-sans-serif, system-ui">
             <rect x="12" y="556" width="276" height="42" fill="rgba(6,13,12,.92)" />
             <text x="63" y="582" fill="#10b981">Mapa</text>
             <text x="121" y="582">Buzón</text>

@@ -517,6 +517,15 @@ Dos cosas más que no son de fábrica:
   1,5 % más largo que esa recta y ese 1,5 % no se le cobra a nadie. Se apaga
   entero poniendo `CURVA` en 0 (`lib/geo.ts`), sin sacar una línea de código.
 
+- **Los nombres que no entran, se callan.** Doña Cotorra se planta a
+  trescientos metros de tu nido, así que apenas el mapa se aleja los dos
+  nombres quedan uno encima del otro y no se lee ninguno —"Doña hidorra"—. Dos
+  nombres pisados son peores que uno solo. Se resuelve como en cualquier mapa,
+  por prioridad y a los codazos: el tuyo nunca se calla, después la bandada,
+  después la vecina de práctica, y al final la cervecería. Se apagan con
+  opacidad y no con `display`, porque un rótulo sin caja no se puede medir y el
+  pase siguiente no sabría si ya podría volver.
+
 - **El mapa gira con dos dedos**, como Google Maps, vía
   [`leaflet-rotate`](https://github.com/Raruto/leaflet-rotate) (`shift` +
   arrastrar en la compu). Leaflet no sabe girar solo: el plugin le cambia la

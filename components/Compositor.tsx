@@ -210,7 +210,11 @@ export function Compositor({
                       <span style={{ fontWeight: 700, fontSize: 14 }}>{x.nombre}</span>
                     </span>
                     <span style={{ fontSize: 17, fontWeight: 800, color: x.color }}>{eta}</span>
-                    <span style={{ fontSize: 11.5, color: "var(--tenue)" }}>
+                    {/* --suave y no --tenue: adentro del compositor el panel
+                        es más claro y el tenue caía a 4,07:1, abajo del 4,5
+                        que pide texto chico. Y esto es con lo que se elige
+                        qué ave mandar. */}
+                    <span style={{ fontSize: 11.5, color: "var(--suave)" }}>
                       {x.velocidadKmh} km/h · {x.maxCaracteres} car.
                     </span>
                   </button>
