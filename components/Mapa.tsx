@@ -122,7 +122,7 @@ const COLOR_POLLERA = "#f472b6";
  * se va para arriba, y rotarla con el rumbo del vuelo la haría entrar torcida a
  * un lugar al que no va.
  */
-function iconoNave(): L.DivIcon {
+function iconoNave(clave: string): L.DivIcon {
   return L.divIcon({
     className: "marcador-ave marcador-nave",
     iconSize: [46, 53],
@@ -133,7 +133,7 @@ function iconoNave(): L.DivIcon {
     // misma razón que la rotación del ave: la raíz la posiciona Leaflet con su
     // propio `transform: translate3d(...)`, y animar `transform` ahí lo pisa.
     // La nave aparecía en la esquina del mapa en vez de sobre el bicho.
-    html: `<div class="nave-baja">${svgPlatoVolador(46)}</div>`,
+    html: `<div class="nave-baja">${svgPlatoVolador(46, clave)}</div>`,
   });
 }
 
@@ -1044,7 +1044,7 @@ export default function Mapa({
         if (seLoLlevan) {
           if (!capa.nave && mapa.current) {
             capa.nave = L.marker([pos.lat, pos.lng], {
-              icon: iconoNave(),
+              icon: iconoNave(v.clave),
               interactive: false,
               // Por encima del ave: la nave está arriba, es lo que la levanta.
               zIndexOffset: 900,

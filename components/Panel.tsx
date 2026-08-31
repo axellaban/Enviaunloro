@@ -24,7 +24,7 @@ import { compartirConvite } from "./Convite";
 import { GuardarNido } from "./GuardarNido";
 import { Avisos } from "./Avisos";
 import { Instalar } from "./Instalar";
-import { Ave, Pollera } from "./Ave";
+import { Ave, PlatoVolador, Pollera } from "./Ave";
 import { Fiesta, type Motivo } from "./Fiesta";
 import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
 import { coloresDeBandada } from "../lib/colorNido";
@@ -1376,7 +1376,10 @@ function TarjetaAbducido({ loro }: { loro: LoroVista }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 24, lineHeight: 1 }}>🛸</span>
+        {/* La misma nave del mapa, no el emoji 🛸 del sistema. Es lo que se vio
+            pasar hace un rato, con su rayo de colores; el emoji lo dibuja cada
+            teléfono a su manera y en ninguno se parece a esto. */}
+        <PlatoVolador size={34} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: "var(--suave)" }}>
             {enviado

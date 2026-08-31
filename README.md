@@ -592,6 +592,33 @@ después y entregaba el texto que la nave se había llevado. Habría sido un
 borrado que no borra — el peor resultado posible, porque quien lo pidió se
 queda creyendo que sí.
 
+### El rayo tiene los colores de las seis aves
+
+No es adorno. Lo que la nave se está llevando es un lorito, y el rayo es lo
+único de la escena que puede decirlo sin dibujar un pájaro adentro: está pintado
+con el mismo `color` que cada especie tiene en [`lib/aves.ts`](lib/aves.ts), así
+que el bicho abducido queda atravesado por su propio color sea cual sea.
+
+Tres cosas que se probaron mirando el dibujo renderizado, no imaginándolo:
+
+- **Bandas duras, no un degradado suave.** Interpolando de lima a violeta a
+  celeste, los pares que se tocan se mezclan en gris y marrón: a 46 px —el
+  tamaño real en el mapa— el rayo se leía como un cono sucio y el arcoíris no
+  existía. Cada color se queda con su franja.
+- **El desvanecido va por máscara, no por el color.** Si la transparencia
+  viviera en el mismo degradado que el arcoíris, el rayo se apagaría hacia un
+  costado. Se apaga hacia el suelo, que es donde termina un rayo.
+- **Las motas que suben son blancas.** Se probaron del color de un ave y
+  desaparecían: manchitas de color adentro de un rayo hecho de colores. En
+  blanco se leen contra cualquiera de las seis franjas, que es lo único que se
+  les pide. Son las que hacen que la escena diga "se lo está llevando" en vez
+  de "le apunta con una linterna".
+
+Los ids de los degradados llevan sufijo por vuelo. Con dos abducciones a la vez
+compartirían `id="rayo"` y el navegador resolvería las dos al primero que
+encuentra: hoy daría igual porque son idénticos, pero es la clase de bomba que
+explota el día que uno cambie.
+
 La escena dura nueve segundos (`MS_ABDUCCION`) y son los únicos de la app que
 **no** se aceleran con `LOROS_ESCALA_TIEMPO`: es una animación y no un vuelo, y
 acelerarla en una demo la haría invisible, que es justo lo que se trata de

@@ -668,6 +668,37 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 /* Ver el efecto de arriba, en Mapa.tsx. */
 .eligiendo .marcador-ave.tocable { pointer-events: none; }
 
+/* Las seis luces del borde de la nave, una por especie, parpadeando en ronda.
+   El retraso de cada una va en línea, desde components/Ave.tsx, porque es lo
+   único que las distingue. */
+.nave-luz { animation: nave-parpadeo 1.15s ease-in-out infinite; }
+@keyframes nave-parpadeo {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+
+/* Las motas que suben por el rayo. Es lo que hace que la escena se lea "se lo
+   está llevando" en vez de "le apunta con una linterna".
+   `transform-box: view-box` para que los 70 sean unidades del viewBox y no
+   píxeles de pantalla: el mismo SVG se dibuja a 46 px en el mapa. */
+.nave-mota {
+  transform-box: view-box;
+  animation: nave-sube 1.9s linear infinite;
+}
+@keyframes nave-sube {
+  0%   { transform: translateY(0); opacity: 0; }
+  15%  { opacity: .95; }
+  85%  { opacity: .5; }
+  100% { transform: translateY(-72px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Las luces se quedan encendidas y las motas desaparecen: una mota quieta a
+     mitad del rayo no significa nada. El rayo de colores se ve igual. */
+  .nave-luz { animation: none; opacity: 1; }
+  .nave-mota { display: none; }
+}
+
 /* ---------- la abducción ----------
 
    La nave baja, se queda con el ave en el rayo y se va para arriba. Los tres

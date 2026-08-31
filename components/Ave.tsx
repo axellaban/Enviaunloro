@@ -273,30 +273,105 @@ export function Pollera({ size = 40, ondea = false }: { size?: number; ondea?: b
  * muevan juntos: una nave y su rayo separados por un cuadro de animación se ven
  * como dos cosas, y son una.
  */
-export function svgPlatoVolador(size = 46): string {
+/**
+ * El plato volador que baja a llevarse un ave.
+ *
+ * El rayo tractor está pintado con los colores de LAS SEIS AVES —el mismo
+ * `color` que cada una tiene en lib/aves.ts— y no es decoración suelta: lo que
+ * la nave se está llevando es un lorito, y el rayo es lo único de la escena que
+ * puede decirlo sin dibujar un pájaro adentro. De paso el bicho abducido queda
+ * atravesado por su propio color, sea cual sea la especie.
+ *
+ * `sufijo` hace únicos los ids de los degradados. Sin eso, dos abducciones a la
+ * vez comparten `id="rayo"` y el navegador resuelve las dos al primero que
+ * encuentra: hoy daría igual porque son idénticos, pero es la clase de bomba
+ * que explota el día que uno cambie.
+ */
+export function svgPlatoVolador(size = 46, sufijo = ""): string {
   const alto = Math.round(size * 1.15);
+  // Solo letras y números: esto entra a un id de SVG y a un url(#...).
+  const u = sufijo.replace(/[^a-zA-Z0-9]/g, "") || "n";
+  // Las seis, en el orden en que se leen mejor de un lado al otro del rayo:
+  // de lo cálido a lo frío. Son literalmente los colores de las especies.
+  const PLUMAS = ["#a3e635", "#fbbf24", "#f472b6", "#a78bfa", "#22d3ee", "#10b981"];
+  // BANDAS DURAS, no un degradado suave. Interpolando de lima a violeta a
+  // celeste, los pares que se tocan se mezclan en gris y marrón: a 46 px —el
+  // tamaño real en el mapa— el rayo se leía como un cono sucio y el arcoíris
+  // no existía. Cada color se queda con su franja y el corte es a cuchillo.
+  const paradas = PLUMAS.map((c, i) => {
+    const desde = (i / PLUMAS.length).toFixed(4);
+    const hasta = ((i + 1) / PLUMAS.length).toFixed(4);
+    return `<stop offset="${desde}" stop-color="${c}"/><stop offset="${hasta}" stop-color="${c}"/>`;
+  }).join("");
+  // Las motas que suben por el rayo: es lo que hace que se lea "se lo está
+  // llevando" y no "le apunta con una linterna".
+  // BLANCAS, no de colores. Probadas del color de un ave desaparecían: son
+  // manchitas de color adentro de un rayo hecho de colores. En blanco se leen
+  // contra cualquiera de las seis bandas, que es lo único que se les pide.
+  const motas = [
+    [52, 122, 0, 3.4],
+    [70, 130, 0.55, 2.6],
+    [44, 114, 1.1, 3.0],
+    [80, 120, 1.55, 2.4],
+  ]
+    .map(
+      ([x, y, t, r]) =>
+        `<circle class="nave-mota" cx="${x}" cy="${y}" r="${r}" fill="#f0fdfa" style="animation-delay:${t}s"/>`
+    )
+    .join("");
+  // Seis luces en el borde, una por especie, parpadeando en ronda.
+  const luces = [
+    [22, 52],
+    [37, 55],
+    [52, 57],
+    [68, 57],
+    [83, 55],
+    [98, 52],
+  ]
+    .map(
+      ([x, y], i) =>
+        `<circle class="nave-luz" cx="${x}" cy="${y}" r="4.5" fill="${PLUMAS[i]}" style="animation-delay:${(
+          i * 0.13
+        ).toFixed(2)}s"/>`
+    )
+    .join("");
+
   return `<svg width="${size}" height="${alto}" viewBox="0 0 120 138" fill="none" xmlns="http://www.w3.org/2000/svg" class="nave" aria-hidden="true">
-<!-- El rayo primero, para que la nave quede encima. Se abre hacia abajo y se
-     desvanece: el borde duro de un triángulo se lee como un cucurucho. -->
 <defs>
-  <linearGradient id="rayo" x1="60" y1="52" x2="60" y2="136" gradientUnits="userSpaceOnUse">
-    <stop offset="0" stop-color="#7dd3fc" stop-opacity=".85"/>
-    <stop offset=".55" stop-color="#7dd3fc" stop-opacity=".30"/>
-    <stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/>
+  <!-- El arcoíris cruza el rayo a lo ancho: a lo largo no se distinguirían los
+       colores a 46 px, que es el tamaño real en el mapa. -->
+  <linearGradient id="plumas${u}" x1="16" y1="0" x2="104" y2="0" gradientUnits="userSpaceOnUse">${paradas}</linearGradient>
+  <!-- Y el desvanecido hacia abajo va por máscara y no por el degradado del
+       color: así el arcoíris no se apaga hacia un lado, se apaga hacia el
+       suelo, que es donde termina un rayo. -->
+  <linearGradient id="fundido${u}" x1="0" y1="52" x2="0" y2="136" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#fff" stop-opacity="1"/>
+    <stop offset=".5" stop-color="#fff" stop-opacity=".55"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <mask id="rayo${u}"><rect x="0" y="40" width="120" height="100" fill="url(#fundido${u})"/></mask>
+  <!-- La cúpula: de verde perico a celeste cotorra. -->
+  <linearGradient id="cupula${u}" x1="32" y1="38" x2="88" y2="14" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#bef264"/>
+    <stop offset="1" stop-color="#67e8f9"/>
   </linearGradient>
 </defs>
-<path d="M44 54 L76 54 L104 134 L16 134 Z" fill="url(#rayo)"/>
+<!-- El rayo primero, para que la nave quede encima. -->
+<g mask="url(#rayo${u})">
+  <path d="M44 54 L76 54 L104 134 L16 134 Z" fill="url(#plumas${u})"/>
+  ${motas}
+</g>
 <!-- El casco: una elipse achatada. Lo que lo hace nave y no sombrero son las
      luces de abajo y la cúpula. -->
 <ellipse cx="60" cy="48" rx="54" ry="17" fill="#94a3b8"/>
 <ellipse cx="60" cy="44" rx="54" ry="15" fill="#cbd5e1"/>
+<!-- Una línea de luz verde abajo del casco: es lo que ata la nave gris al
+     resto de la paleta sin convertirla en un juguete de colores. -->
+<path d="M12 50 A54 17 0 0 0 108 50" stroke="#a3e635" stroke-width="2.5" stroke-linecap="round" fill="none" opacity=".8"/>
 <!-- La cúpula, con su brillo. -->
-<path d="M32 38 A28 26 0 0 1 88 38 Z" fill="#67e8f9" opacity=".9"/>
+<path d="M32 38 A28 26 0 0 1 88 38 Z" fill="url(#cupula${u})" opacity=".95"/>
 <path d="M40 36 A20 18 0 0 1 60 20" stroke="#ecfeff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".85"/>
-<!-- Las tres luces. -->
-<circle cx="30" cy="52" r="5.5" fill="#fde047"/>
-<circle cx="60" cy="55" r="5.5" fill="#f472b6"/>
-<circle cx="90" cy="52" r="5.5" fill="#7dd3fc"/>
+${luces}
 </svg>`;
 }
 
