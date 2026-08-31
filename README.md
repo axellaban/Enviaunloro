@@ -965,6 +965,32 @@ Los vuelos de Doña Cotorra no entran: es una vecina de práctica, y hacerla pas
 por gente sería inflar el mapa con vuelos que no existen. Cuando no hay nadie
 volando, lo dice.
 
+### Y los tuyos tampoco: "del resto" quiere decir del resto
+
+Un rato **sí entraban**, y se veía roto. La vista dibujaba tu propio arco
+corrido 25 km —el mismo corrimiento que se le aplica a un desconocido— justo al
+lado de tu nido, que ahí mismo se dibuja **exacto**, porque tu nido es tu dato.
+Resultado: tu ave saliendo de un lugar donde no estás, a veinte kilómetros de tu
+propio nido. Parecía un error y era uno.
+
+El corrimiento existe para que **no te ubiquen los demás**. Contra vos mismo no
+protege de nada: ya sabés dónde vivís. Lo único que hacía era mentirte en tu
+propio mapa.
+
+Ahora se filtran, y con dos cuidados que la prueba deja escritos:
+
+- **Las dos puntas cuentan**, no solo quien lo mandó. El arco muestra las dos,
+  así que un ave que viene hacia vos también es tuya y tampoco aparece acá.
+- **El filtro es por persona; la foto, compartida.** `/api/mundo` es el endpoint
+  más caro y su respuesta se cachea tres segundos para todos. Si el filtro se
+  hiciera al armar la foto, sacarla de tu vista la sacaría también de la de los
+  demás. La foto se guarda con los ids de las dos puntas al lado —que **no**
+  salen nunca— y la resta se hace al responder.
+
+Por eso los dos contadores no coinciden, y está bien: **"8 en el aire"** son tus
+aves (las que van, las que vuelven y las que esperan en la cervecería) y
+**"7 cruzando el mundo"** son las de los demás.
+
 ## La bandada que se perdió (y cómo vuelve)
 
 El arreglo de la fila de arriba trajo el peor bug de todo el proyecto, y queda

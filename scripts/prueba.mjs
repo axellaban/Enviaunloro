@@ -1197,6 +1197,33 @@ chequear(
   "el punto del mundo y el de la bandada son distintos (semillas separadas)"
 );
 
+// "Del resto" quiere decir DEL RESTO: tus vuelos no están ahí.
+//
+// Estaban, y se veía roto: el mapa dibujaba tu propio arco corrido 25 km —el
+// mismo corrimiento que se le aplica a un desconocido— al lado de tu nido, que
+// ahí mismo se dibuja exacto. Tu ave salía de un lugar donde no estás. Ese
+// corrimiento existe para que no te ubiquen LOS DEMÁS; contra vos no protege
+// de nada y solo confunde.
+//
+// Las dos puntas cuentan, no solo quien lo mandó: el arco muestra las dos, así
+// que también es de quien lo recibe.
+const anaEnElMundo = await ana.llamar("/api/mundo");
+chequear(
+  !anaEnElMundo.vuelos.some((v) => v.ave === "guacamayo"),
+  "tus propios vuelos NO están en «Del resto»"
+);
+const betoEnElMundo = await beto.llamar("/api/mundo");
+chequear(
+  !betoEnElMundo.vuelos.some((v) => v.ave === "guacamayo"),
+  "ni los que vienen hacia vos: el arco también es tuyo"
+);
+// Y sacarlos de la vista de uno no puede sacarlos de la de los demás: la foto
+// es una sola y compartida, así que el filtro tiene que ser por persona.
+chequear(
+  (await carla.llamar("/api/mundo")).vuelos.some((v) => v.ave === "guacamayo"),
+  "pero una desconocida los sigue viendo (la caché se comparte, el filtro no)"
+);
+
 // Apagar el interruptor saca TODOS tus vuelos, no solo los próximos.
 await ana.llamar("/api/nido", { nombre: "Ana", publico: false });
 const despues = await carla.llamar("/api/mundo");

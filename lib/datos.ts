@@ -839,14 +839,25 @@ export async function enElAire(ahora: number): Promise<Loro[]> {
  * interruptor.
  */
 const CACHE_MUNDO_MS = 3000;
-let cacheMundo: { hasta: number; cuerpo: string } | null = null;
 
-export function mundoCacheado(ahora: number): unknown | null {
-  return cacheMundo && ahora < cacheMundo.hasta ? JSON.parse(cacheMundo.cuerpo) : null;
+/**
+ * Un vuelo en la foto del mundo, con las dos puntas SIN anonimizar al lado.
+ *
+ * Los dos ids no salen nunca hacia afuera: existen para que cada quien pueda
+ * sacar sus propios vuelos de su vista del mundo. La foto se calcula una sola
+ * vez para todos —es el endpoint más caro— y la respuesta se arma por persona
+ * a partir de ella, que es más barato que calcular una foto por cabeza.
+ */
+export type EnLaFoto = { de: string; para: string; vista: unknown };
+let cacheMundo: { hasta: number; ahora: number; cuerpo: string } | null = null;
+
+export function mundoCacheado(ahora: number): { ahora: number; vuelos: EnLaFoto[] } | null {
+  if (!cacheMundo || ahora >= cacheMundo.hasta) return null;
+  return { ahora: cacheMundo.ahora, vuelos: JSON.parse(cacheMundo.cuerpo) };
 }
 
-export function guardarMundo(cuerpo: unknown, ahora: number): void {
-  cacheMundo = { hasta: ahora + CACHE_MUNDO_MS, cuerpo: JSON.stringify(cuerpo) };
+export function guardarMundo(vuelos: EnLaFoto[], ahora: number): void {
+  cacheMundo = { hasta: ahora + CACHE_MUNDO_MS, ahora, cuerpo: JSON.stringify(vuelos) };
 }
 
 /** Alguien cambió si aparece o no. La foto vieja ya no sirve. */
