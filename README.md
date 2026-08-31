@@ -192,10 +192,30 @@ distintas: **la app sabe dónde estás; tus contactos, no.**
   cierto aunque el dibujo sea aproximado.
 - Tu propio nido lo ves exacto. Es tu dato.
 
+### El nido no sigue al teléfono
+
+**El ave sale del nido, siempre.** No de donde estás: del punto que la persona
+puso, a propósito, una vez.
+
+Un rato esto no fue así, y vale contarlo porque el error es fácil de repetir.
+Al abrir la app un efecto leía el GPS y, si te habías movido más de 300 m,
+**mudaba tu nido solo**. La intención era buena —que el ave salga de donde
+estás— y el resultado era exactamente lo contrario de lo que esta sección
+promete: el nido pasaba a ser un rastreador. El trabajo, el bar, la casa de
+alguien; cada vez que abrías la app, tu bandada veía el punto nuevo.
+
+Y los corrimientos de arriba **no alcanzaban a tapar eso**. Correr un punto
+300 m esconde en qué casa vivís; no esconde que hoy estás en otro barrio, y
+menos si el punto se muda cada vez que abrís la app. Un dato de ubicación que
+se toma de fondo, repetido, es de otra naturaleza que uno que se da una vez.
+
+Hoy el nido se mueve de una sola manera: **"Mudar el nido"**, en la pestaña
+Nido, tocando el mapa. Un acto deliberado, con la mano.
+
 Lo que esto no cubre, dicho derecho: el desvío es constante, así que si te
-mudás de ciudad, quien te tenga agregado ve que te moviste (a una zona
-equivocada, pero se nota el movimiento). Para un MVP donde solo te ve gente a
-la que le diste tu código, es el canje razonable.
+mudás de ciudad —y mudás el nido a propósito—, quien te tenga agregado ve que
+te moviste (a una zona equivocada, pero se nota el movimiento). Para un MVP
+donde solo te ve gente a la que le diste tu código, es el canje razonable.
 
 ## Cómo se usa
 

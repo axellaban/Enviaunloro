@@ -35,12 +35,11 @@ import {
   llaveDeConvite,
   marcarAvesEnElAire,
   pedir,
-  pedirUbicacion,
   sincronizarAvisos,
   useEstado,
   useMundo,
 } from "../../lib/cliente";
-import { distanciaKm, formatearDuracion } from "../../lib/geo";
+import { formatearDuracion } from "../../lib/geo";
 import { AVES, type AveId } from "../../lib/aves";
 import type { LoroVista } from "../../lib/vista";
 
@@ -379,30 +378,22 @@ export default function Nido() {
     })();
   }, [est.yo, est, mostrarAviso, enfocar]);
 
-  // El nido sigue al dispositivo: si te moviste más de 300 m, el próximo vuelo
-  // sale desde donde estás ahora y no desde donde estabas cuando te registraste.
-  const yoId = est.yo?.id;
-  const yoLat = est.yo?.lat;
-  const yoLng = est.yo?.lng;
-  const refrescar = est.refrescar;
-  useEffect(() => {
-    if (!yoId || yoLat === undefined || yoLng === undefined) return;
-    let cancelado = false;
-    (async () => {
-      const r = await pedirUbicacion();
-      if (!r.ok || cancelado) return;
-      if (distanciaKm({ lat: yoLat, lng: yoLng }, r.punto) < 0.3) return;
-      try {
-        await pedir("/api/ubicacion", { datos: r.punto });
-        refrescar();
-      } catch {}
-    })();
-    return () => {
-      cancelado = true;
-    };
-    // Solo al entrar: pedir el GPS en cada consulta sería un abuso de batería.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [yoId]);
+  // EL NIDO NO SIGUE AL TELÉFONO, y esto antes no era así.
+  //
+  // Acá vivía un efecto que al abrir la app leía el GPS y, si te habías movido
+  // más de 300 m, MUDABA tu nido solo. La intención era buena —que el ave salga
+  // de donde estás— y el resultado era el contrario de lo que esta app promete:
+  // tu nido terminaba siendo un rastreador. El trabajo, el bar, la casa de
+  // alguien; cada vez que abrías la app, tu bandada veía el punto nuevo.
+  //
+  // Los corrimientos de privacidad no alcanzaban a tapar eso. Correr un punto
+  // 300 m esconde en qué casa vivís; no esconde que hoy estás en otro barrio, y
+  // menos si el punto se muda cada vez que abrís la app.
+  //
+  // Ahora el nido es lo que la persona puso, y se queda ahí hasta que ella
+  // decida mudarlo —"Mudar el nido", en la pestaña Nido, tocando el mapa—. El
+  // ave sale del nido, siempre. Es un dato que se da una vez, a propósito, y no
+  // uno que se toma de fondo.
 
   if (est.cargando && !est.yo) {
     return (
