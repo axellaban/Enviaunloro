@@ -1248,23 +1248,64 @@ chequear(
   "pero una desconocida los sigue viendo (la caché se comparte, el filtro no)"
 );
 
+// El que VUELVE también cruza «Del resto».
+//
+// Esto salió de dos capturas: una cuenta con dos aves en el aire y la otra
+// viendo una sola. Faltaba justo la que volvía. La causa era que `enElAire`
+// descartaba el loro en el instante en que aterrizaba la IDA, así que el vuelo
+// de regreso —que la vista de la bandada siempre dibujó— no llegaba nunca al
+// mundo. Un ave que vuelve a su nido es un vuelo tan real como la ida.
+//
+// Va con nidos PROPIOS y no con los de Ana y Beto: a esta altura de la suite
+// esos dos quedaron pegados por las pruebas de mudanza, y con la escala
+// acelerada su vuelo de vuelta dura milisegundos. Afirmar algo sobre un vuelo
+// más corto que un viaje al servidor es la trampa que ya nos comimos dos veces
+// —el desvío del perico y el olvido de la cotorra—. Trescientos kilómetros y
+// un perico dan veinte segundos de aire a cada pata, que alcanzan y sobran.
+{
+  const ida = cliente("Ida");
+  const vuelve = cliente("Vuelve");
+  const unIda = await ida.llamar("/api/nido", { nombre: "Ida", lat: -34.60, lng: -58.38 });
+  const unVuelve = await vuelve.llamar("/api/nido", { nombre: "Vuelve", lat: -32.95, lng: -60.64 });
+  await vuelve.llamar("/api/amigos", { codigo: unIda.codigo });
+
+  const suyo = (
+    await ida.llamar("/api/loros", { para: unVuelve.yo.id, ave: "perico", texto: "y volvé" })
+  ).loro;
+  const enAire = Math.round((suyo.llegada - suyo.salida) / 1000);
+  console.log(`  el que vuelve: ${enAire} s de ida, otros tantos de vuelta…`);
+  await new Promise((r) => setTimeout(r, suyo.llegada - Date.now() + 1500));
+  await vuelve.llamar("/api/loros/suerte", { id: suyo.id, suerte: "soltado", texto: "voy" });
+
+  // La foto del mundo se comparte tres segundos, así que la primera consulta
+  // puede traer una anterior a la suelta. Se reintenta hasta que caduque.
+  let loVe = false;
+  for (let i = 0; i < 6 && !loVe; i++) {
+    loVe = (await carla.llamar("/api/mundo")).vuelos.some((v) => v.ave === "perico");
+    if (!loVe) await new Promise((r) => setTimeout(r, 800));
+  }
+  chequear(loVe, "el que vuelve también cruza «Del resto», no solo la ida");
+}
+
 // Apagar el interruptor saca TODOS tus vuelos, no solo los próximos.
+//
+// Se mira SI ESTÁ EL GUACAMAYO DE ANA, no cuántos vuelos hay en total. Antes
+// esto comparaba el conteo global contra una foto tomada unas líneas más
+// arriba, y ese número lo mueve cualquier cosa: un ave que aterriza en el
+// medio, otra que despega, una prueba nueva al lado. La pregunta de verdad es
+// si los vuelos de Ana están o no están.
+const veElDeAna = async () =>
+  (await carla.llamar("/api/mundo")).vuelos.some((v) => v.ave === "guacamayo");
+
 await ana.llamar("/api/nido", { nombre: "Ana", publico: false });
-const despues = await carla.llamar("/api/mundo");
-chequear(
-  despues.vuelos.length < carlaVe.vuelos.length,
-  `apagando «Del resto» los vuelos de Ana desaparecen (${carlaVe.vuelos.length} → ${despues.vuelos.length})`
-);
+chequear(!(await veElDeAna()), "apagando «Del resto» los vuelos de Ana desaparecen");
 await ana.llamar("/api/nido", { nombre: "Ana", publico: true });
-chequear(
-  (await carla.llamar("/api/mundo")).vuelos.length === carlaVe.vuelos.length,
-  "y volviéndolo a prender, vuelven"
-);
+chequear(await veElDeAna(), "y volviéndolo a prender, vuelven");
 // Guardar el nombre no puede volver a prenderlo solo.
 await ana.llamar("/api/nido", { nombre: "Ana", publico: false });
 await ana.llamar("/api/nido", { nombre: "Ana Laura" });
 chequear(
-  (await carla.llamar("/api/mundo")).vuelos.length < carlaVe.vuelos.length,
+  !(await veElDeAna()),
   "y editar el nombre no te vuelve a meter en el mapa sin querer"
 );
 await ana.llamar("/api/nido", { nombre: "Ana", publico: true });
@@ -1304,6 +1345,7 @@ try {
   chequear(enBeto.suerte === "soltado", "Beto lo soltó con una respuesta");
   chequear(enBeto.respuesta === RESPUESTA, "y ve lo que escribió, desde el momento cero");
   chequear(!!enBeto.vuelta, "el ave sale de vuelta y se puede dibujar en el mapa");
+
 
   // Lo que importa: mientras vuelve, el texto NO está del lado de Ana.
   const volando = (await ana.llamar("/api/estado")).loros.find((l) => l.id === ida.id);

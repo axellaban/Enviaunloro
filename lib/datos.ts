@@ -843,9 +843,21 @@ export async function enElAire(ahora: number): Promise<Loro[]> {
     if (!c) continue;
     try {
       const l = JSON.parse(c) as Loro;
-      // Ya llegó, o se perdió por el camino: en los dos casos no está en el aire.
-      if (ahora >= l.llegada) continue;
-      if (l.extravio !== null && ahora >= l.extravio) continue;
+      // LAS DOS PATAS, y esto antes no era así.
+      //
+      // Acá decía `if (ahora >= l.llegada) continue`, o sea que el loro se caía
+      // del mundo en el instante en que aterrizaba la IDA. Pero si del otro
+      // lado lo sueltan, ese mismo bicho arranca un segundo vuelo de regreso
+      // que en la vista de la bandada se dibuja —lib/tramos.ts siempre lo
+      // dibujó— y en "Del resto" no aparecía nunca. El síntoma era una cuenta
+      // que no cerraba: alguien con dos aves en el aire, y del otro lado una.
+      const perdida = l.extravio !== null && ahora >= l.extravio;
+      // Un ave que se llevó una nave no está en el aire aunque su hora de
+      // llegada siga por venir: esa hora ya no va a pasar.
+      const abducida = l.abducido != null;
+      const ida = !perdida && !abducida && ahora < l.llegada;
+      const vuelta = !abducida && l.suerte === "soltado" && l.regreso != null && ahora < l.regreso;
+      if (!ida && !vuelta) continue;
       lista.push(l);
     } catch {}
   }

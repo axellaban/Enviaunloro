@@ -351,19 +351,57 @@ function redondear(km: number): number {
   return Math.round(km / 100) * 100;
 }
 
-export function verVueloMundial(l: Loro, ahora: number): VueloMundo {
-  const desvio = l.desvio ?? null;
-  return {
-    id: createHash("sha256").update(`vuelo:${l.id}`).digest("hex").slice(0, 12),
-    ave: l.ave,
-    origen: zonaMundial(l.origen, l.de),
-    destino: zonaMundial(l.destino, l.para),
-    distanciaKm: redondear(l.distanciaKm),
-    salida: l.salida,
-    llegada: l.llegada,
-    // Misma regla que en la bandada: el desvío no viaja hasta que pasa.
-    desvio: desvio && ahora >= desvio.desde ? desvio : null,
-  };
+/**
+ * Un loro visto desde el mundo: hasta DOS vuelos, la ida y la vuelta.
+ *
+ * Devolvía uno solo —la ida— y por eso las aves que volvían a su nido no
+ * existían en "Del resto". Son dos vuelos distintos, con horarios distintos y
+ * en direcciones opuestas, exactamente como los trata lib/tramos.ts para la
+ * vista de la bandada; la diferencia era que del lado del mundo la vuelta no
+ * llegaba a salir del servidor.
+ *
+ * Cada pata lleva su propio hash: el mapa las indexa por id y con el mismo
+ * las dos se pisarían la capa.
+ */
+export function vuelosMundiales(l: Loro, ahora: number): VueloMundo[] {
+  const salida: VueloMundo[] = [];
+  const perdida = l.extravio !== null && ahora >= l.extravio;
+  const abducida = l.abducido != null;
+  const hash = (que: string) =>
+    createHash("sha256").update(`${que}:${l.id}`).digest("hex").slice(0, 12);
+
+  if (!perdida && !abducida && ahora < l.llegada) {
+    const desvio = l.desvio ?? null;
+    salida.push({
+      id: hash("vuelo"),
+      ave: l.ave,
+      origen: zonaMundial(l.origen, l.de),
+      destino: zonaMundial(l.destino, l.para),
+      distanciaKm: redondear(l.distanciaKm),
+      salida: l.salida,
+      llegada: l.llegada,
+      // Misma regla que en la bandada: el desvío no viaja hasta que pasa.
+      desvio: desvio && ahora >= desvio.desde ? desvio : null,
+    });
+  }
+
+  // La vuelta va al revés y sin desvío: el perico ya gastó su romance en la
+  // ida, y de todas formas ahora vuelve sin mensaje que retocar. Las puntas se
+  // corren con la misma semilla de siempre —la del nido de cada punta— así que
+  // la ida y la vuelta del mismo bicho salen del mismo par de puntos corridos.
+  if (!abducida && l.suerte === "soltado" && l.suerteEn && l.regreso && ahora < l.regreso) {
+    salida.push({
+      id: hash("vuelta"),
+      ave: l.ave,
+      origen: zonaMundial(l.destino, l.para),
+      destino: zonaMundial(l.origen, l.de),
+      distanciaKm: redondear(l.distanciaKm),
+      salida: l.suerteEn,
+      llegada: l.regreso,
+      desvio: null,
+    });
+  }
+  return salida;
 }
 
 /**

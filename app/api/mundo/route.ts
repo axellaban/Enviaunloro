@@ -3,7 +3,7 @@
 // Es el respaldo de la pestaña "Del resto". Devuelve vuelos anónimos: especie,
 // horarios y las dos puntas corridas 25 km, sin nombres, sin ids de nido y sin
 // una sola letra del mensaje. Las reglas de qué sale y qué no viven en
-// lib/vista.ts (`verVueloMundial`), igual que las de la bandada.
+// lib/vista.ts (`vuelosMundiales`), igual que las de la bandada.
 //
 // Y "del resto" quiere decir del resto: los vuelos de quien pregunta NO salen
 // acá. Los tuyos ya los ves en la otra pestaña, exactos; repetirlos acá
@@ -16,7 +16,7 @@
 
 import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
 import { enElAire, guardarMundo, mundoCacheado, nidos, type EnLaFoto } from "../../../lib/datos";
-import { apareceEnElMundo, verVueloMundial } from "../../../lib/vista";
+import { apareceEnElMundo, vuelosMundiales } from "../../../lib/vista";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +50,12 @@ export async function GET(req: Request) {
       // Las dos puntas tienen que aceptar: el arco muestra las dos.
       if (!apareceEnElMundo(puntas.get(l.de))) continue;
       if (!apareceEnElMundo(puntas.get(l.para))) continue;
-      enLaFoto.push({ de: l.de, para: l.para, vista: verVueloMundial(l, ahora) });
+      // Hasta DOS por loro: la ida y, si del otro lado lo soltaron, la vuelta.
+      // Un ave que vuelve a su nido es un vuelo tan real como la ida, y hasta
+      // hace poco no aparecía acá.
+      for (const vista of vuelosMundiales(l, ahora)) {
+        enLaFoto.push({ de: l.de, para: l.para, vista });
+      }
       if (enLaFoto.length >= MAXIMO) break;
     }
     guardarMundo(enLaFoto, ahora);

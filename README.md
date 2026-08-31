@@ -1092,6 +1092,38 @@ Por eso los dos contadores no coinciden, y está bien: **"8 en el aire"** son tu
 aves (las que van, las que vuelven y las que esperan en la cervecería) y
 **"7 cruzando el mundo"** son las de los demás.
 
+### Las que vuelven también cruzan el mundo
+
+Esto salió de dos capturas de dos cuentas distintas: una con dos aves en el
+aire y la otra viendo una sola. Faltaba justo **la que volvía**.
+
+`enElAire` descartaba el loro en el instante en que aterrizaba la **ida**
+(`if (ahora >= l.llegada) continue`). Pero si del otro lado lo sueltan, ese
+mismo bicho arranca un segundo vuelo de regreso que
+[`lib/tramos.ts`](lib/tramos.ts) siempre dibujó para la bandada — y que en «Del
+resto» no aparecía nunca. Un ave que vuelve a su nido es un vuelo tan real como
+la ida.
+
+Ahora `vuelosMundiales` devuelve **hasta dos** por loro, cada uno con su propio
+hash: el mapa los indexa por id y con el mismo se pisarían la capa. La vuelta va
+al revés y sin desvío, igual que en la vista de la bandada.
+
+De paso apareció otro: `enElAire` **no miraba `abducido`**, así que un ave que
+se llevó una nave seguía volando en «Del resto» hasta una hora de llegada que ya
+no iba a pasar nunca.
+
+**Y una lección sobre la prueba, que costó tres intentos.** La primera versión
+la puse al lado del test del ave que vuelve, y falló: a esa altura de la suite
+los nidos de Ana y Beto quedaron pegados por las pruebas de mudanza, así que con
+la escala acelerada su vuelo de regreso dura **milisegundos**. Afirmar algo
+sobre un vuelo más corto que un viaje al servidor es la misma trampa que ya nos
+comimos con el desvío del perico y el olvido de la cotorra. La prueba usa nidos
+propios a 300 km, que dan veinte segundos de aire a cada pata. Y de paso hubo
+que arreglar a un vecino que comparaba **conteos globales** del mundo contra una
+foto vieja: ese número lo mueve cualquier cosa —un ave que aterriza, una prueba
+nueva al lado—, así que ahora mira si está el guacamayo de Ana, que es la
+pregunta de verdad.
+
 ## La bandada que se perdió (y cómo vuelve)
 
 El arreglo de la fila de arriba trajo el peor bug de todo el proyecto, y queda
