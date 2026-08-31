@@ -499,7 +499,29 @@ export default function Nido() {
         )}
 
         {/* left: 56 y no 12 — el control de zoom de Leaflet vive en la esquina. */}
-        <VistaMapa vista={vista} alCambiar={setVista} />
+        <VistaMapa
+          vista={vista}
+          alCambiar={(v) => {
+            setVista(v);
+            // La PRIMERA vez que alguien entra a «Del resto», se le dice por
+            // qué los puntos no coinciden con los de su bandada.
+            //
+            // Sin esto parece un bug, y es exactamente lo contrario: acá los
+            // vuelos vienen corridos hasta 25 km y en la bandada hasta 300 m,
+            // con semillas distintas a propósito. Un mismo nido cae en dos
+            // lugares a veinte kilómetros uno del otro y no hay nada en
+            // pantalla que lo explique. Una vez en la vida y no más: es una
+            // aclaración, no una advertencia.
+            if (v !== "resto") return;
+            try {
+              if (localStorage.getItem("loros:mundo-explicado")) return;
+              localStorage.setItem("loros:mundo-explicado", "1");
+              mostrarAviso(
+                "🌎 Acá nadie ve dónde vive nadie: los vuelos se dibujan hasta 25 km corridos de donde salieron de verdad."
+              );
+            } catch {}
+          }}
+        />
 
         {/* La cuenta de lo que hay en pantalla. Abajo y no arriba: arriba ya
             están el zoom, el interruptor, la brújula y "Mi nido", y en 390 px

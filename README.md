@@ -189,7 +189,8 @@ distintas: **la app sabe dónde estás; tus contactos, no.**
   nunca una dirección.
 - **La distancia y el tiempo de vuelo sí son exactos**: se calculan en el
   servidor con los puntos reales y viajan ya resueltos, así que el "205 km" es
-  cierto aunque el dibujo sea aproximado.
+  cierto aunque el dibujo sea aproximado. Medido: un vuelo de 654,6 km reales se
+  muestra como 654,57 km con las dos puntas corridas.
 - Tu propio nido lo ves exacto. Es tu dato.
 
 ### El nido no sigue al teléfono
@@ -1046,7 +1047,7 @@ bandada no alcanzan y hay otras:
 | Tu nombre | sí | **no** |
 | El id de tu nido | sí | **no** |
 | El mensaje | solo al aterrizar, y solo a quien va dirigido | **nunca** |
-| Nidos dibujados | sí, con su círculo | **ninguno** |
+| Nidos dibujados | sí, con su círculo | **ninguno ajeno**; el tuyo sí, para no perder de vista dónde estás parado |
 
 Tres detalles que no son obvios:
 
@@ -1054,6 +1055,17 @@ Tres detalles que no son obvios:
   [`lib/privacidad.ts`](lib/privacidad.ts)). Con la misma, alguien de tu bandada
   —que ya te ve corrido 300 m— podría cruzar las dos vistas y despejar el rumbo
   del desvío, que es la mitad del secreto.
+
+  El efecto visible de eso es que **el mismo nido cae en dos lugares muy
+  distintos** según la vista, y no es poco: medido, 228 m en la bandada y
+  22,16 km en el mundo, o sea 22 km entre uno y otro. Parece un error y es la
+  función andando. Que las semillas sean distintas es justamente lo que impide
+  que las dos vistas se crucen: con la misma, restar una de la otra daría el
+  rumbo exacto hacia el punto real.
+
+  Como en pantalla no había nada que lo dijera, la primera vez que alguien entra
+  a «Del resto» se lo explica un cartelito, una vez en la vida
+  (`loros:mundo-explicado`).
 - **No se dibuja ningún nido**, ni siquiera un punto tenue. Los 25 km son toda
   la protección: poner un pin sobre una coordenada corrida al azar aparenta una
   precisión que no existe.
