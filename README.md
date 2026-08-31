@@ -138,8 +138,9 @@ piden API key. Todas las variables opcionales están en
 [`.env.example`](.env.example).
 
 ```bash
-npm run typecheck   # tsc --noEmit
-npm run prueba      # prueba de punta a punta contra la API (con el server corriendo)
+npm run typecheck        # tsc --noEmit
+npm run prueba           # de punta a punta contra la API (con el server corriendo)
+npm run prueba:navegador # reconocer el navegador de WhatsApp. Pura, sin servidor
 ```
 
 ## El 0,2%
@@ -847,6 +848,41 @@ Lo que el login realmente resuelve en estas apps son dos cosas:
    (`/entrar?llave=…`) que abrís en el otro dispositivo y te deja el nido ahí,
    con su código, su bandada y su historial. Está en el panel, bajo tu código.
 
+### El nido que se pierde adentro de WhatsApp
+
+La llave tapaba un agujero real y tenía uno propio: **había que sacarla antes de
+necesitarla**, y vivía en una pestaña del panel que nadie visita el primer día.
+Eso convierte un problema de "se me perdió" en uno de "no había forma de saber".
+
+Y hay un lugar donde pasa casi siempre, no de vez en cuando. **WhatsApp no abre
+los links en Chrome ni en Safari: abre un navegador propio, adentro de WhatsApp,
+con su propio frasco de cookies.** El link de un lorito llega por WhatsApp, así
+que el camino más común de toda la app —te llega un convite, lo abrís, armás tu
+nido— termina adentro de ese navegador. Después la persona entra desde Chrome y
+no tiene nido: el suyo sigue existiendo en el servidor, con su código, su bandada
+y sus loros, del otro lado de una puerta sin picaporte.
+
+Así que ahora la app se da cuenta de dónde está parada
+([`lib/navegador.ts`](lib/navegador.ts)) y ofrece la llave **ahí**, que es el
+único momento en que se entiende para qué sirve. No hay mecanismo nuevo: es la
+misma llave de siempre, en otro momento. Y **comparte en vez de copiar** donde se
+pueda — en el navegador de una app, el portapapeles es un lugar del que la llave
+puede no salir nunca; el menú de compartir la manda afuera, que es lo único que
+sirve.
+
+Es la única pantalla de la app que habla de algo que todavía no pasó, así que se
+porta como tal: no bloquea, no es una alarma, y se va y no vuelve.
+
+Reconocer el navegador por su user agent es una heurística y no una verdad, y
+tiene un caso que no se puede ver: el `SFSafariViewController` de iOS firma
+idéntico a Safari. Por eso lo que se ofrece es siempre lo mismo que ya está en el
+panel — si la detección falla, se pierde un aviso, nunca una funcionalidad. Los
+dos errores posibles se prueban en `npm run prueba:navegador`, con user agents de
+verdad, y el caso que más cuida es el que no es ninguno de los dos: **la app
+instalada en un iPhone tiene el mismo user agent pelado que el navegador de
+WhatsApp**, así que sin mirar `standalone` la app instalada —justo la que mejor
+guarda el nido— sería la que más avisa.
+
 El canje, dicho sin vueltas: la llave **es** el nido, así que quien la tenga
 entra. La interfaz lo dice con esas palabras al copiarla. Un login con Google
 evita ese riesgo y a cambio pone una pantalla de registro antes de que la
@@ -882,6 +918,8 @@ lib/vista.ts      qué ve el navegador. Acá se decide qué NO viaja: ni el text
 lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
                   mapa del mundo, con semillas separadas.
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
+lib/navegador.ts  si estamos adentro del navegador de otra app, donde el nido
+                  se pierde al salir. Pura, y con prueba propia.
 lib/colorNido.ts  un color por persona, estable y sin choques en tu bandada.
 lib/tema.ts       los dos temas. Lo que no es CSS: aves, mapa, papelitos.
 lib/push.ts       los avisos con la app cerrada: VAPID, suscripciones, envío.
@@ -904,6 +942,7 @@ components/Trayectoria.tsx   el arco de la portada: sale, entrega, vuelve.
 components/Onboarding.tsx  los tres pasos para tener nido.
 components/Ave.tsx         las seis aves dibujadas, una pose y seis siluetas.
 components/Fiesta.tsx      las tres ceremonias a pantalla completa.
+components/GuardarNido.tsx la llave, ofrecida adentro del navegador de otra app.
 ```
 
 Las seis aves son SVG escritos a mano en

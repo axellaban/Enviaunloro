@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "prueba": "node scripts/prueba.mjs",
     "vapid": "node scripts/vapid.mjs",
-    "prueba:caducidad": "node scripts/caducidad.mjs"
+    "prueba:caducidad": "node scripts/caducidad.mjs",
+    "prueba:navegador": "node scripts/navegador.mjs"
   },
   "dependencies": {
     "leaflet": "1.9.4",

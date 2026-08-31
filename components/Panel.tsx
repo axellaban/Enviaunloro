@@ -21,6 +21,7 @@ import type { Suerte } from "../lib/datos";
 import type { ConviteVista, LoroVista, NidoVista } from "../lib/vista";
 import { borrachera, ciudadDe, loQueEstaHaciendo } from "../lib/cerveceria";
 import { compartirConvite } from "./Convite";
+import { GuardarNido } from "./GuardarNido";
 import { Ave, Pollera } from "./Ave";
 import { Fiesta, type Motivo } from "./Fiesta";
 import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
@@ -164,6 +165,11 @@ export function Panel(p: Props) {
       <div className="scroll" style={{ flex: 1, minHeight: 0, padding: "0 12px 74px" }}>
         {pestaña === "vuelo" && (
           <>
+            {/* Primero de todo, y solo cuando la app corre adentro del
+                navegador de otra app: es lo único de este panel que se puede
+                volver imposible de hacer si se posterga. Se va solo y no
+                vuelve. */}
+            <GuardarNido />
             {soloLaVecina && <TraeAAlguien codigo={p.codigo} hayVuelo={enVuelo.length > 0} />}
             {p.convites.map((c) => (
               <TarjetaConvite
@@ -1860,9 +1866,19 @@ function MiNido({
         </button>
       </div>
 
-      {/* --- llave --- */}
+      {/* --- llave ---
+          El encabezado decía "Otro dispositivo" y nada más, así que quien no
+          sabía ya lo que era la llave no tenía por qué tocar el botón. Y es la
+          única cosa del panel que se vuelve imposible de hacer si se posterga:
+          se saca mientras se tiene el nido, no cuando ya se perdió. Un renglón
+          de por qué convierte un botón misterioso en algo que se hace. */}
       <div className="tarjeta" style={{ marginBottom: 12 }}>
-        <p className="etiqueta">Otro dispositivo</p>
+        <p className="etiqueta">Llevarte el nido</p>
+        <p style={{ fontSize: 12.5, color: "var(--suave)", marginTop: 9, lineHeight: 1.5 }}>
+          No hay cuenta ni contraseña: este nido vive en <em>este</em> navegador.
+          La llave es la forma de abrirlo en otro —la compu, un teléfono nuevo,
+          Chrome si entraste desde WhatsApp—. Guardala mientras podés.
+        </p>
         <button
           className="boton fantasma chico"
           style={{ width: "100%", marginTop: 10 }}
