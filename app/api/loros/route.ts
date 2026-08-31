@@ -1,7 +1,7 @@
 // Soltar un loro.
 
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../lib/api";
-import { aveValida, enviarLoro, idsAmigos, nido } from "../../../lib/datos";
+import { avesEnElAire, aveValida, enviarLoro, idsAmigos, nido } from "../../../lib/datos";
 import { verLoro } from "../../../lib/vista";
 import { empujarUnaVez } from "../../../lib/push";
 import { avisoDespegue } from "../../../lib/avisos";
@@ -55,13 +55,16 @@ export async function POST(req: Request) {
   void empujarUnaVez(
     para.id,
     `despegue:${r.loro.id}`,
-    avisoDespegue({
-      idLoro: r.loro.id,
-      quien: yo.nombre,
-      ave: r.loro.ave,
-      pollera: Boolean(r.loro.pollera),
-      falta: Math.max(0, r.loro.llegada - Date.now()),
-    })
+    {
+      ...avisoDespegue({
+        idLoro: r.loro.id,
+        quien: yo.nombre,
+        ave: r.loro.ave,
+        pollera: Boolean(r.loro.pollera),
+        falta: Math.max(0, r.loro.llegada - Date.now()),
+      }),
+      insignia: await avesEnElAire(para.id, Date.now()),
+    }
   ).catch(() => {});
 
   const nidos = new Map<string, Nido>([

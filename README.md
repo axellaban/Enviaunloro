@@ -300,6 +300,28 @@ Anda en la app instalada, en las dos plataformas, iPhone incluido. En un
 navegador común la API no existe, y eso no es un error: es la mayoría de los
 casos, y por eso está todo envuelto en un `try`.
 
+### El número lo ponen dos, y por eso cuentan igual
+
+Al principio lo ponía **solo la página**, en un efecto sobre la lista de loros.
+O sea: solo con la app abierta. Y las aves aterrizan con el teléfono guardado en
+el bolsillo, que es el noventa y nueve por ciento del tiempo — así que el número
+se quedaba clavado en el último que habías visto. **Un 9 para siempre en un
+ícono donde ya no volaba nada**, hasta que abrieras la app.
+
+Ahora lo pone también el **service worker**, con cada aviso que llega. Que es
+exactamente cuando hace falta: el aviso de aterrizaje y el globito son la misma
+noticia.
+
+Dos decisiones ahí:
+
+- **El servidor manda el TOTAL, no un "restale uno".** Un contador que se
+  corrige solo no se puede desincronizar; uno que suma y resta se desincroniza
+  con el primer aviso que se pierda — y los avisos se pierden.
+- **Los dos lados cuentan lo mismo, y hay una prueba que lo verifica.** Si la
+  página y el servidor contaran distinto, el número saltaría cada vez que abrís
+  la app, que es peor que no tenerlo. `/api/salud` expone la cuenta del
+  servidor (`insignia`) justamente para poder compararla con la de la página.
+
 ## El lorito de convite
 
 Hasta acá había una sola forma de traer gente: compartir tu nido. Un link
@@ -666,6 +688,7 @@ que no haya nada**.
 | ¿Anda **Nominatim**? | Hace una consulta de verdad —las coordenadas del Obelisco— y espera "Buenos Aires, Argentina". Si falla dice por qué: un 403, un timeout, un bloqueo. Sin esto, "vivís en un descampado sin nombre" y "nos bloquearon" se ven los dos como un nido sin lugar. |
 | ¿Están los avisos prendidos? | Si faltan las claves VAPID o el secreto del despertador, lo dice: sin eso nadie se entera de que aterrizó un ave. |
 | ¿El secreto de sesión es largo? | Uno corto se adivina sin conexión, probando contra la cookie propia. |
+| ¿Cuántas aves ves **en el aire**? | Es el número del globito del ícono, tal como lo cuenta el servidor. Está para poder compararlo con el que arma la página: si los dos contaran distinto, el número saltaría cada vez que abrís la app. La prueba lo compara. |
 
 Ninguna de estas preguntas estaba el primer día. Cada una se agregó después de
 que su ausencia costara algo.

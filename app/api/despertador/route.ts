@@ -26,6 +26,7 @@
 import { error, ok } from "../../../lib/api";
 import { formatearDuracion } from "../../../lib/geo";
 import {
+  avesEnElAire,
   idsPendientes,
   loro as leerLoro,
   nido,
@@ -78,13 +79,16 @@ export async function GET(req: Request) {
         (await empujarUnaVez(
           l.de,
           `perdido:${l.id}`,
-          avisoExtravio({
-            idLoro: l.id,
-            quien: para?.nombre || "alguien",
-            ave: l.ave,
-            motivo: l.motivo || "No llegó, y no va a llegar.",
-            mio: true,
-          })
+          {
+            ...avisoExtravio({
+              idLoro: l.id,
+              quien: para?.nombre || "alguien",
+              ave: l.ave,
+              motivo: l.motivo || "No llegó, y no va a llegar.",
+              mio: true,
+            }),
+            insignia: await avesEnElAire(l.de, ahora),
+          }
         ))
       ) {
         avisados++;
@@ -100,7 +104,10 @@ export async function GET(req: Request) {
         (await empujarUnaVez(
           l.para,
           `llegada:${l.id}`,
-          avisoAterrizaje({ idLoro: l.id, quien: de?.nombre || "Alguien", ave: l.ave })
+          {
+            ...avisoAterrizaje({ idLoro: l.id, quien: de?.nombre || "Alguien", ave: l.ave }),
+            insignia: await avesEnElAire(l.para, ahora),
+          }
         ))
       ) {
         avisados++;
@@ -112,12 +119,15 @@ export async function GET(req: Request) {
           await empujarUnaVez(
             l.de,
             `vuelta:${l.id}`,
-            avisoVuelta({
-              idLoro: l.id,
-              quien: para?.nombre || "Alguien",
-              ave: l.ave,
-              conRespuesta: Boolean(l.respuesta),
-            })
+            {
+              ...avisoVuelta({
+                idLoro: l.id,
+                quien: para?.nombre || "Alguien",
+                ave: l.ave,
+                conRespuesta: Boolean(l.respuesta),
+              }),
+              insignia: await avesEnElAire(l.de, ahora),
+            }
           )
         ) {
           avisados++;

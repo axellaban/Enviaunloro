@@ -1197,6 +1197,30 @@ chequear(
   "el punto del mundo y el de la bandada son distintos (semillas separadas)"
 );
 
+// El globito del ícono: el servidor tiene que contar lo MISMO que la página.
+//
+// El número lo pone un efecto de la página cuando la app está abierta, y el
+// service worker cuando está cerrada, con el total que le manda el servidor en
+// cada aviso. Si los dos lados contaran distinto, el número saltaría cada vez
+// que abrís la app — que es peor que no tenerlo.
+//
+// Acá se replica la cuenta de la página sobre /api/estado y se la compara
+// contra la del servidor, que /api/salud expone para poder mirarla.
+{
+  const est = await ana.llamar("/api/estado");
+  const ahoraAna = est.ahora;
+  const comoLaPagina = est.loros.filter(
+    (l) =>
+      (!l.llego && !l.perdido && !l.abducido) ||
+      (l.vuelta && ahoraAna < l.vuelta.llegada)
+  ).length;
+  const salud = await ana.llamar("/api/salud");
+  chequear(
+    salud.insignia === comoLaPagina,
+    `el globito del ícono cuenta igual del lado del servidor y de la página (${salud.insignia})`
+  );
+}
+
 // "Del resto" quiere decir DEL RESTO: tus vuelos no están ahí.
 //
 // Estaban, y se veía roto: el mapa dibujaba tu propio arco corrido 25 km —el

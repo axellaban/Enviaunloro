@@ -79,6 +79,22 @@ export async function suscripcionesDe(idNido: string): Promise<{ crudo: string; 
 }
 
 /**
+ * Lo que viaja adentro de un push. Lo lee public/sw.js.
+ *
+ * `insignia` es el número del globito del ícono, y va en TODOS los avisos a
+ * propósito: así el service worker lo pone al valor correcto en vez de sumarle
+ * o restarle uno. Un contador que se corrige solo no se puede desincronizar;
+ * uno que suma y resta se desincroniza el primer aviso que se pierda.
+ */
+export type Empujon = {
+  titulo: string;
+  cuerpo: string;
+  tag?: string;
+  url?: string;
+  insignia?: number;
+};
+
+/**
  * Le manda un aviso a todos los dispositivos de una persona.
  *
  * Devuelve a cuántos llegó. Las suscripciones muertas —404 o 410, que es lo
@@ -88,7 +104,7 @@ export async function suscripcionesDe(idNido: string): Promise<{ crudo: string; 
  */
 export async function empujar(
   idNido: string,
-  aviso: { titulo: string; cuerpo: string; tag?: string; url?: string }
+  aviso: Empujon
 ): Promise<number> {
   const k = claves();
   if (!k) return 0;
@@ -123,7 +139,7 @@ export async function empujar(
 export async function empujarUnaVez(
   idNido: string,
   motivo: string,
-  aviso: { titulo: string; cuerpo: string; tag?: string; url?: string }
+  aviso: Empujon
 ): Promise<boolean> {
   if (!(await store().reservar(claveTurno("aviso", motivo), 0))) return false;
   await empujar(idNido, aviso);

@@ -52,6 +52,29 @@ self.addEventListener("push", (evento) => {
     datos = { cuerpo: evento.data ? evento.data.text() : "" };
   }
   const titulo = datos.titulo || "Enviaunlorito";
+
+  // EL GLOBITO DEL ÍCONO, y el motivo por el que se pone acá.
+  //
+  // Lo ponía un efecto de la página, o sea SOLO con la app abierta. Las aves
+  // aterrizan con el teléfono guardado, así que el número se quedaba clavado en
+  // el último que habías visto: un 9 para siempre en un ícono donde ya no
+  // volaba nada, hasta que abrieras la app. Acá se actualiza aunque la app esté
+  // cerrada, que es justo cuando hace falta.
+  //
+  // El servidor manda el TOTAL, no un "sumá uno": un contador que se corrige
+  // solo no se puede desincronizar, y uno que suma y resta se desincroniza con
+  // el primer aviso que se pierda. Y cero no es "poné un 0" —un ícono con un 0
+  // encima dice que hay algo— sino sacar el globito.
+  if (typeof datos.insignia === "number" && self.navigator) {
+    try {
+      if (datos.insignia > 0) self.navigator.setAppBadge?.(datos.insignia);
+      else self.navigator.clearAppBadge?.();
+    } catch (e) {
+      // No todos los navegadores tienen la API. Que falte el globito no puede
+      // costar el aviso, que es lo que de verdad se vino a hacer.
+    }
+  }
+
   evento.waitUntil(
     self.registration.showNotification(titulo, {
       body: datos.cuerpo || "",

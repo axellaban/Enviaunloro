@@ -806,6 +806,34 @@ export async function buzon(id: string): Promise<Loro[]> {
  * Devuelve los loros crudos: quién puede ver qué de ellos lo decide
  * lib/vista.ts, que es donde vive esa regla para todo lo demás.
  */
+/**
+ * Cuántas aves tiene una persona en el aire ahora mismo.
+ *
+ * Es el número del globito del ícono, calculado del lado del servidor para
+ * poder mandarlo con cada aviso. Sin esto el globito solo se actualizaba con
+ * la app ABIERTA —lo hacía un efecto de la página— así que las aves aterrizaban
+ * con el teléfono guardado y el número se quedaba clavado en el último que
+ * habías visto. Un 9 para siempre en un ícono donde ya no volaba nada.
+ *
+ * Cuenta lo MISMO que contaba la página, y eso no es un detalle: si los dos
+ * lados contaran distinto, el número saltaría cada vez que abrís la app.
+ * Las que van y las que vuelven —las dos están cruzando el mapa— y ni las
+ * perdidas, ni las abducidas, ni las que esperan sentadas en una cervecería.
+ */
+export async function avesEnElAire(idNido: string, ahora: number): Promise<number> {
+  let cuantas = 0;
+  for (const l of await buzon(idNido)) {
+    const perdida = l.extravio !== null && ahora >= l.extravio;
+    const abducida = l.abducido != null;
+    // La ida: en el aire mientras no haya aterrizado ni le haya pasado nada.
+    if (!perdida && !abducida && ahora < l.llegada) cuantas++;
+    // Y la vuelta, que es otro vuelo: solo le cuenta a quien la mandó, que es
+    // adonde el ave está volviendo.
+    if (l.de === idNido && l.suerte === "soltado" && l.regreso && ahora < l.regreso) cuantas++;
+  }
+  return cuantas;
+}
+
 export async function enElAire(ahora: number): Promise<Loro[]> {
   const ids = await store().leerLista(CLAVE_MUNDO, MAX_MUNDO);
   if (ids.length === 0) return [];

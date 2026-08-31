@@ -7,7 +7,7 @@
 // puede desdecir.
 
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../../lib/api";
-import { decidirSuerte, esSuerte, nido } from "../../../../lib/datos";
+import { avesEnElAire, decidirSuerte, esSuerte, nido } from "../../../../lib/datos";
 import { verLoro } from "../../../../lib/vista";
 import { empujarUnaVez } from "../../../../lib/push";
 import { avisoSuerte } from "../../../../lib/avisos";
@@ -43,14 +43,17 @@ export async function POST(req: Request) {
   void empujarUnaVez(
     l.de,
     `suerte:${l.id}`,
-    avisoSuerte({
-      idLoro: l.id,
-      quien: yo.nombre,
-      ave: l.ave,
-      suerte,
-      conRespuesta: Boolean(l.respuesta),
-      vuelve: l.regreso ? Math.max(0, l.regreso - Date.now()) : 0,
-    })
+    {
+      ...avisoSuerte({
+        idLoro: l.id,
+        quien: yo.nombre,
+        ave: l.ave,
+        suerte,
+        conRespuesta: Boolean(l.respuesta),
+        vuelve: l.regreso ? Math.max(0, l.regreso - Date.now()) : 0,
+      }),
+      insignia: await avesEnElAire(l.de, Date.now()),
+    }
   ).catch(() => {});
   const nidos = new Map<string, Nido>([[yo.id, yo]]);
   if (otro) nidos.set(otro.id, otro);
