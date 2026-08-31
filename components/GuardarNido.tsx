@@ -75,7 +75,7 @@ export function GuardarNido() {
       // funciona, y es mejor que un botón que no hace nada.
       if (navigator.share) {
         await navigator.share({
-          title: "Mi nido de Loros",
+          title: "Mi nido de Enviaunlorito",
           text: "La llave de mi nido. Abrir este link entra a mi nido: no se la pases a nadie.",
           url,
         });

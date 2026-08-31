@@ -589,6 +589,80 @@ chequear(
   }
 }
 
+// --- la abducción alienígena ---
+//
+// Lo único que puede hacer quien MANDÓ un loro después de soltarlo: llamar a un
+// plato volador que se lo lleve en pleno vuelo. Es la contraparte de la suerte
+// del ave —lo que se hace con uno que ya llegó lo decide quien lo recibió— y lo
+// que se verifica acá es que sea de verdad irreversible:
+//
+//   El mensaje NO se entrega, ni siquiera cuando pase su hora de llegada. La
+//   hora está escrita desde el despegue, así que sin taparlo el loro
+//   "aterrizaba" solo unas horas después y entregaba el texto que la nave se
+//   había llevado. Sería un borrado que no borra, que es el peor resultado
+//   posible: quien lo pidió se queda creyendo que sí.
+//
+//   Y no la puede pedir cualquiera sobre el ave de cualquiera.
+{
+  const emi = cliente("Abductor");
+  const rec = cliente("Abducida");
+  const nEmi = await emi.llamar("/api/nido", { nombre: "Abductor", ave: "guacamayo", lat: -34.60, lng: -58.40 });
+  await rec.llamar("/api/nido", { nombre: "Abducida", ave: "loro", lat: -34.90, lng: -58.70 });
+  const codRec = (await rec.llamar("/api/estado")).codigo;
+  await emi.llamar("/api/amigos", { codigo: codRec });
+  const idRec = (await emi.llamar("/api/estado")).amigos.find((x) => x.nombre === "Abducida").id;
+
+  const SECRETO = "Esto no lo tendria que haber mandado nunca";
+  const vuelo = (await emi.llamar("/api/loros", {
+    para: idRec, ave: "guacamayo", texto: SECRETO,
+  })).loro;
+  chequear(vuelo.llegada > Date.now(), "hay un guacamayo en el aire, con su mensaje adentro");
+
+  // Un ave ajena no se abduce: el ave es de quien la mandó.
+  const ajeno = cliente("Ajeno a la nave");
+  await ajeno.llamar("/api/nido", { nombre: "Ajeno a la nave", lat: -34.7, lng: -58.5 });
+  try {
+    await ajeno.llamar("/api/loros/abducir", { id: vuelo.id });
+    chequear(false, "un tercero no puede abducir un ave que no es suya");
+  } catch { chequear(true, "un tercero no puede abducir un ave que no es suya"); }
+  // Ni quien la recibe: lo que se hace con un ave que llegó se decide DESPUÉS.
+  try {
+    await rec.llamar("/api/loros/abducir", { id: vuelo.id });
+    chequear(false, "ni quien lo está esperando");
+  } catch { chequear(true, "ni quien lo está esperando"); }
+
+  const r = await emi.llamar("/api/loros/abducir", { id: vuelo.id });
+  chequear(typeof r.loro.abducido === "number", "pero quien lo mandó sí: vino la nave");
+
+  // Idempotente: recargar con el pedido en vuelo no puede explotar ni mandar
+  // dos naves.
+  const otraVez = await emi.llamar("/api/loros/abducir", { id: vuelo.id });
+  chequear(otraVez.loro.abducido === r.loro.abducido, "y pedirla dos veces no manda dos naves");
+
+  // Lo que de verdad importa: pasada la hora de llegada, el mensaje NO llega.
+  await new Promise((res) => setTimeout(res, Math.max(0, vuelo.llegada - Date.now()) + 2500));
+  const paraElla = (await rec.llamar("/api/estado")).loros.find((x) => x.id === vuelo.id);
+  chequear(Boolean(paraElla), "del otro lado el loro sigue existiendo: no desaparece en silencio");
+  chequear(paraElla.llego === false, "pero NO llegó, aunque su hora de llegada ya pasó");
+  chequear(paraElla.texto === null, "y el mensaje no se entrega: se lo llevó la nave");
+  chequear(
+    !JSON.stringify(await rec.llamar("/api/estado")).includes(SECRETO),
+    "ni aparece escondido en ningún campo de la consulta"
+  );
+  chequear(
+    typeof paraElla.abducido === "number",
+    "y sabe qué le pasó: una nave se lo llevó, no se perdió solo"
+  );
+
+  // Ya no se puede abducir algo que ya no está en el aire.
+  const yaEsta = (await emi.llamar("/api/loros", { para: idRec, ave: "perico", texto: "otro" })).loro;
+  await new Promise((res) => setTimeout(res, Math.max(0, yaEsta.llegada - Date.now()) + 2500));
+  try {
+    await emi.llamar("/api/loros/abducir", { id: yaEsta.id });
+    chequear(false, "y un ave que ya aterrizó no se abduce: ese mensaje ya es del otro");
+  } catch { chequear(true, "y un ave que ya aterrizó no se abduce: ese mensaje ya es del otro"); }
+}
+
 // --- el lorito de convite que sale en pollera ---
 //
 // La pollera del loro, pero para alguien que todavía no tiene nido. Lo que se
@@ -976,8 +1050,18 @@ try {
 // --- el perico se distrae ---
 const conPerico = (await ana.llamar("/api/loros", { para: idBeto, ave: "perico", texto: CARTA.slice(0, 110) })).loro;
 const recienSalido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conPerico.id);
+// El invariante es "el desvío NO viaja hasta que ocurre", y eso es lo que se
+// comprueba: si vino uno, tiene que ser porque ya empezó.
+//
+// Decía `desvio === null` a secas y pasaba por suerte. El desvío arranca en un
+// punto sorteado entre el 30 % y el 70 % del vuelo, así que con el reloj
+// acelerado eso son un par de cientos de milisegundos — menos de lo que tarda
+// la llamada siguiente—. O sea que el test sólo pasaba cuando a ESE perico no
+// le tocaba romance, que es una moneda, no una propiedad del código. Se
+// descubrió porque un cambio en otra parte del archivo corrió la secuencia de
+// Math.random() del servidor y le empezó a tocar.
 chequear(
-  recienSalido.desvio === null,
+  recienSalido.desvio === null || recienSalido.desvio.desde <= Date.now(),
   "recién salido no se filtra si se va a distraer (igual que el extravío)"
 );
 if (MODO_ROMANCE) {

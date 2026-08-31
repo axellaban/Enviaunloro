@@ -18,6 +18,7 @@ import { codigoNuevo, codigoNumerado, normalizarCodigo } from "./codigo";
 import { escribirDoc, leerDoc, store } from "./store";
 import {
   duracionVuelo,
+  MS_ABDUCCION,
   probabilidadExtravio,
   sortearDesvio,
   type Desvio,
@@ -128,6 +129,22 @@ export type Loro = {
    * el otro.
    */
   pollera?: boolean;
+  /**
+   * Cuándo se lo llevó el plato volador. null si nadie pidió la abducción.
+   *
+   * Es lo único que puede hacer quien MANDÓ un loro después de soltarlo, y por
+   * eso existe: hasta acá, un ave en el aire era irreversible del lado de quien
+   * la mandó —el mensaje equivocado, la persona equivocada, el arrepentimiento
+   * a los treinta segundos— y lo único que quedaba era mirarla cruzar el mapa.
+   * El lorito de convite ya tenía su silbido para llamarlo de vuelta; el loro
+   * en vuelo no tenía nada.
+   *
+   * NO es un "deshacer" y no se disfraza de eso. El ave no vuelve, el mensaje
+   * no se recupera y del otro lado se ve pasar la nave: alguien que estaba
+   * esperando algo se entera de que ese algo no va a llegar. Es tan definitivo
+   * como el extravío, con la diferencia de que este lo elegiste vos.
+   */
+  abducido?: number | null;
   /**
    * La parada en la cervecería, si este loro viene de un convite.
    *
@@ -319,6 +336,8 @@ export async function olvidarPendiente(id: string): Promise<void> {
  */
 export function vueloTerminado(l: Loro, ahora: number): boolean {
   if (l.extravio !== null && ahora >= l.extravio) return true;
+  // Se lo llevaron, y la nave ya se fue con él.
+  if (l.abducido != null && ahora >= l.abducido + MS_ABDUCCION) return true;
   if (ahora < l.llegada) return false;
   if (l.suerte === "enjaulado" || l.suerte === "puchero") return true;
   if (l.suerte === "soltado") return Boolean(l.regreso && ahora >= l.regreso);
@@ -856,6 +875,57 @@ export async function marcarLeido(loroId: string, lector: string): Promise<Loro 
  * puede cambiar de opinión — un ave que ya salió de vuelta no se puede
  * desenjaular.
  */
+/**
+ * Solicitar la abducción: un plato volador se lleva tu propia ave, en pleno
+ * vuelo, con el mensaje adentro.
+ *
+ * Tres reglas, y las tres son sobre de quién es la decisión:
+ *
+ *   SOLO QUIEN LO MANDÓ. Es la contraparte exacta de la suerte del ave: lo que
+ *   se hace con un loro que YA LLEGÓ lo decide quien lo recibió, y lo que se
+ *   hace con uno que todavía está en el aire lo decide quien lo soltó. Nadie
+ *   puede abducir el ave de otro.
+ *
+ *   SOLO EN VUELO. Después de aterrizar el mensaje ya se puede leer, y llamar
+ *   a una nave para borrar algo que la otra persona quizá ya leyó no borra
+ *   nada: deja a las dos con la misma historia y a una con la ilusión de
+ *   haberla deshecho.
+ *
+ *   UNA SOLA VEZ. El turno atómico es el mismo que usa la suerte del ave, por
+ *   la misma razón: dos toques rápidos no pueden mandar dos naves.
+ *
+ * @returns el loro ya abducido, o null si no se puede.
+ */
+export async function abducirLoro(loroId: string, quien: string): Promise<Loro | null> {
+  const l = await loro(loroId);
+  // El ave es tuya solo si la mandaste vos.
+  if (!l || l.de !== quien) return null;
+  const ahora = Date.now();
+  // Ya se lo llevaron: contestar el mismo loro es lo correcto, no un error.
+  // La pantalla puede reintentar y recargar tiene que dar lo mismo.
+  if (l.abducido != null) return l;
+  // Un ave que ya se perdió no tiene a quién abducir.
+  if (l.extravio !== null && ahora >= l.extravio) return null;
+  // Ni una que ya aterrizó: ahí el mensaje ya es del otro.
+  if (ahora >= l.llegada) return null;
+
+  if (!(await store().reservar(claveTurno("abduccion", loroId), 0))) {
+    // Perdió el turno contra otro toque suyo. Se espera a que aparezca escrito,
+    // igual que en la suerte: contestar "no se pudo" cuando la nave ya salió
+    // sería mentirle a quien la llamó.
+    for (let i = 0; i < 4; i++) {
+      const actual = await loro(loroId);
+      if (actual?.abducido != null) return actual;
+      await new Promise((r) => setTimeout(r, 70));
+    }
+    return (await loro(loroId)) ?? l;
+  }
+
+  const actualizado: Loro = { ...l, abducido: ahora };
+  await escribirDoc(claveLoro(loroId), actualizado);
+  return actualizado;
+}
+
 export async function decidirSuerte(
   loroId: string,
   quien: string,

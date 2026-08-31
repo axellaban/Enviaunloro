@@ -62,7 +62,7 @@ export async function compartirConvite(c: ConviteVista): Promise<boolean> {
     "Te mandé un lorito 🦜 Te está esperando de jarola en una cervecería del barrio, con el mensaje. Abrí el link y sale para tu nido:";
   try {
     if (navigator.share) {
-      await navigator.share({ title: "Loros", text: texto, url });
+      await navigator.share({ title: "Enviaunlorito", text: texto, url });
     } else {
       await navigator.clipboard.writeText(`${texto} ${url}`);
     }

@@ -39,7 +39,7 @@ export async function compartirNido(codigo: string): Promise<boolean> {
   const texto = "Mandame un lorito 🦜 Tocá el link y quedamos conectados:";
   try {
     if (navigator.share) {
-      await navigator.share({ title: "Loros", text: texto, url });
+      await navigator.share({ title: "Enviaunlorito", text: texto, url });
     } else {
       await navigator.clipboard.writeText(`${texto} ${url}`);
     }
@@ -71,8 +71,11 @@ type Props = {
 export function Panel(p: Props) {
   const [pestaña, setPestaña] = useState<"vuelo" | "buzon" | "bandada" | "nido">("vuelo");
   const ahora = p.ahoraServidor();
+  // Un ave abducida no vuela más y no va a llegar nunca: sin sacarla de acá se
+  // quedaba "en camino" para siempre, con su cuenta regresiva corriendo hacia
+  // una llegada que ya no existe. Es el mismo caso que el extravío.
   const enVuelo = p.loros
-    .filter((l) => !l.llego && !l.perdido)
+    .filter((l) => !l.llego && !l.perdido && !l.abducido)
     .sort((a, b) => a.llegada - b.llegada);
   // Las aves que ya entregaron y vuelven a casa cuentan igual: están cruzando
   // el mapa y tienen su propia cuenta regresiva.
@@ -80,7 +83,7 @@ export function Panel(p: Props) {
     .filter((l) => l.vuelta && ahora < l.vuelta.llegada)
     .sort((a, b) => a.vuelta!.llegada - b.vuelta!.llegada);
   // El buzón guarda lo que terminó, haya terminado bien o mal.
-  const llegados = p.loros.filter((l) => l.llego || l.perdido);
+  const llegados = p.loros.filter((l) => l.llego || l.perdido || l.abducido);
   // `llego` y no solo `!leido`: un ave que se perdió no trae nada que abrir y su
   // tarjeta no tiene con qué marcarse leída, así que sin esto el contador de la
   // pestaña se quedaba en 1 para siempre. Pasa 2 de cada 1000 envíos, y cuando
@@ -203,6 +206,7 @@ export function Panel(p: Props) {
                     loro={l}
                     ahora={ahora}
                     alTocar={() => p.alEnfocar(l.id)}
+                    refrescar={p.refrescar}
                   />
                 ))}
                 {volviendo.map((l) => (
@@ -508,10 +512,12 @@ function TarjetaVuelo({
   loro,
   ahora,
   alTocar,
+  refrescar,
 }: {
   loro: LoroVista;
   ahora: number;
   alTocar: () => void;
+  refrescar: () => void;
 }) {
   const a = AVES[loro.ave];
   const { avance: t, girando } = avanceVuelo(loro, ahora);
@@ -523,19 +529,31 @@ function TarjetaVuelo({
   // cervecería es la clase de mentira chica que después nadie entiende.
   const enLaBarra = Boolean(loro.parada) && ahora < loro.salida;
 
+  // La tarjeta era un <button> entero. Dejó de serlo porque adentro va otro
+  // botón —el de la abducción— y un botón adentro de otro es HTML inválido: el
+  // navegador lo desarma y el de adentro deja de recibir sus toques. Ahora el
+  // contenedor es un div y lo tocable es todo menos la fila de abajo, que es
+  // exactamente lo que se quiere: tocar la tarjeta enfoca el vuelo en el mapa,
+  // y llamar a la nave es un acto aparte que no se dispara sin querer.
   return (
-    <button
-      onClick={alTocar}
+    <div
       className="tarjeta"
-      style={{
-        display: "block",
-        width: "100%",
-        textAlign: "left",
-        marginBottom: 10,
-        cursor: "pointer",
-        borderColor: `${a.color}55`,
-      }}
+      style={{ marginBottom: 10, borderColor: `${a.color}55` }}
     >
+      <button
+        onClick={alTocar}
+        style={{
+          display: "block",
+          width: "100%",
+          textAlign: "left",
+          cursor: "pointer",
+          background: "none",
+          border: 0,
+          padding: 0,
+          color: "inherit",
+          font: "inherit",
+        }}
+      >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <DibujoDelVuelo loro={loro} size={30} aletea />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -620,7 +638,81 @@ function TarjetaVuelo({
           </p>
         </div>
       )}
-    </button>
+      </button>
+
+      {/* Solo sobre lo tuyo y solo mientras esté en el aire: lo que se hace con
+          un ave que ya llegó lo decide quien la recibió. */}
+      {enviado && <LlamarLaNave loro={loro} refrescar={refrescar} />}
+    </div>
+  );
+}
+
+/**
+ * "Solicitar abducción."
+ *
+ * Lo único que puede hacer quien mandó un loro después de soltarlo. Pide dos
+ * toques, como todo lo que no tiene vuelta atrás en esta app —la suerte del
+ * ave, llamar de vuelta un lorito de convite— y el segundo toque dice qué pasa,
+ * no "¿seguro?": lo que hay que confirmar es la consecuencia.
+ *
+ * No se llama "eliminar" ni "cancelar" en ninguna parte, y eso no es sólo
+ * chiste. Eliminar sugiere que la cosa deja de haber existido, y no es cierto:
+ * del otro lado ya se avisó que venía un loro, y esa persona va a ver la nave
+ * llevárselo. Una abducción es pública, y esto también.
+ */
+function LlamarLaNave({
+  loro,
+  refrescar,
+}: {
+  loro: LoroVista;
+  refrescar: () => void;
+}) {
+  const [porLlamar, setPorLlamar] = useState(false);
+  const [llamando, setLlamando] = useState(false);
+  const [error, setError] = useState("");
+
+  return (
+    <>
+      <button
+        className="boton chico fantasma"
+        style={{
+          width: "100%",
+          marginTop: 12,
+          ...(porLlamar
+            ? { borderColor: "rgba(103,232,249,.55)", color: "#a5f3fc" }
+            : null),
+        }}
+        disabled={llamando}
+        onClick={async () => {
+          if (!porLlamar) {
+            setPorLlamar(true);
+            return;
+          }
+          setLlamando(true);
+          setError("");
+          try {
+            await pedir("/api/loros/abducir", { datos: { id: loro.id } });
+            refrescar();
+          } catch (e: any) {
+            setError(e?.message || "La nave no vino.");
+            setLlamando(false);
+            setPorLlamar(false);
+          }
+        }}
+        // Perder el foco cancela la confirmación, igual que en las otras dos:
+        // un botón que se quedó armado es una trampa para el toque siguiente.
+        onBlur={() => setPorLlamar(false)}
+      >
+        {llamando
+          ? "Llamando a la nave…"
+          : porLlamar
+            ? "🛸 Confirmar: el mensaje se pierde para siempre"
+            : "🛸 Solicitar abducción"}
+      </button>
+      {error && (
+        <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>{error}</p>
+      )}
+    </>
   );
 }
 
@@ -852,6 +944,7 @@ function TarjetaBuzon({
   const sellado = !enviado && !abierto;
 
   if (loro.perdido) return <TarjetaPerdido loro={loro} alReenviar={alReenviar} />;
+  if (loro.abducido) return <TarjetaAbducido loro={loro} />;
 
   // Al abrirse, la tarjeta crece: aparecen el texto y la fila de tres botones.
   // Si estaba cerca del borde de abajo, lo que acabás de destapar queda atrás
@@ -1281,6 +1374,51 @@ function FinalDelAve({ loro }: { loro: LoroVista }) {
  * poder copiarlo sería ensañamiento—. A quien lo esperaba no se le muestra
  * nada del contenido: ese mensaje no llegó y no va a llegar.
  */
+/**
+ * El ave que se llevó un plato volador.
+ *
+ * Se parece a la del extravío y dice lo contrario en una cosa: acá no hay
+ * "volver a intentarlo". El extravío es mala suerte y reintentar es lo natural;
+ * esto lo pediste vos, y ofrecer un botón para deshacer lo que elegiste
+ * deshacer sería un chiste que no entiende nadie. Si querés mandar otra cosa,
+ * se manda de cero.
+ *
+ * Del lado de quien lo esperaba dice lo mismo con otras palabras. Sin esta
+ * tarjeta, ese loro desaparecía del panel sin explicación después de que la app
+ * le avisara que venía en camino.
+ */
+function TarjetaAbducido({ loro }: { loro: LoroVista }) {
+  const a = AVES[loro.ave];
+  const enviado = loro.direccion === "enviado";
+  return (
+    <div
+      className="tarjeta"
+      style={{
+        marginBottom: 10,
+        borderStyle: "dashed",
+        borderColor: "rgba(103,232,249,.35)",
+        background: "rgba(103,232,249,.04)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 24, lineHeight: 1 }}>🛸</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: "var(--suave)" }}>
+            {enviado
+              ? `Abduciste tu ${a.nombre.toLowerCase()} camino a ${loro.otro.nombre}`
+              : `Se llevaron un ${a.nombre.toLowerCase()} de ${loro.otro.nombre}`}
+          </p>
+          <p style={{ color: "var(--tenue)", fontSize: 11.5, lineHeight: 1.5, marginTop: 2 }}>
+            {enviado
+              ? "Una nave lo interceptó en el aire. El mensaje se fue con él."
+              : "Una nave lo interceptó en el aire. Nunca vas a saber qué decía."}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TarjetaPerdido({
   loro,
   alReenviar,

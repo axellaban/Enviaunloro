@@ -636,6 +636,40 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 
 .marcador-nido, .marcador-ave { background: none !important; border: none !important; }
 
+/* ---------- la abducción ----------
+
+   La nave baja, se queda con el ave en el rayo y se va para arriba. Los tres
+   tiempos suman los 9 s de MS_ABDUCCION (lib/vuelo.ts): si esta animación y esa
+   constante se separan, la nave se va antes de que el ave desaparezca o queda
+   colgada después. Es el único lugar donde un número de CSS tiene que coincidir
+   con uno de TypeScript, y por eso está dicho acá.
+
+   Mueve `transform` y `opacity` y nada más, como todo lo que se anima en esta
+   app: es lo que la deja en manos del compositor.
+
+   No respeta `prefers-reduced-motion` apagándose del todo, sino quedándose
+   quieta: sin nave no se entiende qué pasó con el ave, y ese es justo el caso
+   en que hace falta entenderlo. Lo que se saca es el movimiento, no la
+   noticia. */
+.marcador-nave { animation: abducir 9s cubic-bezier(.34, .8, .3, 1) both; }
+
+@keyframes abducir {
+  /* Baja del cielo, rápido. */
+  0%   { transform: translateY(-160px) scale(.7); opacity: 0; }
+  14%  { transform: translateY(0) scale(1); opacity: 1; }
+  /* Se queda. Un bamboleo apenas, para que no parezca un PNG pegado. */
+  20%  { transform: translateY(-3px) scale(1); }
+  40%  { transform: translateY(2px) scale(1); }
+  60%  { transform: translateY(-3px) scale(1); }
+  78%  { transform: translateY(0) scale(1); opacity: 1; }
+  /* Y se van los dos, para arriba y sin apuro. */
+  100% { transform: translateY(-220px) scale(.55); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marcador-nave { animation: none; }
+}
+
 /* ---------- scrollbar ---------- */
 
 .scroll { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.16) transparent; }

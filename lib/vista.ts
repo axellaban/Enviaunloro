@@ -107,6 +107,16 @@ export type LoroVista = {
    *  abrirlo del otro lado llueven polleras. Falso hasta que DESPEGA —importa
    *  para el que sale de una cervecería, que hasta ese momento es un loro. */
   pollera: boolean;
+  /**
+   * Cuándo se lo llevó un plato volador, o null.
+   *
+   * Va a las DOS puntas y no solo a quien lo pidió. Del otro lado había alguien
+   * a quien ya se le avisó que venía un loro: hacerlo desaparecer en silencio
+   * es dejarlo esperando algo que no llega nunca, que es justo lo que la app
+   * evita hasta con los que se pierden solos. Y una nave llevándose un ave es
+   * demasiado bueno para que lo vea uno solo.
+   */
+  abducido: number | null;
 };
 
 /**
@@ -194,7 +204,17 @@ export function verLoro(
   // que ya sabés que no llega no es esperar.
   const extravio = l.extravio ?? null;
   const perdido = extravio !== null && ahora >= extravio;
-  const llego = !perdido && ahora >= l.llegada;
+  // Se lo llevó un plato volador. No hace falta taparlo hasta que pase —como el
+  // extravío o la pollera— porque no está sorteado de antemano: ocurre en el
+  // instante en que alguien lo pide, y para cuando se escribe ya pasó.
+  const abducido = l.abducido ?? null;
+  // Y ESTO es lo que no puede fallar: un ave abducida NO llega nunca, ni
+  // cuando pase su hora de llegada. Sin el `&& !abducido`, el loro seguía
+  // aterrizando solo unas horas después —la hora estaba escrita desde el
+  // despegue— y entregaba el mensaje que la nave se había llevado. Habría sido
+  // un borrado que no borra: el peor resultado posible, porque quien lo pidió
+  // se queda creyendo que sí.
+  const llego = !perdido && !abducido && ahora >= l.llegada;
 
   // Los loros de antes de que existiera el perico olvidadizo no tienen el
   // campo; para ellos lo entregado es lo escrito.
@@ -253,6 +273,7 @@ export function verLoro(
     perdido,
     extravio: perdido ? extravio : null,
     motivo: perdido ? l.motivo || "" : "",
+    abducido,
     desvio: seDistrajo ? desvio : null,
     // Un loro perdido nunca llega, así que su texto tampoco: quien lo esperaba
     // no va a saber nunca qué decía. Quien lo escribió lo sigue viendo.

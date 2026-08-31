@@ -46,7 +46,7 @@ import {
   tramosEnElAire,
   type Tramo,
 } from "../lib/tramos";
-import { aveHtml, polleraHtml } from "./Ave";
+import { aveHtml, polleraHtml, svgPlatoVolador } from "./Ave";
 import type { ConviteVista, LoroVista, NidoVista, VueloMundo } from "../lib/vista";
 import { coloresDeBandada, MI_COLOR } from "../lib/colorNido";
 import { mosaicoElegido, pinturaDelMapa } from "../lib/tema";
@@ -113,6 +113,24 @@ function iconoNido(n: NidoVista, esMio: boolean, color: string): L.DivIcon {
 /** El rosa de la pollera. El mismo de su dibujo, para que la ruta y lo que
  *  vuela por ella sean la misma cosa. */
 const COLOR_POLLERA = "#f472b6";
+
+/**
+ * El plato volador que baja a llevarse un ave.
+ *
+ * No lleva `data-rot`: no apunta a ningún lado. Cae sobre un punto del mapa y
+ * se va para arriba, y rotarla con el rumbo del vuelo la haría entrar torcida a
+ * un lugar al que no va.
+ */
+function iconoNave(): L.DivIcon {
+  return L.divIcon({
+    className: "marcador-ave marcador-nave",
+    iconSize: [46, 53],
+    // Anclada abajo del todo y al medio: lo que tiene que caer justo sobre el
+    // ave es la punta del rayo, no el centro del dibujo.
+    iconAnchor: [23, 53],
+    html: svgPlatoVolador(46),
+  });
+}
 
 function iconoAve(especie: AveId, grados: number, pollera = false): L.DivIcon {
   // La paloma no viaja sola: lleva el corazón de chocolate colgando. Va PEGADO
@@ -346,6 +364,9 @@ type CapaVuelo = {
    *  la capa ya en el mapa: el lorito que salió de una cervecería se convierte
    *  al despegar, no al crearse. */
   pollera: boolean;
+  /** La nave que vino a llevarse el ave, cuando la hay. Se crea recién al
+   *  pedirse la abducción: hasta ese momento este vuelo es uno cualquiera. */
+  nave: L.Marker | null;
 };
 
 export default function Mapa({
@@ -686,6 +707,7 @@ export default function Mapa({
     for (const f of capa.flores) f.remove();
     capa.giro?.circulo.remove();
     capa.giro?.perica.remove();
+    capa.nave?.remove();
     capas.current.delete(clave);
   }
 
@@ -781,6 +803,7 @@ export default function Mapa({
         llegada: v.llegada,
         flores,
         giro: null,
+        nave: null,
         pollera: Boolean(v.pollera),
         completa: L.polyline(latlngs, {
           color,
@@ -834,7 +857,13 @@ export default function Mapa({
         const capa = capas.current.get(v.clave);
         if (!capa) continue;
 
-        const { avance: t, girando } = avanceVuelo(v, ahora);
+        // Un ave abducida no avanza más: se queda donde la interceptó el rayo.
+        // Se congela el reloj del vuelo en ese instante y todo lo demás —la
+        // posición, la línea recorrida, el rumbo— sale igual que siempre, sin
+        // una sola rama extra.
+        const seLoLlevan = v.abducido != null;
+        const relojDelAve = seLoLlevan ? Math.min(ahora, v.abducido!) : ahora;
+        const { avance: t, girando } = avanceVuelo(v, relojDelAve);
 
         // Dónde está y hacia dónde mira. Mientras da vueltas, el ave no avanza:
         // orbita el punto donde se distrajo, y apunta a la tangente.
@@ -864,6 +893,21 @@ export default function Mapa({
 
         const el = capa.ave.getElement()?.querySelector("[data-rot]") as HTMLElement | null;
         if (el) el.style.transform = orientar(grados + rumboRef.current);
+
+        // La nave. Se crea el primer cuadro en que hay abducción y desde ahí
+        // sigue al ave —que ya no se mueve— hasta que la capa entera se poda,
+        // MS_ABDUCCION después. Bajar, quedarse y subir es todo CSS.
+        if (seLoLlevan) {
+          if (!capa.nave && mapa.current) {
+            capa.nave = L.marker([pos.lat, pos.lng], {
+              icon: iconoNave(),
+              interactive: false,
+              // Por encima del ave: la nave está arriba, es lo que la levanta.
+              zIndexOffset: 900,
+            }).addTo(mapa.current);
+          }
+          capa.nave?.setLatLng([pos.lat, pos.lng]);
+        }
 
 
         // Las flores aparecen cuando la paloma ya pasó por encima.

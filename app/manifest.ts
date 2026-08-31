@@ -15,8 +15,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Loros — Envía Loritos, no mensajes",
-    short_name: "Loros",
+    name: "Enviaunlorito — Envía Loritos, no mensajes",
+    short_name: "Enviaunlorito",
     description:
       "Tu lorito cruza el mapa en tiempo real. Tarda lo que tarda: la distancia vuelve a existir.",
     start_url: "/nido",

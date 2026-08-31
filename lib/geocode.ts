@@ -9,7 +9,7 @@
 
 import { store } from "./store";
 
-const UA = "Loros/0.1 (MVP de mensajeria; https://github.com/axellaban/Enviaunloro)";
+const UA = "Enviaunlorito/0.1 (MVP de mensajeria; https://github.com/axellaban/Enviaunloro)";
 
 /** Redondeo a ~100 m: dos personas de la misma cuadra comparten caché. */
 function clave(lat: number, lng: number): string {

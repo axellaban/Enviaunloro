@@ -12,6 +12,11 @@ import type { AveId } from "./aves";
 import type { Punto } from "./geo";
 import type { Desvio } from "./vuelo";
 import type { ConviteVista, LoroVista, VueloMundo } from "./vista";
+// El único valor —no tipo— que entra acá. Sale de lib/vuelo.ts y NO de
+// lib/datos.ts, que es donde vive el resto de las reglas del vuelo: datos.ts
+// arrastra el store y node:crypto, y un valor importado de ahí se lleva todo
+// eso al bundle del navegador. vuelo.ts es pura y ya la usan los dos lados.
+import { MS_ABDUCCION } from "./vuelo";
 
 export type Tramo = {
   /** Id de la capa en el mapa. No es el id del loro: la vuelta lleva sufijo. */
@@ -26,6 +31,15 @@ export type Tramo = {
   desvio: Desvio | null;
   /** true si es el regreso al nido de quien lo mandó. */
   vuelta: boolean;
+  /**
+   * Cuándo se lo llevó el plato volador, si pasó.
+   *
+   * El tramo NO se borra en ese instante: sigue vivo unos segundos más para que
+   * la nave llegue, se quede con el ave en el rayo y recién ahí se vaya. Con el
+   * ave quieta en el punto donde la interceptaron — un ave dentro de un rayo
+   * tractor no sigue avanzando hacia su destino.
+   */
+  abducido?: number | null;
   /** true si es de alguien que no conocés: se dibuja distinto y sin nidos. */
   ajeno?: boolean;
   /** El loro que salió convertido en pollera: lo que se dibuja no es un ave.
@@ -38,7 +52,13 @@ export type Tramo = {
 export function tramosEnElAire(loros: LoroVista[], ahora: number): Tramo[] {
   const salida: Tramo[] = [];
   for (const l of loros) {
-    if (!l.perdido && ahora < l.llegada) {
+    // Un ave abducida deja de volar, pero no desaparece en el acto: la escena
+    // dura MS_ABDUCCION y hay que dibujarla. Pasado eso ya no hay nada, ni
+    // aunque su hora de llegada todavía esté por venir — ese vuelo terminó
+    // cuando se lo llevaron.
+    const seLoLlevaron = l.abducido != null;
+    const hastaCuando = seLoLlevaron ? l.abducido! + MS_ABDUCCION : l.llegada;
+    if (!l.perdido && ahora < hastaCuando) {
       salida.push({
         clave: l.id,
         loroId: l.id,
@@ -51,6 +71,7 @@ export function tramosEnElAire(loros: LoroVista[], ahora: number): Tramo[] {
         llegada: l.llegada,
         desvio: l.desvio,
         vuelta: false,
+        abducido: l.abducido,
       });
     }
     // La vuelta va al revés y sin desvío: el perico ya gastó su romance en la

@@ -43,6 +43,7 @@ import type { LoroVista } from "../../lib/vista";
 type EstadoLoro = string;
 const estadoDe = (l: LoroVista, ahora: number): EstadoLoro => {
   if (l.perdido) return "perdido";
+  if (l.abducido) return "abducido";
   if (!l.llego) return "vuelo";
   // "Volvió" es un estado propio y no un detalle de "la soltó": entre las dos
   // cosas puede haber días de vuelo, y el aterrizaje de la respuesta es el
@@ -133,7 +134,19 @@ export default function Nido() {
       // Lo que apareció ya resuelto pasó con la app cerrada. Se avisa solo si
       // fue recién: nadie quiere enterarse hoy de algo de anteayer.
       const nuevo = antes === undefined;
-      const reciente = ahoraServidor() - (l.extravio ?? l.llegada) < 120_000;
+      const reciente = ahoraServidor() - (l.abducido ?? l.extravio ?? l.llegada) < 120_000;
+
+      // Se lo llevó una nave. Le corresponde a quien lo ESPERABA: quien la
+      // llamó ya sabe, la pidió él. Y del otro lado hace falta de verdad, que
+      // es lo incómodo del asunto: a esa persona ya se le avisó que venía un
+      // loro, así que sin esto se queda esperando algo que no llega nunca.
+      if (ahora === "abducido" && !mio && (!nuevo || reciente)) {
+        const texto = `Un plato volador interceptó el ${a.nombre.toLowerCase()} de ${l.otro.nombre}. No va a llegar.`;
+        mostrarAviso(`🛸 ${texto}`);
+        avisar("Se lo llevaron 🛸", texto, `loro:${l.id}`);
+        continue;
+      }
+      if (ahora === "abducido") continue;
 
       if (ahora === "perdido" && (!nuevo || reciente)) {
         const texto = mio
@@ -344,7 +357,7 @@ export default function Nido() {
     );
   }
 
-  const enVuelo = est.loros.filter((l) => !l.llego && !l.perdido);
+  const enVuelo = est.loros.filter((l) => !l.llego && !l.perdido && !l.abducido);
   // Las que vuelven a casa también cuentan como "en el aire": están cruzando
   // el mapa igual que las que van.
   const volviendo = est.loros.filter(

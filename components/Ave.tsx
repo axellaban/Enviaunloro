@@ -259,6 +259,56 @@ export function Pollera({ size = 40, ondea = false }: { size?: number; ondea?: b
   );
 }
 
+/**
+ * El plato volador que se lleva un ave.
+ *
+ * Aparece cuando quien mandó un loro pide la abducción: la nave baja, engancha
+ * al bicho en el rayo y se van los dos. Es lo único del mapa que no vuela hacia
+ * ningún lado — no tiene rumbo ni destino, cae encima de un punto— así que NO
+ * rota con la marcha, igual que la pollera y por el motivo contrario: la
+ * pollera no rota porque no tiene pico, esta no rota porque no va a ninguna
+ * parte.
+ *
+ * El rayo se dibuja acá abajo y no como una capa aparte para que los dos se
+ * muevan juntos: una nave y su rayo separados por un cuadro de animación se ven
+ * como dos cosas, y son una.
+ */
+export function svgPlatoVolador(size = 46): string {
+  const alto = Math.round(size * 1.15);
+  return `<svg width="${size}" height="${alto}" viewBox="0 0 120 138" fill="none" xmlns="http://www.w3.org/2000/svg" class="nave" aria-hidden="true">
+<!-- El rayo primero, para que la nave quede encima. Se abre hacia abajo y se
+     desvanece: el borde duro de un triángulo se lee como un cucurucho. -->
+<defs>
+  <linearGradient id="rayo" x1="60" y1="52" x2="60" y2="136" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#7dd3fc" stop-opacity=".85"/>
+    <stop offset=".55" stop-color="#7dd3fc" stop-opacity=".30"/>
+    <stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/>
+  </linearGradient>
+</defs>
+<path d="M44 54 L76 54 L104 134 L16 134 Z" fill="url(#rayo)"/>
+<!-- El casco: una elipse achatada. Lo que lo hace nave y no sombrero son las
+     luces de abajo y la cúpula. -->
+<ellipse cx="60" cy="48" rx="54" ry="17" fill="#94a3b8"/>
+<ellipse cx="60" cy="44" rx="54" ry="15" fill="#cbd5e1"/>
+<!-- La cúpula, con su brillo. -->
+<path d="M32 38 A28 26 0 0 1 88 38 Z" fill="#67e8f9" opacity=".9"/>
+<path d="M40 36 A20 18 0 0 1 60 20" stroke="#ecfeff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".85"/>
+<!-- Las tres luces. -->
+<circle cx="30" cy="52" r="5.5" fill="#fde047"/>
+<circle cx="60" cy="55" r="5.5" fill="#f472b6"/>
+<circle cx="90" cy="52" r="5.5" fill="#7dd3fc"/>
+</svg>`;
+}
+
+export function PlatoVolador({ size = 46 }: { size?: number }) {
+  return (
+    <span
+      style={{ display: "inline-flex", lineHeight: 0 }}
+      dangerouslySetInnerHTML={{ __html: svgPlatoVolador(size) }}
+    />
+  );
+}
+
 /** Alias histórico: el marcador de Leaflet arma su HTML con esto. */
 export const aveHtml = (especie: AveId, size = 34) => svgAve(especie, size, true);
 

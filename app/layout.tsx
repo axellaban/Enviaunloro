@@ -22,14 +22,14 @@ const SITIO =
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITIO),
-  title: "Loros — Envía Loritos, no mensajes",
+  title: "Enviaunlorito — Envía Loritos, no mensajes",
   description:
     "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",
-  applicationName: "Loros",
+  applicationName: "Enviaunlorito",
   openGraph: {
     type: "website",
     locale: "es_AR",
-    siteName: "Loros",
+    siteName: "Enviaunlorito",
     title: "Envía Loritos, no mensajes 🦜",
     description:
       "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",

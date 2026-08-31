@@ -8,6 +8,22 @@
 import { AVES, type AveId } from "./aves";
 
 /**
+ * Cuánto dura la escena de la abducción en el mapa.
+ *
+ * El vuelo no termina en el instante en que se pide: la nave tiene que llegar,
+ * quedarse un rato con el ave en el rayo y recién ahí irse. Sin esta ventana el
+ * ave desaparecía en el mismo cuadro en que se tocaba el botón, y el plato
+ * volador —que es todo el sentido de esto— no lo veía nadie, ni siquiera quien
+ * lo pidió.
+ *
+ * No se escala con LOROS_ESCALA_TIEMPO a propósito. Es una animación y no un
+ * vuelo: acelerarla en una demo la haría invisible, que es exactamente lo que
+ * se está tratando de evitar.
+ */
+export const MS_ABDUCCION = 9000;
+
+
+/**
  * Piso del vuelo, medido en kilómetros y no en segundos.
  *
  * Sin ningún piso, mandarle algo a alguien de la misma cuadra sería un chat.

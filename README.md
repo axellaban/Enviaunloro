@@ -1,4 +1,4 @@
-# Loros 🦜
+# Enviaunlorito 🦜
 
 **Envía Loros, no mensajes.**
 
@@ -436,6 +436,45 @@ cinco intentos chocaban usaba igual el último —**pisando el código de otra
 persona**, que quedaba sin forma de que la sumaran— y era comprobar-y-después-
 escribir, o sea la misma carrera que costaba amistades, en el alta. Ahora el
 código se reserva con la misma operación atómica que el resto.
+
+## La abducción
+
+Un ave en el aire era irreversible del lado de quien la mandó. El mensaje
+equivocado, la persona equivocada, el arrepentimiento a los treinta segundos:
+lo único que quedaba era mirarla cruzar el mapa. El lorito de convite ya tenía
+su silbido para llamarlo de vuelta; el loro en vuelo no tenía nada.
+
+Ahora tiene esto: **solicitás una abducción y viene un plato volador a
+llevárselo**. Baja del cielo, engancha al bicho con el rayo y se van los dos.
+
+Es la contraparte exacta de la suerte del ave, y juntas cierran una simetría
+que faltaba: **lo que se hace con un loro que ya llegó lo decide quien lo
+recibió; lo que se hace con uno que todavía está en el aire lo decide quien lo
+soltó.** Nadie puede abducir el ave de otro, y después de aterrizar ya no se
+puede: ese mensaje ya es del otro.
+
+No se llama "eliminar" ni "cancelar", y no es solo por el chiste. Eliminar
+sugiere que la cosa deja de haber existido, y no es cierto: del otro lado ya se
+avisó que venía un loro, y esa persona **ve pasar la nave**. Una abducción es
+pública. Pide dos toques, como todo lo irrevocable acá, y el segundo dice qué
+pasa en vez de preguntar "¿seguro?": lo que hay que confirmar es la
+consecuencia.
+
+Lo que no puede fallar, y por eso tiene prueba propia: **el mensaje no se
+entrega, ni siquiera cuando pase su hora de llegada.** Esa hora está escrita
+desde el despegue, así que sin taparlo el loro "aterrizaba" solo unas horas
+después y entregaba el texto que la nave se había llevado. Habría sido un
+borrado que no borra — el peor resultado posible, porque quien lo pidió se
+queda creyendo que sí.
+
+La escena dura nueve segundos (`MS_ABDUCCION`) y son los únicos de la app que
+**no** se aceleran con `LOROS_ESCALA_TIEMPO`: es una animación y no un vuelo, y
+acelerarla en una demo la haría invisible, que es justo lo que se trata de
+evitar. Durante esos nueve segundos el ave no avanza más —un bicho adentro de
+un rayo tractor no sigue viaje— y el tramo sigue dibujándose para que la nave
+llegue, se quede y se vaya. El número vive en `lib/vuelo.ts` y la animación en
+`app/globals.css`: es el único lugar donde un valor de CSS tiene que coincidir
+con uno de TypeScript, y está dicho en los dos lados.
 
 ## El color
 
@@ -995,6 +1034,7 @@ lib/geocode.ts    coordenadas → "Palermo, Argentina" (Nominatim, best-effort).
 app/page.tsx      la portada.
 app/nido/         la app.
 app/api/          estado, nido, amigos, loros, loros/leer, loros/suerte,
+                  loros/abducir,
                   mundo, ubicacion, sesion.
 app/entrar/       canjea la llave del nido y redirige al mapa.
 
