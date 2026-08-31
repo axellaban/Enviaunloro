@@ -636,6 +636,19 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 
 .marcador-nido, .marcador-ave { background: none !important; border: none !important; }
 
+/* El ave se puede tocar para llamarle al plato volador, y mide 34x28: un dedo
+   no acierta eso, menos con el bicho en movimiento. El area sensible se
+   agranda con un pseudo-elemento en vez de agrandar el icono, para no tocar
+   ni el dibujo ni el punto donde Leaflet lo ancla. */
+.marcador-ave.tocable { cursor: pointer; }
+.marcador-ave.tocable::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+/* Ver el efecto de arriba, en Mapa.tsx. */
+.eligiendo .marcador-ave.tocable { pointer-events: none; }
+
 /* ---------- la abducción ----------
 
    La nave baja, se queda con el ave en el rayo y se va para arriba. Los tres

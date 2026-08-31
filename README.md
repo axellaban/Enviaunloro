@@ -499,6 +499,40 @@ recibió; lo que se hace con uno que todavía está en el aire lo decide quien l
 soltó.** Nadie puede abducir el ave de otro, y después de aterrizar ya no se
 puede: ese mensaje ya es del otro.
 
+### Se entra por los dos lados
+
+El botón vive en **dos lugares**, y no es duplicación por descuido: son las dos
+formas en que la mano llega al mismo bicho.
+
+En la **tarjeta del panel**, al pie de cada ave tuya que esté en el aire — que
+es donde se busca cuando uno ya sabe que la cosa existe.
+
+Y **tocando el ave en el mapa**, que es donde la mano va primero. Durante un
+tiempo el ave fue `interactive: false`: decoración, imposible de tocar. Pero el
+bicho cruzando el mapa *es* el objeto de esta app, y que no pasara nada al
+tocarlo era el vacío más caro que teníamos. Ahora abre un globo con adónde va y
+cuánto falta, y si es tuya y sigue en el aire, con el botón.
+
+Tres detalles de ese globo, porque los tres son bugs si se hacen distinto:
+
+- **Se arma al abrirlo, no al crear la capa.** Leaflet acepta una función como
+  contenido y la llama en cada apertura. Entre que un ave despega y que alguien
+  la toca pasan horas: un "llega en 3 h" congelado en el momento del despegue
+  sería mentira.
+- **Las aves ajenas no lo tienen.** En la vista «Del resto» los vuelos son
+  anónimos y vienen corridos 25 km. Abrirles un globo contaría de quién es y
+  adónde va, que es exactamente lo que esa vista existe para no contar. Esas
+  siguen siendo dibujo.
+- **Mientras mudás el nido, las aves vuelven a ser dibujo.** Un marcador
+  interactivo se come el toque y el mapa nunca se entera, así que tocar justo
+  donde pasaba un loro no plantaría el nido en ningún lado. Se apagan con una
+  clase (`.eligiendo`) mientras dura la mudanza.
+
+El área sensible se agranda con un pseudo-elemento (`.marcador-ave.tocable`) en
+vez de agrandar el ícono: el ave mide 34×28 y un dedo no acierta eso, menos con
+el bicho en movimiento. Agrandar el ícono habría movido el dibujo y el punto
+donde Leaflet lo ancla.
+
 No se llama "eliminar" ni "cancelar", y no es solo por el chiste. Eliminar
 sugiere que la cosa deja de haber existido, y no es cierto: del otro lado ya se
 avisó que venía un loro, y esa persona **ve pasar la nave**. Una abducción es

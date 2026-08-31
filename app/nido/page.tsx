@@ -412,6 +412,14 @@ export default function Nido() {
           foco={foco}
           modoElegir={mudando}
           alEscribirle={(id) => setCompositor({ abierto: true, para: id })}
+          // El mismo acto que el boton de la tarjeta del panel, desde el otro
+          // lado: ahi se llega por la lista, aca tocando el bicho en el mapa.
+          // El aviso de que se lo llevaron lo da el vigia de siempre cuando el
+          // servidor devuelve el loro abducido, asi que aca no se anuncia nada.
+          alAbducir={async (id) => {
+            await pedir("/api/loros/abducir", { datos: { id } });
+            est.refrescar();
+          }}
           alElegirPunto={async (punto) => {
             if (!mudando) return;
             setMudando(false);
