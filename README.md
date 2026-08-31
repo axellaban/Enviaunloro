@@ -746,6 +746,34 @@ las seis aves son femeninas y la tabla ya lo sabía (`AVES[x].articulo`). Sin
 usarlo salían *"Ese paloma"* y *"Va el guacamayo"* — la clase de detalle que
 delata que el texto lo armó una máquina.
 
+### Play Protect y el APK que no escribimos
+
+En Android, "instalar" una PWA no instala tu sitio: el navegador le pide a un
+servidor que **genere un APK de verdad** que lo envuelve (un *WebAPK*). Chrome
+lo mintea contra el servidor de Google; Samsung Internet genera el suyo.
+
+Eso importa porque el cartel *"Se bloqueó la app no segura — esta app se diseñó
+para una versión anterior de Android"* es Play Protect mirando el
+`targetSdkVersion` de **ese APK**. Y `targetSdkVersion` **no existe en un
+manifest web**: no hay dónde tocarlo desde este repo. Quien lo pone es quien
+minteó el APK.
+
+Se puede instalar igual con "Instalar de todas formas" —es una advertencia, no
+un bloqueo— pero para alguien que recién llega es de lo más caro que puede
+pasar: Google diciéndole que la app no es segura justo al entrar.
+
+Lo que sí es nuestro y está declarado, aunque no sea la causa:
+
+- **`id`** fija la identidad de la app instalada. Sin declararlo se deriva de
+  `start_url`, así que el día que esa dirección cambie las instalaciones
+  existentes pasarían a verse como **otra** app: ícono duplicado y el nido
+  viejo del otro lado. Se escribe igual a la identidad que ya tienen las
+  instaladas (`/nido`) para no romper a nadie.
+- **`scope: "/"`**, el sitio entero y no la carpeta de `start_url`. Importa por
+  los links de convite: `/l/<llave>` vive fuera de `/nido`, y con el alcance por
+  defecto abrir uno con la app instalada la sacaba a una pestaña del navegador
+  en vez de abrirla adentro.
+
 ### El toque lleva al lorito, no al mapa
 
 `public/sw.js` siempre supo navegar a una URL al tocar el aviso. **Ninguno la

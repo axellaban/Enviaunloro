@@ -20,6 +20,18 @@ export default function manifest(): MetadataRoute.Manifest {
     description:
       "Tu lorito cruza el mapa en tiempo real. Tarda lo que tarda: la distancia vuelve a existir.",
     start_url: "/nido",
+    // `id` fija la identidad de la app instalada. Sin declararlo, el navegador
+    // la deriva de `start_url`, así que el día que esa dirección cambie las
+    // instalaciones existentes pasarían a verse como OTRA app: un ícono
+    // duplicado en la pantalla de inicio y el nido viejo del otro lado. Se
+    // escribe igual a la identidad que ya tienen los instalados —"/nido"— para
+    // no romper a quien ya la tiene puesta.
+    id: "/nido",
+    // El alcance es el sitio ENTERO y no la carpeta de `start_url`. Importa por
+    // los links de convite: `/l/<llave>` vive fuera de /nido, y con el alcance
+    // por defecto abrir uno con la app instalada la sacaba a una pestaña del
+    // navegador en vez de abrirla adentro.
+    scope: "/",
     // `standalone` y no `browser`: instalada tiene que abrirse como una app,
     // sin barra de direcciones. En iOS además es lo que habilita el push.
     display: "standalone",
