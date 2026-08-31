@@ -23,6 +23,7 @@ import { borrachera, ciudadDe, loQueEstaHaciendo } from "../lib/cerveceria";
 import { compartirConvite } from "./Convite";
 import { GuardarNido } from "./GuardarNido";
 import { Avisos } from "./Avisos";
+import { Instalar } from "./Instalar";
 import { Ave, Pollera } from "./Ave";
 import { Fiesta, type Motivo } from "./Fiesta";
 import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
@@ -175,6 +176,10 @@ export function Panel(p: Props) {
                 que convierte "¿querés notificaciones?" en una pregunta que se
                 contesta sola. */}
             <Avisos hayVuelo={enVuelo.length + volviendo.length + p.convites.length > 0} />
+            {/* Y ponerla en la pantalla de inicio, donde el navegador lo
+                permita. Va después de los avisos a propósito: primero que
+                pueda avisar, después dónde vive el ícono. */}
+            <Instalar />
             {soloLaVecina && <TraeAAlguien codigo={p.codigo} hayVuelo={enVuelo.length > 0} />}
             {p.convites.map((c) => (
               <TarjetaConvite

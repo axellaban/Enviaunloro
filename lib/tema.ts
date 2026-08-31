@@ -137,8 +137,25 @@ export const MOSAICOS: Record<string, Mosaico> = {
   noche: { carto: "dark_all", mapbox: "dark-v11", nombre: "De noche", claro: false },
 };
 
-/** Cuál viene de fábrica. Es la única línea que hay que tocar para cambiarlo. */
-export const MOSAICO_POR_DEFECTO = "claro";
+/**
+ * Cuál viene de fábrica. Es la única línea que hay que tocar para cambiarlo.
+ *
+ * Era `claro` —gris clarito, casi sin color— con el argumento de que el fondo
+ * se calla y los vuelos hablan. En la pantalla suena bien y en un teléfono no:
+ * un mapa sin verdes ni agua no se lee como un mapa, se lee como un mapa que no
+ * cargó. Y la app pide justo lo contrario, que uno mire el mapa y reconozca su
+ * barrio.
+ *
+ * Se descubrió por dónde se descubren estas cosas: la app instalada se veía
+ * distinta de la del navegador. No era un bug de la instalada — era que en el
+ * navegador había un `?mapa=calle` guardado de alguna prueba, y la instalada,
+ * con su propio almacenamiento, mostraba el de fábrica. La comparación
+ * accidental fue la respuesta.
+ *
+ * Los dos son `claro: true`, así que la pintura de lo que va encima —halos,
+ * anillos, contornos de ruta— no cambia ni un valor.
+ */
+export const MOSAICO_POR_DEFECTO = "calle";
 
 const GUARDADO = "loros:mapa";
 

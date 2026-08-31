@@ -18,6 +18,15 @@
 // NO cachea nada a propósito. Una app cuyo contenido es "dónde está el ave
 // AHORA" no gana nada sirviendo una copia vieja, y una copia vieja de un mapa
 // en vivo es peor que una pantalla vacía.
+//
+// PERO ESCUCHA `fetch`, y eso no es una contradicción con lo de arriba. Chrome
+// no ofrece instalar una app cuyo service worker no tenga un manejador de
+// `fetch`: es parte de sus criterios de instalabilidad, y sin él no dispara
+// `beforeinstallprompt`, así que en Android no aparecía forma de instalarla.
+// El manejador de abajo no responde nada —no llama a `respondWith`— o sea que
+// cada pedido sigue yendo a la red exactamente como antes. No cachea, no
+// intercepta, no cambia una sola respuesta. Existe para que el navegador
+// reconozca la app como instalable, que era lo único que faltaba.
 
 self.addEventListener("install", () => {
   // Sin esto, el service worker nuevo espera a que se cierren todas las
@@ -29,6 +38,11 @@ self.addEventListener("install", () => {
 self.addEventListener("activate", (evento) => {
   evento.waitUntil(self.clients.claim());
 });
+
+// Deliberadamente vacío. Ver arriba: está para que la app sea instalable, no
+// para hacer nada con los pedidos. Sin `respondWith`, el navegador resuelve
+// cada uno como si este manejador no existiera.
+self.addEventListener("fetch", () => {});
 
 self.addEventListener("push", (evento) => {
   let datos = {};

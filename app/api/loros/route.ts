@@ -3,6 +3,9 @@
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../lib/api";
 import { aveValida, enviarLoro, idsAmigos, nido } from "../../../lib/datos";
 import { verLoro } from "../../../lib/vista";
+import { AVES } from "../../../lib/aves";
+import { formatearDuracion } from "../../../lib/geo";
+import { empujarUnaVez } from "../../../lib/push";
 import type { Nido } from "../../../lib/datos";
 
 export const runtime = "nodejs";
@@ -36,6 +39,29 @@ export async function POST(req: Request) {
     pollera: b?.pollera === true,
   });
   if (!r.ok) return error(r.error);
+
+  // "Viene un loro, llega en 4 h", a quien lo va a recibir.
+  //
+  // Es la mitad del producto —saber que algo está en camino ES el producto, y
+  // sin este aviso un guacamayo de un día no se distingue de no haber recibido
+  // nada— y hasta ahora solo salía si esa persona tenía la app ABIERTA en el
+  // mismo momento del despegue, que es la única circunstancia en la que no
+  // hacía falta avisarle. El despertador cubre el aterrizaje, la vuelta y el
+  // extravío; el despegue no lo cubría nadie, porque no es un momento futuro
+  // que haya que ir a mirar: es ahora, acá.
+  //
+  // El texto no va, ni un pedazo, igual que en todos los demás.
+  const a = AVES[r.loro.ave];
+  void empujarUnaVez(para.id, `despegue:${r.loro.id}`, {
+    titulo: r.loro.pollera ? "Viene una pollera 🩱" : `Viene ${a.articulo} ${a.nombre.toLowerCase()} 🦜`,
+    cuerpo: `${yo.nombre} te mandó algo. Aterriza en ${formatearDuracion(
+      Math.max(0, r.loro.llegada - Date.now())
+    )}.`,
+    // El mismo tag que usan el aviso de aterrizaje y el de la pestaña abierta:
+    // son capítulos del mismo loro, y apilarlos es contar tres veces una
+    // noticia que ya se leyó.
+    tag: `loro:${r.loro.id}`,
+  }).catch(() => {});
 
   const nidos = new Map<string, Nido>([
     [yo.id, yo],

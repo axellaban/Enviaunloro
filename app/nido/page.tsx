@@ -140,7 +140,7 @@ export default function Nido() {
           ? `Tu ${a.nombre.toLowerCase()} se perdió camino a ${l.otro.nombre}. ${l.motivo}`
           : `Un ${a.nombre.toLowerCase()} de ${l.otro.nombre} se perdió en el camino.`;
         mostrarAviso(`🍃 ${texto}`);
-        avisar("Se perdió un loro 🍃", texto);
+        avisar("Se perdió un loro 🍃", texto, `loro:${l.id}`);
         continue;
       }
 
@@ -154,7 +154,7 @@ export default function Nido() {
         const clave = l.respuesta ? "soltado:volvio" : "soltado:volvio:vacio";
         const texto = NOTICIA_SUERTE[clave](l.otro.nombre, a.nombre.toLowerCase(), "");
         mostrarAviso(`🕊 ${texto}`);
-        avisar(`🕊 Volvió tu ${a.nombre.toLowerCase()}`, texto);
+        avisar(`🕊 Volvió tu ${a.nombre.toLowerCase()}`, texto, `loro:${l.id}`);
         continue;
       }
 
@@ -166,7 +166,7 @@ export default function Nido() {
         const texto = NOTICIA_SUERTE[l.suerte](l.otro.nombre, a.nombre.toLowerCase(), vuelve);
         const icono = l.suerte === "soltado" ? "🕊" : l.suerte === "enjaulado" ? "🔒" : "🍲";
         mostrarAviso(`${icono} ${texto}`);
-        avisar(`${icono} Novedades de tu ${a.nombre.toLowerCase()}`, texto);
+        avisar(`${icono} Novedades de tu ${a.nombre.toLowerCase()}`, texto, `loro:${l.id}`);
         continue;
       }
 
@@ -199,11 +199,15 @@ export default function Nido() {
             : `${a.nombre} de ${l.otro.nombre} salió de la cervecería. Llega en ${falta}.`
           : `${a.nombre} de ${l.otro.nombre} viene en camino. Llega en ${falta}.`;
         mostrarAviso(`${l.parada ? "🍺" : "🪶"} ${texto}`);
-        avisar(l.parada ? "Tu lorito viene de la barra 🍺" : "Viene un loro en camino 🦜", texto);
+        avisar(
+          l.parada ? "Tu lorito viene de la barra 🍺" : "Viene un loro en camino 🦜",
+          texto,
+          `loro:${l.id}`
+        );
       } else if (ahora.startsWith("llego") && (antes === "vuelo" || reciente)) {
         const texto = `${a.nombre} de ${l.otro.nombre} aterrizó en tu nido.`;
         mostrarAviso(`🪶 ${texto}`);
-        avisar("Aterrizó un loro 🦜", texto);
+        avisar("Aterrizó un loro 🦜", texto, `loro:${l.id}`);
       }
     }
   }, [est.loros, mostrarAviso, ahoraServidor]);

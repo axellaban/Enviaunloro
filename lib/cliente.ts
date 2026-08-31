@@ -436,15 +436,19 @@ export function sincronizarAvisos(): void {
  * directamente no existe —el constructor no está en Safari de iOS—. Además,
  * así tocar el aviso trae la app al frente en vez de no hacer nada.
  *
- * Sigue sin funcionar con la app CERRADA: para eso hace falta Web Push, que
- * necesita claves VAPID y un despertador del lado del servidor. Está escrito
- * en el README.
+ * Con la app CERRADA no llega: eso lo cubre Web Push desde el servidor. Los dos
+ * caminos existen y se pisan a propósito — el mismo aterrizaje puede salir por
+ * acá (pestaña viva) y por push (el despertador), y sin ponerse de acuerdo eran
+ * DOS notificaciones para el mismo hecho, apiladas, porque cada una traía su
+ * propio `tag`. Por eso `tag` ahora entra por parámetro: pasándole el mismo que
+ * usa el servidor —`loro:<id>`— la segunda reemplaza a la primera en vez de
+ * sumarse. Un loro es una noticia, no tres.
  */
-export function avisar(titulo: string, cuerpo: string): void {
+export function avisar(titulo: string, cuerpo: string, tag?: string): void {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   serviceWorker()
     .then((sw) => {
-      if (sw) return sw.showNotification(titulo, { body: cuerpo, icon: "/apple-icon.png", tag: titulo });
+      if (sw) return sw.showNotification(titulo, { body: cuerpo, icon: "/apple-icon.png", tag: tag || titulo });
       // Sin service worker —navegador viejo, o el registro falló— se usa lo de
       // antes. En iOS no hay nada que hacer y esto tira, por eso el catch.
       new Notification(titulo, { body: cuerpo, icon: "/icon.svg", tag: titulo });
