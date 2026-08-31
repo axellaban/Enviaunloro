@@ -32,11 +32,29 @@ export const RADIO_ZONA_KM = 0.3;
  * un problema distinto y bastante más serio.
  *
  * En la bandada, 300 m alcanzan: quien te ve ahí ya tiene tu código, se lo
- * diste vos. En la vista del resto te ve cualquiera, así que el punto se corre
- * a escala de ciudad. 25 km dicen "esto sale de Buenos Aires" y no dicen nada
- * más — que es justo lo que hace interesante el mapa sin poner a nadie.
+ * diste vos. En la vista del resto te ve CUALQUIERA con un nido, así que el
+ * punto se corre a escala de ciudad. 25 km dicen "esto sale de Buenos Aires" y
+ * no dicen nada más — que es justo lo que hace interesante el mapa sin poner a
+ * nadie.
+ *
+ * EL COSTO, dicho derecho, porque se nota y parece un error: un mismo vuelo
+ * cae en dos lugares a veinte kilómetros uno del otro según desde qué cuenta
+ * se lo mire. Medido: 228 m en la bandada, 22,16 km en el mundo. En un mapa de
+ * ciudad eso es otro partido, y quien tenga dos cuentas propias abiertas al
+ * lado lo va a ver como una incoherencia. No lo es: sin este corrimiento, uno
+ * mira el mapa del mundo, reconoce un arco —"ese es el que me mandó Ana recién"—
+ * y le lee las coordenadas exactas de la casa. Ese es todo el punto.
+ *
+ * SE PUEDE MOVER sin tocar código, con `LOROS_RADIO_MUNDO_KM`, y es un canje
+ * directo: cuanto más chico, más se parecen las dos vistas y más fino puede
+ * ubicarte un desconocido. Bajarlo a 5 significa "vive en esta zona del
+ * conurbano"; bajarlo a 1 es casi decir el barrio. El default se queda en 25
+ * porque es el único número que no dice nada más que la ciudad.
  */
-export const RADIO_MUNDO_KM = 25;
+export const RADIO_MUNDO_KM = (() => {
+  const puesto = Number(process.env.LOROS_RADIO_MUNDO_KM);
+  return Number.isFinite(puesto) && puesto > 0 ? puesto : 25;
+})();
 
 /**
  * El punto que se le muestra a los demás. Determinista: el mismo nido siempre

@@ -1434,6 +1434,7 @@ instancia:
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | No | Solo si querés mosaicos de Mapbox en vez de los de OpenStreetMap. También necesita redeploy. |
 | `LOROS_PROB_EXTRAVIO` | No | Pisa el 0,2% de loros perdidos. Dejala sin cargar salvo que quieras probar. |
 | `LOROS_ESCALA_TIEMPO` | No | Acelera TODOS los vuelos. No la cargues en producción. |
+| `LOROS_RADIO_MUNDO_KM` | No | Cuánto se corren los puntos en «Del resto». Por defecto 25. Bajarlo hace que las dos vistas se parezcan más y que un desconocido pueda ubicarte más fino: es un canje, no un ajuste. |
 
 ### La base: Upstash o Supabase
 
