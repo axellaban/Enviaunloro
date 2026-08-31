@@ -6,7 +6,7 @@
 // y los loros que van o vienen de vos. "Del resto" muestra lo que está
 // cruzando el planeta ahora mismo, de cualquiera — y ahí no hay nombres, ni
 // nidos dibujados, ni una letra de ningún mensaje: solo aves anónimas con las
-// puntas de su recorrido corridas 25 km (lib/privacidad.ts).
+// puntas de su recorrido corridas unos kilómetros (RADIO_MUNDO_KM en lib/privacidad.ts).
 //
 // Va acá arriba y chico a propósito. Es una vista, no una sección: tiene que
 // poder probarse de un toque y volver de otro, sin sentir que uno se fue a

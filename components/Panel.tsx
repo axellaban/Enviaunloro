@@ -1963,8 +1963,8 @@ function MiNido({
               }}
             >
               Tus vuelos se ven en el mapa del mundo <strong>sin tu nombre</strong>, sin
-              el mensaje y con las puntas corridas 25 km — a escala de ciudad, no
-              de casa. Si lo apagás, no aparece ninguno.
+              el mensaje y con las puntas corridas unos kilómetros — a escala de
+              zona, nunca sobre tu casa. Si lo apagás, no aparece ninguno.
             </span>
           </span>
         </label>

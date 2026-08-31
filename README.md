@@ -191,6 +191,16 @@ distintas: **la app sabe dónde estás; tus contactos, no.**
   servidor con los puntos reales y viajan ya resueltos, así que el "205 km" es
   cierto aunque el dibujo sea aproximado. Medido: un vuelo de 654,6 km reales se
   muestra como 654,57 km con las dos puntas corridas.
+- **El punto del mundo nunca cae sobre la casa de nadie.** El corrimiento
+  reparte con raíz cuadrada sobre el área del círculo, así que una parte de los
+  nidos caía cerquísima del centro. Con radio 25 daba igual —el 0,01% quedaba a
+  menos de 300 m—, pero al bajar a 3 pasaba a ser el **1%**: uno de cada cien
+  nidos se mostraba a los desconocidos **más preciso que a su propia bandada**,
+  justo al revés de lo que promete esta sección. Ahora el mundo reparte sobre una
+  rosca de 1 a 3 km y nunca sobre el centro. Verificado sobre 20.000 nidos: el
+  más cercano cae a 1,000 km y ninguno baja de 300 m. La zona de la bandada
+  sigue sin piso, que ahí 300 m es el barrio y caer a cincuenta metros está
+  bien.
 - Tu propio nido lo ves exacto. Es tu dato.
 
 ### El nido no sigue al teléfono
@@ -566,7 +576,7 @@ Y sobre el globo del mapa, tres detalles que son bugs si se hacen distinto:
   la toca pasan horas: un "llega en 3 h" congelado en el momento del despegue
   sería mentira.
 - **Las aves ajenas no lo tienen.** En la vista «Del resto» los vuelos son
-  anónimos y vienen corridos 25 km. Abrirles un globo contaría de quién es y
+  anónimos y vienen con las puntas corridas. Abrirles un globo contaría de quién es y
   adónde va, que es exactamente lo que esa vista existe para no contar. Esas
   siguen siendo dibujo.
 - **Mientras mudás el nido, las aves vuelven a ser dibujo.** Un marcador
@@ -1043,7 +1053,7 @@ bandada no alcanzan y hay otras:
 | | Bandada | Del resto |
 |---|---|---|
 | Quién te ve | quien tiene tu código, se lo diste vos | cualquiera con nido |
-| Tu ubicación | corrida hasta **300 m** | corrida hasta **25 km** |
+| Tu ubicación | corrida hasta **300 m** | corrida entre **1 y 3 km** |
 | Tu nombre | sí | **no** |
 | El id de tu nido | sí | **no** |
 | El mensaje | solo al aterrizar, y solo a quien va dirigido | **nunca** |
@@ -1056,19 +1066,23 @@ Tres detalles que no son obvios:
   —que ya te ve corrido 300 m— podría cruzar las dos vistas y despejar el rumbo
   del desvío, que es la mitad del secreto.
 
-  El efecto visible de eso es que **el mismo nido cae en dos lugares muy
-  distintos** según la vista, y no es poco: medido, 228 m en la bandada y
-  22,16 km en el mundo, o sea 22 km entre uno y otro. Parece un error y es la
-  función andando. Que las semillas sean distintas es justamente lo que impide
+  El efecto visible de eso es que **el mismo nido cae en dos lugares distintos**
+  según la vista. Que las semillas sean distintas es justamente lo que impide
   que las dos vistas se crucen: con la misma, restar una de la otra daría el
   rumbo exacto hacia el punto real.
+
+  El radio del mundo **era 25 km y hoy es 3**. Con 25 el mismo vuelo aparecía a
+  22 km de donde de verdad salió —otro partido del conurbano— y en un mapa de
+  ciudad eso se lee como un error, no como privacidad. 3 km sigue diciendo "sale
+  de esta zona" sin decir de qué casa. Se mueve con `LOROS_RADIO_MUNDO_KM`, sin
+  tocar código, porque es una decisión de producto y no una constante técnica.
 
   Como en pantalla no había nada que lo dijera, la primera vez que alguien entra
   a «Del resto» se lo explica un cartelito, una vez en la vida
   (`loros:mundo-explicado`).
-- **No se dibuja ningún nido**, ni siquiera un punto tenue. Los 25 km son toda
-  la protección: poner un pin sobre una coordenada corrida al azar aparenta una
-  precisión que no existe.
+- **No se dibuja ningún nido ajeno**, ni siquiera un punto tenue. El
+  corrimiento es toda la protección: poner un pin sobre una coordenada corrida
+  al azar aparenta una precisión que no existe.
 - **Se puede apagar**, desde *Nido → Aparecer en «Del resto»*. Y apagarlo saca
   todos tus vuelos, no solo los próximos. Guardar el nombre no vuelve a
   prenderlo: el panel usa el mismo endpoint para las dos cosas, y sin esa
@@ -1081,7 +1095,7 @@ volando, lo dice.
 ### Y los tuyos tampoco: "del resto" quiere decir del resto
 
 Un rato **sí entraban**, y se veía roto. La vista dibujaba tu propio arco
-corrido 25 km —el mismo corrimiento que se le aplica a un desconocido— justo al
+corrido como el de un desconocido cualquiera— justo al
 lado de tu nido, que ahí mismo se dibuja **exacto**, porque tu nido es tu dato.
 Resultado: tu ave saliendo de un lugar donde no estás, a veinte kilómetros de tu
 propio nido. Parecía un error y era uno.
@@ -1344,7 +1358,7 @@ lib/store.ts      persistencia: Upstash, Supabase o un archivo, según lo que
                   esté configurado.
 lib/vista.ts      qué ve el navegador. Acá se decide qué NO viaja: ni el texto
                   de un loro en vuelo, ni las coordenadas exactas de nadie.
-lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
+lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 1 a 3 km para el
                   mapa del mundo, con semillas separadas.
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
 lib/navegador.ts  si estamos adentro del navegador de otra app —donde el nido
@@ -1434,7 +1448,7 @@ instancia:
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | No | Solo si querés mosaicos de Mapbox en vez de los de OpenStreetMap. También necesita redeploy. |
 | `LOROS_PROB_EXTRAVIO` | No | Pisa el 0,2% de loros perdidos. Dejala sin cargar salvo que quieras probar. |
 | `LOROS_ESCALA_TIEMPO` | No | Acelera TODOS los vuelos. No la cargues en producción. |
-| `LOROS_RADIO_MUNDO_KM` | No | Cuánto se corren los puntos en «Del resto». Por defecto 25. Bajarlo hace que las dos vistas se parezcan más y que un desconocido pueda ubicarte más fino: es un canje, no un ajuste. |
+| `LOROS_RADIO_MUNDO_KM` | No | Cuánto se corren los puntos en «Del resto». Por defecto 3. Subirlo protege más y hace que las dos vistas se parezcan menos; bajarlo, al revés. Es un canje, no un ajuste. El piso —nunca sobre la casa— se calcula solo a un tercio del radio, con tope de 1 km. |
 
 ### La base: Upstash o Supabase
 

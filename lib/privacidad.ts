@@ -47,14 +47,30 @@ export const RADIO_ZONA_KM = 0.3;
  *
  * SE PUEDE MOVER sin tocar código, con `LOROS_RADIO_MUNDO_KM`, y es un canje
  * directo: cuanto más chico, más se parecen las dos vistas y más fino puede
- * ubicarte un desconocido. Bajarlo a 5 significa "vive en esta zona del
- * conurbano"; bajarlo a 1 es casi decir el barrio. El default se queda en 25
- * porque es el único número que no dice nada más que la ciudad.
+ * ubicarte un desconocido. 25 km decían "sale de Buenos Aires"; 3 km dicen
+ * "sale de esta zona del conurbano". Es la decisión que tomó Axel después de
+ * ver el mapa con las dos vistas al lado, y el canje está dicho arriba.
  */
 export const RADIO_MUNDO_KM = (() => {
   const puesto = Number(process.env.LOROS_RADIO_MUNDO_KM);
-  return Number.isFinite(puesto) && puesto > 0 ? puesto : 25;
+  return Number.isFinite(puesto) && puesto > 0 ? puesto : 3;
 })();
+
+/**
+ * Y un PISO, que a 25 km no hacía falta y a 3 km sí.
+ *
+ * El corrimiento reparte con raíz cuadrada sobre el área del círculo, así que
+ * algunos nidos caen cerquísima del centro. Con radio 25 eso era irrelevante
+ * —el 0,01% quedaba a menos de 300 m—, pero con radio 3 es el 1%: uno de cada
+ * cien nidos terminaba mostrándose a los DESCONOCIDOS más preciso que a su
+ * propia bandada, que lo ve corrido 300 m. Justo al revés de lo que promete
+ * esta sección.
+ *
+ * Con el piso, el punto del mundo nunca cae sobre la casa de nadie. A cambio se
+ * sabe que el nido NO está en el kilómetro de alrededor del punto mostrado, que
+ * es un dato mucho más barato que el que se estaba regalando.
+ */
+const PISO_MUNDO_KM = Math.min(1, RADIO_MUNDO_KM / 3);
 
 /**
  * El punto que se le muestra a los demás. Determinista: el mismo nido siempre
@@ -73,14 +89,18 @@ export function zonaDe(punto: Punto, semilla: string): Punto {
  * dos puntos falsos no tienen nada que ver entre sí.
  */
 export function zonaMundial(punto: Punto, semilla: string): Punto {
-  return correr(punto, `mundo:${semilla}`, RADIO_MUNDO_KM);
+  return correr(punto, `mundo:${semilla}`, RADIO_MUNDO_KM, PISO_MUNDO_KM);
 }
 
-function correr(punto: Punto, semilla: string, radioKm: number): Punto {
+function correr(punto: Punto, semilla: string, radioKm: number, pisoKm = 0): Punto {
   const h = createHash("sha256").update(semilla).digest();
   const rumbo = (h.readUInt16BE(0) / 0xffff) * 360;
   // Raíz cuadrada para repartir parejo sobre el área del círculo. Sin ella los
   // puntos se apelotonan cerca del centro, que es justo donde no queremos.
-  const distancia = Math.sqrt(h.readUInt16BE(2) / 0xffff) * radioKm;
+  //
+  // Con piso el reparto es sobre una rosca en vez de un disco: nunca sobre el
+  // centro. La zona de la bandada NO lo usa —ahí 300 m es el barrio y caer a
+  // cincuenta metros está bien— y la del mundo sí. Ver PISO_MUNDO_KM.
+  const distancia = pisoKm + Math.sqrt(h.readUInt16BE(2) / 0xffff) * (radioKm - pisoKm);
   return desplazar(punto, distancia, rumbo);
 }

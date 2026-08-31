@@ -507,7 +507,7 @@ export default function Nido() {
             // qué los puntos no coinciden con los de su bandada.
             //
             // Sin esto parece un bug, y es exactamente lo contrario: acá los
-            // vuelos vienen corridos hasta 25 km y en la bandada hasta 300 m,
+            // vuelos vienen corridos de 1 a 3 km y en la bandada hasta 300 m,
             // con semillas distintas a propósito. Un mismo nido cae en dos
             // lugares a veinte kilómetros uno del otro y no hay nada en
             // pantalla que lo explique. Una vez en la vida y no más: es una
@@ -517,7 +517,7 @@ export default function Nido() {
               if (localStorage.getItem("loros:mundo-explicado")) return;
               localStorage.setItem("loros:mundo-explicado", "1");
               mostrarAviso(
-                "🌎 Acá nadie ve dónde vive nadie: los vuelos se dibujan hasta 25 km corridos de donde salieron de verdad."
+                "🌎 Acá nadie ve dónde vive nadie: los vuelos se dibujan corridos de donde salieron de verdad."
               );
             } catch {}
           }}

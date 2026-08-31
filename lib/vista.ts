@@ -315,9 +315,9 @@ export function verLoro(
 //   ✗ el texto del mensaje, ni siquiera después de aterrizar
 //   ✗ el id real del loro (va hasheado, para que sea una clave de dibujo y
 //     nada más)
-//   ✓ la especie, los horarios, y las dos puntas corridas 25 km
+//   ✓ la especie, los horarios, y las dos puntas corridas (ver RADIO_MUNDO_KM)
 //
-// Los 25 km son toda la protección, y por eso el mapa no dibuja ningún nido en
+// Ese corrimiento es toda la protección, y por eso el mapa no dibuja nido ajeno en
 // esta vista: no hay un punto que valga la pena marcar, y un pin sobre una
 // coordenada corrida al azar aparenta una precisión que no existe. Aparecen
 // únicamente los vuelos donde LAS DOS puntas aceptaron: el arco muestra las

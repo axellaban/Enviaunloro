@@ -1,7 +1,7 @@
 // Lo que está cruzando el mapa ahora mismo, de cualquiera.
 //
 // Es el respaldo de la pestaña "Del resto". Devuelve vuelos anónimos: especie,
-// horarios y las dos puntas corridas 25 km, sin nombres, sin ids de nido y sin
+// horarios y las dos puntas corridas unos kilómetros, sin nombres, sin ids de
 // una sola letra del mensaje. Las reglas de qué sale y qué no viven en
 // lib/vista.ts (`vuelosMundiales`), igual que las de la bandada.
 //
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
   }
 
   // Y acá sale lo tuyo. La pestaña se llama "Del resto" y hasta hace poco te
-  // devolvía también tus propios vuelos —corridos 25 km como los de cualquier
+  // devolvía también tus propios vuelos —corridos como los de cualquier
   // desconocido—, así que en el mapa se veía tu ave saliendo de un lugar donde
   // no estás, a veinte kilómetros de tu propio nido, que ahí al lado se dibuja
   // exacto. Parecía un error y era uno: ese corrimiento existe para que no te

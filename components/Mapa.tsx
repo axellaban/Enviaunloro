@@ -534,7 +534,7 @@ export default function Mapa({
     if (!m) return;
 
     // En la vista del resto no se dibuja ni un nido ajeno: los arcos ya vienen
-    // corridos 25 km, y marcar sus puntas con un pin diría "acá vive alguien"
+    // corridos, y marcar sus puntas con un pin diría "acá vive alguien"
     // con una precisión que no tenemos y que además no nos corresponde. Queda
     // el propio, para no perder de vista dónde estás parado.
     const todos = vista === "resto" ? (yo ? [yo] : []) : [...(yo ? [yo] : []), ...amigos];
@@ -680,7 +680,7 @@ export default function Mapa({
   /**
    * El marcador del ave, tocable salvo que sea de un desconocido.
    *
-   * En la vista del resto los vuelos son anónimos y vienen corridos 25 km:
+   * En la vista del resto los vuelos son anónimos y vienen con las puntas corridas:
    * abrirles un globo sería contar de quién es y adónde va, que es exactamente
    * lo que esa vista existe para no contar. Esas aves siguen siendo dibujo.
    */

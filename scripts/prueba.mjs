@@ -1183,11 +1183,33 @@ chequear(
   "cada vuelo trae ruta y horarios, y nada más"
 );
 
-// Las puntas están a escala de ciudad, no de casa.
+// Las puntas están a escala de zona, no de casa.
+//
+// El radio se puede mover con LOROS_RADIO_MUNDO_KM, así que la prueba lo lee de
+// ahí en vez de tenerlo escrito: clavarle un número la haría fallar cada vez que
+// alguien mueve la perilla, que es justamente lo que la perilla existe para
+// permitir.
+//
+// El piso NO es un detalle: el corrimiento reparte con raíz cuadrada sobre el
+// área del círculo, así que sin piso una parte de los nidos cae cerquísima del
+// centro. A radio 3 eso es el 1% a menos de 300 m — más preciso de lo que los ve
+// su PROPIA bandada, o sea al revés de lo que esta sección promete. Por eso el
+// mundo reparte sobre una rosca y nunca sobre el centro, y por eso se afirma un
+// mínimo y no solo un máximo.
+const RADIO_MUNDO_KM = Number(process.env.LOROS_RADIO_MUNDO_KM) > 0
+  ? Number(process.env.LOROS_RADIO_MUNDO_KM)
+  : 3;
+const PISO_MUNDO_KM = Math.min(1, RADIO_MUNDO_KM / 3);
 const lejos = metros(REAL_ANA, mio.origen);
-console.log(`  la punta del vuelo se ve a ${(lejos / 1000).toFixed(1)} km de donde salió`);
-chequear(lejos > 1000, "la punta NO está donde está el nido de verdad");
-chequear(lejos <= 25_000 + 500, "pero sí adentro de los 25 km declarados");
+console.log(`  la punta del vuelo se ve a ${(lejos / 1000).toFixed(2)} km de donde salió`);
+chequear(
+  lejos >= PISO_MUNDO_KM * 1000 - 50,
+  `la punta NUNCA cae sobre el nido de verdad (piso ${PISO_MUNDO_KM} km)`
+);
+chequear(
+  lejos <= RADIO_MUNDO_KM * 1000 + 500,
+  `pero sí adentro de los ${RADIO_MUNDO_KM} km declarados`
+);
 
 // Y el corrimiento del mundo no es el mismo que el de la bandada: si lo fuera,
 // cruzar las dos vistas daría el rumbo del desvío, que es medio secreto.
