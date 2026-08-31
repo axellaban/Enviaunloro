@@ -234,6 +234,52 @@ sola—. Para una demo con distancias de verdad está
 que viaja al navegador en `/api/estado` para que el tiempo que se promete antes
 de mandar sea exactamente el que después se cumple.
 
+## Dónde vive el botón que hace crecer esto
+
+Un detalle de ubicación que valía más que varias funciones.
+
+La acción que trae gente nueva —mandarle un lorito a alguien que todavía no
+está— vivía en la pestaña **Bandada**, abajo de una tarjeta, a tres toques del
+mapa. Mientras tanto, el botón fijo del panel es **Soltar un loro**, que sólo
+alcanza a quien YA está en tu bandada.
+
+Para alguien que acaba de entrar, eso está al revés: su bandada son dos
+personas —Doña Cotorra y quien lo invitó— así que el botón que ve todo el
+tiempo llega a dos, y el que llega a toda su agenda está escondido.
+
+Y hay un momento exacto en que eso duele, que es el que ahora se aprovecha:
+**abrir "Soltar un loro" y buscar a alguien en la fila de "Para" que no está
+ahí**. La fila termina con una pastilla punteada —«🍺 No está en la app»— que
+lleva derecho al lorito de convite. Va al final y no al principio a propósito:
+así no le compite a la bandada de quien ya la tiene, y aparece justo cuando se
+terminó de mirar la fila sin encontrar a nadie.
+
+## El numerito del ícono
+
+Viene de haber querido otra cosa. La tarjeta viva que muestran apps como
+Binance en la pantalla bloqueada —esa que se actualiza sola con una barra de
+progreso— es una **Live Activity de iOS**: ActivityKit, nativo, y **no existe
+ninguna API web para eso**. No es una limitación de cómo está hecha esta app;
+no hay puerta.
+
+Lo que sí se podía era imitarla mandando avisos de avance que se reemplazan
+entre sí. Se descartó, y la razón es la misma que ordena todo lo demás acá: un
+ave que tarda dieciséis días no puede permitirse notificar su progreso. Serían
+cuatro interrupciones por loro a cambio de un dato que el mapa ya cuenta mucho
+mejor, y en iPhone cada reemplazo vuelve a alertar, así que encima saldría peor
+en la plataforma que originó la idea.
+
+Queda entonces lo único de esa idea que la web sí puede y que además **no
+interrumpe a nadie**: `navigator.setAppBadge()`, el globito en el ícono, con
+cuántas aves tuyas están cruzando el mapa ahora. Cuentan las que van y las que
+vuelven; los loritos esperando en una cervecería no, que es justo lo contrario
+de estar volando. Cero no dibuja un 0 — saca el globito, porque un 0 dice que
+hay algo.
+
+Anda en la app instalada, en las dos plataformas, iPhone incluido. En un
+navegador común la API no existe, y eso no es un error: es la mayoría de los
+casos, y por eso está todo envuelto en un `try`.
+
 ## El lorito de convite
 
 Hasta acá había una sola forma de traer gente: compartir tu nido. Un link

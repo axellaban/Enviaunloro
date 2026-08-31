@@ -410,6 +410,36 @@ export async function pedirPermisoAvisos(): Promise<EstadoAvisos> {
 }
 
 /**
+ * El numerito en el ícono de la app: cuántas aves tuyas están en el aire.
+ *
+ * Es lo más cerca que se puede estar, desde la web, de la tarjeta viva que
+ * tiene Binance en la pantalla bloqueada. Aquello es una Live Activity de iOS
+ * —ActivityKit, nativo, sin API web— y no hay forma de hacerlo desde acá. Esto
+ * es otra cosa y más chica, pero tiene lo único que de verdad importaba de
+ * aquello: que se vea, sin abrir nada, que hay algo pasando.
+ *
+ * Y a diferencia de mandar avisos de avance, no interrumpe. Un ave que tarda
+ * dieciséis días no puede permitirse notificar su progreso; un numerito que
+ * está ahí cuando mirás el teléfono, sí.
+ *
+ * Anda en la app INSTALADA, en las dos plataformas —iPhone incluido— y en
+ * ninguna otra parte. Por eso todo está envuelto: en un navegador común la API
+ * no existe, y eso no es un error, es la mayoría de los casos.
+ */
+export function marcarAvesEnElAire(cuantas: number): void {
+  try {
+    const nav = navigator as Navigator & {
+      setAppBadge?: (n?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (cuantas > 0) void nav.setAppBadge?.(cuantas)?.catch(() => {});
+    // Cero no es "poné un 0": es sacar el globito. Un ícono con un 0 encima
+    // dice que hay algo, y no hay nada.
+    else void nav.clearAppBadge?.()?.catch(() => {});
+  } catch {}
+}
+
+/**
  * Al entrar: si el permiso YA está dado, asegurarse de que este dispositivo
  * esté suscripto. No pregunta nada y no muestra nada.
  *

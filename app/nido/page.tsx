@@ -21,6 +21,7 @@ import { Cta } from "../../components/Cta";
 import {
   avisar,
   llaveDeConvite,
+  marcarAvesEnElAire,
   pedir,
   pedirUbicacion,
   sincronizarAvisos,
@@ -224,6 +225,28 @@ export default function Nido() {
       }
     }
   }, [est.loros, mostrarAviso, ahoraServidor]);
+
+  // El numerito del ícono, con las aves que están cruzando el mapa ahora.
+  //
+  // Es lo que quedó de haber querido la tarjeta viva de la pantalla bloqueada:
+  // aquello es una Live Activity de iOS y no tiene API web, así que en vez de
+  // imitarla con avisos de avance —que para un ave de dieciséis días sería una
+  // tortura— se hace lo único de esa idea que la web sí puede y que además no
+  // interrumpe a nadie.
+  //
+  // Cuentan las que van y las que vuelven: las dos están en el aire. Los
+  // loritos esperando en una cervecería no, que es justamente lo contrario de
+  // estar volando.
+  useEffect(() => {
+    const ahora = ahoraServidor();
+    marcarAvesEnElAire(
+      est.loros.filter(
+        (l) =>
+          (!l.llego && !l.perdido && !l.abducido) ||
+          (l.vuelta && ahora < l.vuelta.llegada)
+      ).length
+    );
+  }, [est.loros, ahoraServidor]);
 
   // Sumar a quien compartió el link.
   //
@@ -526,6 +549,13 @@ export default function Nido() {
           textoInicial={compositor.texto}
           aveInicial={compositor.ave}
           alCerrar={() => setCompositor({ abierto: false })}
+          // De "no está en la app" al lorito de convite, sin pasar por el
+          // panel: es la misma intención —escribirle a alguien— y lo único que
+          // cambia es que esa persona todavía no tiene nido.
+          alConvidar={() => {
+            setCompositor({ abierto: false });
+            setConvidando(true);
+          }}
           alEnviado={(mensaje) => {
             setCompositor({ abierto: false });
             mostrarAviso(`🪶 ${mensaje}`);

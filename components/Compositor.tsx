@@ -25,6 +25,7 @@ export function Compositor({
   aveInicial,
   alCerrar,
   alEnviado,
+  alConvidar,
 }: {
   yo: NidoVista;
   amigos: NidoVista[];
@@ -35,6 +36,8 @@ export function Compositor({
   aveInicial?: AveId;
   alCerrar: () => void;
   alEnviado: (mensaje: string) => void;
+  /** Escribirle a alguien que todavía no tiene nido. Ver la pastilla de abajo. */
+  alConvidar: () => void;
 }) {
   const [paraId, setParaId] = useState<string>(
     destinoInicial || amigos[0]?.id || ""
@@ -168,6 +171,38 @@ export function Compositor({
                   </button>
                 );
               })}
+
+              {/* Y la última pastilla: alguien que todavía no está.
+                  ESTE es el momento. Quien acaba de armar su nido abre esta
+                  pantalla con dos pastillas —Doña Cotorra y quien lo invitó—,
+                  busca a su amigo en la fila, no lo encuentra, y hasta acá la
+                  app no decía nada: lo único que resuelve eso vivía en la
+                  tercera pestaña, abajo de una tarjeta. El botón que se ve todo
+                  el tiempo sólo alcanza a la gente que YA está adentro; el que
+                  alcanza a todos los demás estaba escondido.
+                  Va al final y no al principio para no competir con la bandada
+                  de quien ya la tiene: se encuentra justo cuando se terminó de
+                  mirar la fila sin encontrar a nadie. */}
+              <button
+                onClick={alConvidar}
+                style={{
+                  flexShrink: 0,
+                  minHeight: 44,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 12px",
+                  borderRadius: 999,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 650,
+                  background: "transparent",
+                  color: "var(--suave)",
+                  border: "1px dashed var(--borde-alto)",
+                }}
+              >
+                🍺 No está en la app
+              </button>
             </div>
 
             {para && (
