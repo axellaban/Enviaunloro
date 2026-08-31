@@ -22,8 +22,8 @@ import {
   avisar,
   llaveDeConvite,
   pedir,
-  pedirPermisoAvisos,
   pedirUbicacion,
+  sincronizarAvisos,
   useEstado,
   useMundo,
 } from "../../lib/cliente";
@@ -326,7 +326,14 @@ export default function Nido() {
           // entre al mapa al instante— y recién después se sale a completar
           // el resto (bandada, loros, escala).
           est.sembrar(yo, codigo);
-          pedirPermisoAvisos();
+          // Acá NO se pide el permiso de avisos. Se pedía, y era la peor forma
+          // de gastarlo: sin contexto —a los diez segundos de haber llegado, y
+          // antes de que exista un solo vuelo del que avisar— y sin mirar si el
+          // servidor tenía claves para mandar algo. Un "no" del navegador es
+          // para siempre. Ahora lo ofrece el panel cuando hay un ave en el
+          // aire, que es cuando la pregunta se contesta sola (components/
+          // Avisos.tsx). Esto solo deja el service worker listo.
+          sincronizarAvisos();
           est.refrescar();
         }}
       />
@@ -505,7 +512,11 @@ export default function Nido() {
           alEnviado={(mensaje) => {
             setCompositor({ abierto: false });
             mostrarAviso(`🪶 ${mensaje}`);
-            pedirPermisoAvisos();
+            // El momento era bueno —el ave acaba de despegar— pero el cartel
+            // del navegador salía solo, sin haber preguntado antes. Ahora el
+            // panel muestra la tarjeta justo acá, porque desde este segundo hay
+            // un ave en el aire, y el cartel se abre recién si la tocan.
+            sincronizarAvisos();
             est.refrescar();
           }}
         />

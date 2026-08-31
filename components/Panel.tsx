@@ -22,6 +22,7 @@ import type { ConviteVista, LoroVista, NidoVista } from "../lib/vista";
 import { borrachera, ciudadDe, loQueEstaHaciendo } from "../lib/cerveceria";
 import { compartirConvite } from "./Convite";
 import { GuardarNido } from "./GuardarNido";
+import { Avisos } from "./Avisos";
 import { Ave, Pollera } from "./Ave";
 import { Fiesta, type Motivo } from "./Fiesta";
 import { esCodigo, LARGO_MAXIMO } from "../lib/codigo";
@@ -170,6 +171,10 @@ export function Panel(p: Props) {
                 volver imposible de hacer si se posterga. Se va solo y no
                 vuelve. */}
             <GuardarNido />
+            {/* Y el permiso de avisos, solo mientras haya algo volando: es lo
+                que convierte "¿querés notificaciones?" en una pregunta que se
+                contesta sola. */}
+            <Avisos hayVuelo={enVuelo.length + volviendo.length + p.convites.length > 0} />
             {soloLaVecina && <TraeAAlguien codigo={p.codigo} hayVuelo={enVuelo.length > 0} />}
             {p.convites.map((c) => (
               <TarjetaConvite

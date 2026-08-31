@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Punto } from "./geo";
 import type { ConviteVista, LoroVista, NidoVista, VueloMundo } from "./vista";
+import { hayQueInstalarParaAvisar } from "./navegador";
 
 export type Estado = {
   yo: NidoVista | null;
@@ -330,13 +331,100 @@ async function suscribirAlPush(): Promise<void> {
   }
 }
 
-/** Aviso del sistema cuando un ave aterriza y la app no está adelante. */
-export async function pedirPermisoAvisos(): Promise<void> {
+/**
+ * ¿El servidor puede mandar avisos con la app cerrada?
+ *
+ * Se consulta una sola vez por carga y se recuerda: la respuesta no cambia
+ * mientras la página esté abierta, y la contestan varias pantallas.
+ */
+let hayPush: Promise<boolean> | null = null;
+export function servidorAvisa(): Promise<boolean> {
+  if (!hayPush) {
+    hayPush = fetch("/api/push")
+      .then((r) => r.json())
+      .then((j) => Boolean(j?.hay))
+      .catch(() => false);
+  }
+  return hayPush;
+}
+
+/** En qué anda el permiso de avisos, ya resuelto para quien tenga que decidir. */
+export type EstadoAvisos =
+  /** No hay push en este servidor, o este navegador no puede. No ofrecer nada. */
+  | "imposible"
+  /** iPhone sin instalar: no hay permiso que pedir, hay un paso que contar. */
+  | "hayQueInstalar"
+  /** Se puede pedir. Es la única oportunidad, así que se pide con contexto. */
+  | "sePuedePedir"
+  /** Ya dijo que sí. */
+  | "listo"
+  /** Ya dijo que no: no se vuelve a preguntar, no hay cómo. */
+  | "negado";
+
+export async function estadoDeAvisos(): Promise<EstadoAvisos> {
+  if (typeof Notification === "undefined") {
+    // En iPhone sin instalar, `Notification` directamente no existe. Eso no es
+    // "imposible", es el paso que falta.
+    return hayQueInstalarParaAvisar() ? "hayQueInstalar" : "imposible";
+  }
+  if (Notification.permission === "granted") return "listo";
+  if (Notification.permission === "denied") return "negado";
+  if (hayQueInstalarParaAvisar()) return "hayQueInstalar";
+  // Y recién acá el servidor, que es lo único que decide si el permiso sirve
+  // para algo. Va último porque es el único que cuesta un viaje.
+  return (await servidorAvisa()) ? "sePuedePedir" : "imposible";
+}
+
+/**
+ * Pedir el permiso. **Solo desde un toque de la persona**, nunca al entrar.
+ *
+ * Antes esto se llamaba solo, apenas terminaba el onboarding, y pedía el
+ * permiso sin preguntar antes ni mirar si el servidor tenía con qué mandarlo.
+ * Las dos cosas estaban mal, y la segunda es la peor:
+ *
+ *   SIN CLAVES VAPID EL PERMISO NO SIRVE PARA NADA, y pedirlo igual lo quema.
+ *   Un "no" del navegador es para siempre: no hay forma de volver a preguntar,
+ *   ni el día que el push sí esté configurado. O sea que un deploy sin claves
+ *   —que es un estado normal, y el que trae la app recién instalada— iba
+ *   fundiendo la única oportunidad de cada persona que entraba, para conseguir
+ *   un permiso que nadie podía usar. /api/push ya lo decía con todas las
+ *   letras; lo que faltaba era que el navegador le hiciera caso.
+ *
+ *   Y sin contexto se dice que no. Es la misma lección que la ubicación, que
+ *   por eso se pide en el paso 2 del onboarding y no al entrar. El permiso de
+ *   avisos ahora se ofrece cuando hay un ave en el aire: ahí la pregunta
+ *   —"¿te aviso cuando aterrice?"— se contesta sola.
+ */
+export async function pedirPermisoAvisos(): Promise<EstadoAvisos> {
   try {
+    const antes = await estadoDeAvisos();
+    if (antes !== "sePuedePedir") return antes;
     void serviceWorker();
+    await Notification.requestPermission();
+    if (Notification.permission !== "granted") return "negado";
+    await suscribirAlPush();
+    return "listo";
+  } catch {
+    return "imposible";
+  }
+}
+
+/**
+ * Al entrar: si el permiso YA está dado, asegurarse de que este dispositivo
+ * esté suscripto. No pregunta nada y no muestra nada.
+ *
+ * Hace falta porque el permiso vive en el navegador y la suscripción en el
+ * servidor, y se pueden separar: alguien que dijo que sí antes de que hubiera
+ * claves VAPID tiene el permiso puesto y ninguna suscripción guardada. Sin
+ * esto, esa persona no recibe un solo aviso y desde afuera se ve como que el
+ * push no anda.
+ */
+export function sincronizarAvisos(): void {
+  try {
     if (typeof Notification === "undefined") return;
-    if (Notification.permission === "default") await Notification.requestPermission();
-    if (Notification.permission === "granted") await suscribirAlPush();
+    if (Notification.permission !== "granted") return;
+    void serviceWorker();
+    void suscribirAlPush();
   } catch {}
 }
 

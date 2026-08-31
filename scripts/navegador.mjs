@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const temporal = mkdtempSync(join(RAIZ, ".aves-"));
-let navegador;
+let navegador, necesitaInstalarseParaAvisar;
 try {
   execFileSync(
     "npx",
@@ -32,7 +32,7 @@ try {
      "--skipLibCheck"],
     { cwd: RAIZ, stdio: "inherit" }
   );
-  ({ navegador } = await import(join(temporal, "navegador.js")));
+  ({ navegador, necesitaInstalarseParaAvisar } = await import(join(temporal, "navegador.js")));
 } finally {
   process.on("exit", () => rmSync(temporal, { recursive: true, force: true }));
 }
@@ -87,6 +87,30 @@ for (const [ua, instalada, esperado, texto] of CASOS) {
   const r = navegador(ua, instalada);
   const bien = esperado === null ? !r.deApp : r.deApp && r.app === esperado;
   chequear(bien, `${texto}${bien ? "" : ` (dio ${JSON.stringify(r)})`}`);
+}
+
+// --- dónde no hay aviso posible sin instalar ---
+//
+// En iPhone el Push API existe SOLO para web apps agregadas a la pantalla de
+// inicio: una pestaña común no tiene PushManager y ni siquiera puede pedir el
+// permiso. Confundirse acá tiene una consecuencia fea y silenciosa — ofrecerle
+// avisos a alguien que no los puede recibir, gastando en el intento la única
+// oportunidad que hay de pedirle el permiso.
+console.log("\n— dónde hay que instalar para poder avisar —\n");
+for (const [ua, instalada, esperado, texto] of [
+  [`${IOS} Version/17.1 Mobile/15E148 Safari/604.1`, false, true,
+   "Safari de iPhone no puede avisar hasta que la agreguen a la pantalla de inicio"],
+  [`${IOS} CriOS/119.0.6045.109 Mobile/15E148 Safari/604.1`, false, true,
+   "ni Chrome de iPhone, que es el mismo WebKit con otro nombre"],
+  [`${IOS} Mobile/15E148`, true, false,
+   "ya instalada sí puede, y por eso no se le cuenta el paso"],
+  [`${ANDROID} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36`, false, false,
+   "Android avisa sin instalar nada"],
+  ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+   false, false, "y una Mac también"],
+]) {
+  const r = necesitaInstalarseParaAvisar(ua, instalada);
+  chequear(r === esperado, `${texto}${r === esperado ? "" : ` (dio ${r})`}`);
 }
 
 console.log(mal === 0 ? "\nTodo en verde ✓\n" : `\n${mal} en rojo ✗\n`);

@@ -527,6 +527,48 @@ Supabase → Database → Extensions).
 esté viva, como antes, y `/api/salud` avisa que están apagados. Prenderlo no
 migra nada.
 
+### El permiso se pide una sola vez en la vida
+
+Y esa es la razón de todo lo que sigue: si te dicen que no, **no hay forma de
+volver a preguntar**. Ni mañana, ni el día que el push sí esté configurado. No
+es un diálogo que se pueda reintentar, es una puerta que se cierra.
+
+Con eso a la vista, la app hacía las dos cosas que no había que hacer. Pedía el
+permiso **apenas terminaba el onboarding** —sin contexto, a los diez segundos de
+haber llegado y antes de que existiera un solo vuelo del que avisar— y lo pedía
+**sin mirar si el servidor tenía claves para mandar algo**. La segunda es la
+grave: un deploy sin VAPID, que es el estado normal de una app recién instalada,
+iba fundiendo la única oportunidad de cada persona que entraba, a cambio de un
+permiso que nadie podía usar. `/api/push` ya lo decía con todas las letras —
+"pedir un permiso que después no vas a poder usar es la peor forma de gastarlo"—
+y el navegador no le hacía caso.
+
+Ahora son **dos preguntas y no una**, que es todo el truco:
+
+1. Una tarjeta nuestra, en el panel, **solo mientras hay un ave en el aire**.
+   Decir que no ahí no cuesta nada y se puede volver a ofrecer. Y la pregunta
+   se contesta sola: la app acaba de prometer que algo llega en seis horas.
+2. El cartel del navegador —el que es para siempre— se abre **recién si la
+   tocan**. La oportunidad se gasta únicamente sobre alguien que ya dijo que sí.
+
+Y no se pregunta nada cuando no hay nada que ofrecer: sin claves VAPID en el
+servidor, la tarjeta no aparece. Es la misma lección que la ubicación, que por
+eso se pide en el paso 2 del onboarding y no al entrar.
+
+En iPhone tampoco se pide, porque **no hay nada que pedir**: sin agregar la app
+a la pantalla de inicio el Push API no existe, el cartel del permiso ni siquiera
+aparece, y vale para todos los navegadores del teléfono —en iPhone Chrome y
+Firefox son el mismo WebKit con otro nombre—. Lo único que sirve ahí es contar
+el paso que lo desbloquea. Se decide en `necesitaInstalarseParaAvisar()`, con
+prueba propia: equivocarse es ofrecerle avisos a quien no los puede recibir y
+gastar el permiso en el intento.
+
+Queda una costura que se separa sola y por eso se cose en cada carga: el permiso
+vive en el navegador y la suscripción en el servidor. Quien dijo que sí **antes**
+de que hubiera claves VAPID tiene el permiso puesto y ninguna suscripción
+guardada, así que no recibiría un solo aviso — y desde afuera se ve igual que un
+push que no anda. `sincronizarAvisos()` lo arregla sin preguntar nada.
+
 ### El despertador
 
 Es la parte que no es de front y por la que esto no existía. El ave aterriza en
@@ -918,8 +960,9 @@ lib/vista.ts      qué ve el navegador. Acá se decide qué NO viaja: ni el text
 lib/privacidad.ts los dos desvíos fijos: 300 m para la bandada, 25 km para el
                   mapa del mundo, con semillas separadas.
 lib/sesion.ts     identidad: un id firmado con HMAC en una cookie HttpOnly.
-lib/navegador.ts  si estamos adentro del navegador de otra app, donde el nido
-                  se pierde al salir. Pura, y con prueba propia.
+lib/navegador.ts  si estamos adentro del navegador de otra app —donde el nido
+                  se pierde al salir— y si acá hay que instalar para poder
+                  avisar. Pura, y con prueba propia.
 lib/colorNido.ts  un color por persona, estable y sin choques en tu bandada.
 lib/tema.ts       los dos temas. Lo que no es CSS: aves, mapa, papelitos.
 lib/push.ts       los avisos con la app cerrada: VAPID, suscripciones, envío.
@@ -943,6 +986,7 @@ components/Onboarding.tsx  los tres pasos para tener nido.
 components/Ave.tsx         las seis aves dibujadas, una pose y seis siluetas.
 components/Fiesta.tsx      las tres ceremonias a pantalla completa.
 components/GuardarNido.tsx la llave, ofrecida adentro del navegador de otra app.
+components/Avisos.tsx      el permiso de avisos, pedido con un ave en el aire.
 ```
 
 Las seis aves son SVG escritos a mano en
@@ -1072,8 +1116,9 @@ proceso.
   y no un ataque distribuido.
 - **Con el backend de archivo, un solo proceso.** Dos instancias contra el
   mismo archivo tienen ventana de carrera; para eso está Upstash.
-- **Sin push de verdad.** Los avisos de despegue y aterrizaje usan la API de
-  notificaciones del navegador, que solo dispara con la app abierta. Un
-  guacamayo de 16 días necesita un service worker + Web Push (VAPID) para que
-  el aviso llegue con el teléfono en el bolsillo. Es el próximo paso obvio y no
-  entra en un MVP.
+- **El push hay que prenderlo.** Ya está hecho —Web Push con VAPID y un
+  despertador en `pg_cron`, todo arriba— pero un deploy recién hecho viene sin
+  claves, y sin claves el aviso solo sale con la pestaña viva. Es una línea de
+  configuración, no código que falte, y `/api/salud` lo dice. En iPhone además
+  hace falta que la persona agregue la app a la pantalla de inicio, y eso no lo
+  puede hacer el servidor.

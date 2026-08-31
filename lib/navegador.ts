@@ -92,6 +92,28 @@ export function navegador(ua: string, standalone = false): Navegador {
   return NINGUNO;
 }
 
+/**
+ * Si acá no hay aviso posible hasta que la app esté en la pantalla de inicio.
+ *
+ * Es lo de iPhone, y no es un detalle de implementación que se pueda esconder:
+ * el Push API de Safari existe SOLO para web apps instaladas. Una pestaña común
+ * no tiene `PushManager` y ni siquiera puede pedir el permiso — el cartel no
+ * aparece, no hay nada que aceptar. Vale para todos los navegadores del
+ * teléfono, porque en iPhone Chrome y Firefox son el mismo WebKit con otro
+ * nombre.
+ *
+ * Importa porque cambia qué se le puede ofrecer a la persona. Pedirle permiso
+ * es ofrecerle algo que no existe; lo único que sirve es contarle el paso que
+ * lo desbloquea, y ese paso lo da ella.
+ *
+ * (Un iPad con iPadOS 13 o más se hace pasar por Mac y no entra acá. Se lo
+ * pierde el aviso, no la app: en la duda, callarse.)
+ */
+export function necesitaInstalarseParaAvisar(ua: string, standalone = false): boolean {
+  if (standalone) return false;
+  return /iPhone|iPad|iPod/i.test(ua);
+}
+
 /** Lo mismo, leyendo el navegador de verdad. Solo del lado del cliente. */
 export function navegadorDeAhora(): Navegador {
   if (typeof navigator === "undefined") return NINGUNO;
@@ -101,4 +123,14 @@ export function navegadorDeAhora(): Navegador {
     // Lo de iOS, que nunca implementó `display-mode`.
     (navigator as unknown as { standalone?: boolean }).standalone === true;
   return navegador(navigator.userAgent || "", instalada);
+}
+
+/** Y lo mismo para lo de iPhone. */
+export function hayQueInstalarParaAvisar(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const instalada =
+    (typeof matchMedia !== "undefined" &&
+      matchMedia("(display-mode: standalone)").matches) ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true;
+  return necesitaInstalarseParaAvisar(navigator.userAgent || "", instalada);
 }
