@@ -668,6 +668,61 @@ Supabase → Database → Extensions).
 esté viva, como antes, y `/api/salud` avisa que están apagados. Prenderlo no
 migra nada.
 
+### Lo que dicen, y por qué en un solo archivo
+
+Los textos vivían en **dos lugares**: el servidor los escribía en sus rutas y el
+cliente los volvía a escribir en `app/nido/page.tsx`. Eran los mismos momentos
+—despegó, aterrizó, se perdió— redactados dos veces, y ya se habían separado
+solos: el mismo extravío se anunciaba *"Se perdió tu loro"* desde el servidor y
+*"Se perdió un loro"* desde la pestaña abierta. Nadie los iba a mantener
+sincronizados a mano, así que dejaron de estar a mano: hoy todos salen de
+`lib/avisos.ts`, y `npm run prueba:avisos` los imprime y los revisa sin
+necesidad de servidor.
+
+**Tres reglas, y las tres salen de mirar una pantalla de bloqueo:**
+
+**El nombre va en el título.** Es lo único que se lee de reojo con el teléfono
+sobre la mesa. *"Aterrizó un lorito"* obliga a desbloquear para saber de quién;
+*"Aterrizó el lorito de Ana"* ya lo dijo. Se saltan la regla las tres que hablan
+de **tu** ave y de nadie más —"Volvió tu lorito", "Se perdió tu lorito"—, donde
+meter un nombre diría lo contrario de lo que pasó.
+
+**El emoji va al final.** Siempre. Estaban seis al final y dos al principio, y
+apilados en la pantalla de bloqueo el desalineado se ve.
+
+**El mensaje no viaja.** Ni un pedazo. Abrir el ave es la ceremonia de la app y
+un aviso que adelanta el texto se la come. Es la misma regla que `lib/vista.ts`
+ya respeta del lado del servidor, y la prueba la deja escrita: estas funciones
+**no reciben** el mensaje, así que no tienen de dónde filtrarlo.
+
+Una cuarta, más chica, que igual se nota: **el género de la especie**. Tres de
+las seis aves son femeninas y la tabla ya lo sabía (`AVES[x].articulo`). Sin
+usarlo salían *"Ese paloma"* y *"Va el guacamayo"* — la clase de detalle que
+delata que el texto lo armó una máquina.
+
+### El toque lleva al lorito, no al mapa
+
+`public/sw.js` siempre supo navegar a una URL al tocar el aviso. **Ninguno la
+mandaba**: todos caían en `/nido` a secas. Te avisaban que aterrizó algo de Ana
+y después te tocaba encontrarlo entre las tarjetas.
+
+Ahora cada aviso viaja con `?ver=<idLoro>`, la página lo lee y el panel abre la
+pestaña donde está esa tarjeta, la trae a la vista y la resalta un segundo y
+medio (`.tarjeta.señalada`). Lo que **no** hace es abrirla: abrir un ave es la
+ceremonia —el confeti, el luto, el texto— y esa es de quien recibe, cuando
+quiera. Un aviso te lleva hasta la puerta; no la empuja.
+
+Dos detalles que sin ellos no funciona:
+
+- **`notificationclick` buscaba mal.** Comparaba la URL entera con `includes`,
+  así que una pestaña abierta en `/nido` no "contenía" `/nido?ver=abc` y se
+  abría una ventana **nueva** en cada toque. Ahora busca por camino y usa
+  `navigate`, que es lo que hace que el `?ver=` llegue a una pestaña que ya
+  estaba abierta.
+- **La dirección se limpia al llegar.** Con `replaceState`, apenas se leyó. Si
+  quedara puesta, recargar —o volver con el botón de atrás dos días después— te
+  llevaría de nuevo a un ave de la que ya te olvidaste.
+
 ### El permiso se pide una sola vez en la vida
 
 Y esa es la razón de todo lo que sigue: si te dicen que no, **no hay forma de

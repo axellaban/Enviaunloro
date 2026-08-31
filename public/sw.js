@@ -51,7 +51,7 @@ self.addEventListener("push", (evento) => {
   } catch {
     datos = { cuerpo: evento.data ? evento.data.text() : "" };
   }
-  const titulo = datos.titulo || "Loros";
+  const titulo = datos.titulo || "Enviaunlorito";
   evento.waitUntil(
     self.registration.showNotification(titulo, {
       body: datos.cuerpo || "",
@@ -68,11 +68,28 @@ self.addEventListener("push", (evento) => {
 self.addEventListener("notificationclick", (evento) => {
   evento.notification.close();
   const destino = (evento.notification.data && evento.notification.data.url) || "/nido";
+  // Los avisos ahora traen `?ver=<id>`: llevan hasta el ave de la que hablan,
+  // no al mapa en general. Eso rompió la búsqueda que había acá, que comparaba
+  // la URL entera con `includes`: una pestaña abierta en "/nido" no contiene
+  // "/nido?ver=abc", así que no la encontraba y abría una ventana NUEVA cada
+  // vez. Ahora se busca por camino —cualquier pestaña de la app sirve— y se la
+  // manda al destino con `navigate`, que es lo que hace que el `?ver=` llegue
+  // a una pestaña que ya estaba abierta.
+  const camino = destino.split("?")[0];
   evento.waitUntil(
-    // Si ya hay una ventana abierta se trae al frente, en vez de abrir otra.
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((abiertas) => {
       for (const c of abiertas) {
-        if (c.url.includes(destino) && "focus" in c) return c.focus();
+        if (!c.url.includes(camino)) continue;
+        // `navigate` no existe en todos lados y puede fallar si la pestaña no
+        // está bajo control de este service worker. Que falle no puede costar
+        // el toque: en el peor caso se trae al frente lo que ya había.
+        if ("navigate" in c) {
+          return c
+            .navigate(destino)
+            .then((v) => (v || c).focus())
+            .catch(() => c.focus());
+        }
+        if ("focus" in c) return c.focus();
       }
       return self.clients.openWindow(destino);
     })

@@ -14,8 +14,7 @@ import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../.
 import { reclamarConvite } from "../../../../lib/convite";
 import { verLoro } from "../../../../lib/vista";
 import { empujarUnaVez } from "../../../../lib/push";
-import { AVES } from "../../../../lib/aves";
-import { formatearDuracion } from "../../../../lib/geo";
+import { avisoBandada } from "../../../../lib/avisos";
 import { nido, type Nido } from "../../../../lib/datos";
 
 export const runtime = "nodejs";
@@ -41,14 +40,16 @@ export async function POST(req: Request) {
   // el aviso que más se merece de toda la app —alguien a quien invitaste acaba
   // de armar su nido— y quien lo mandó puede tener la app cerrada hace días,
   // que es exactamente para lo que existe el push.
-  const ave = AVES[r.loro.ave].nombre.toLowerCase();
-  void empujarUnaVez(r.loro.de, `convite:${r.convite.id}`, {
-    titulo: "Se sumó a tu bandada 🦜",
-    cuerpo: `${yo.nombre} armó su nido. Tu ${ave} está pagando la cuenta y llega en ${formatearDuracion(
-      Math.max(0, r.loro.llegada - Date.now())
-    )}.`,
-    tag: `loro:${r.loro.id}`,
-  }).catch(() => {});
+  void empujarUnaVez(
+    r.loro.de,
+    `convite:${r.convite.id}`,
+    avisoBandada({
+      idLoro: r.loro.id,
+      quien: yo.nombre,
+      ave: r.loro.ave,
+      falta: Math.max(0, r.loro.llegada - Date.now()),
+    })
+  ).catch(() => {});
 
   // Se devuelve el vuelo ya visto desde este lado —sin el texto, que todavía
   // viaja— para que la pantalla pueda contar que el ave salió y cuánto falta,

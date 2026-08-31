@@ -14,6 +14,18 @@ import { Panel } from "../../components/Panel";
 import { Compositor } from "../../components/Compositor";
 import { Convite } from "../../components/Convite";
 import { HojaInferior, mirarElMapa } from "../../components/HojaInferior";
+import {
+  avisoAbduccion,
+  avisoAterrizaje,
+  avisoBandada,
+  avisoDeCopetines,
+  avisoDespegue,
+  avisoExtravio,
+  avisoSuerte,
+  avisoVuelta,
+  unaLinea,
+  type Aviso,
+} from "../../lib/avisos";
 import { VistaMapa, type Vista } from "../../components/VistaMapa";
 import { esCodigo, normalizarCodigo } from "../../lib/codigo";
 import { Ave } from "../../components/Ave";
@@ -53,15 +65,6 @@ const estadoDe = (l: LoroVista, ahora: number): EstadoLoro => {
   return `llego${l.suerte ? `:${l.suerte}` : ""}${volvio ? ":volvio" : ""}`;
 };
 
-/** Cómo se le cuenta a quien lo mandó lo que hicieron con su ave. */
-const NOTICIA_SUERTE: Record<string, (quien: string, ave: string, vuelve: string) => string> = {
-  soltado: (quien, ave, vuelve) =>
-    `${quien} soltó tu ${ave}. Vuelve a tu nido${vuelve ? `, llega en ${vuelve}` : ""}.`,
-  "soltado:volvio": (quien, ave) => `Volvió tu ${ave}, con la respuesta de ${quien}.`,
-  "soltado:volvio:vacio": (quien, ave) => `Volvió tu ${ave} de lo de ${quien}.`,
-  enjaulado: (quien, ave) => `${quien} se quedó con tu ${ave}. Ese no vuelve más.`,
-  puchero: (quien, ave) => `Tu ${ave} no volvió de lo de ${quien}. Mejor no preguntes.`,
-};
 
 const Mapa = dynamic(() => import("../../components/Mapa"), {
   ssr: false,
@@ -83,6 +86,7 @@ export default function Nido() {
   // El foco lleva un número pegado atrás para que tocar dos veces el mismo nido
   // vuelva a mover la cámara: si fuera solo el id, React no vería un cambio.
   const [foco, setFoco] = useState<string | null>(null);
+  const [mostrar, setMostrar] = useState<string | null>(null);
   // Enfocar es "mirá esto en el mapa", así que además de mover la cámara hay
   // que correr la hoja: en el celular tapa el 58% de la pantalla y la cámara
   // estaba apuntando a algo que quedaba abajo del panel.
@@ -90,6 +94,28 @@ export default function Nido() {
     setFoco(`${id}#${Date.now()}`);
     mirarElMapa();
   }, []);
+  /**
+   * De qué lorito hablaba el aviso que se tocó.
+   *
+   * Toda notificación viaja con `?ver=<id>` (lib/avisos.ts) y el service worker
+   * la abre ahí. Antes todas caían en `/nido` a secas: te avisaban que aterrizó
+   * algo de Ana y después te tocaba encontrarlo vos.
+   *
+   * La dirección se limpia enseguida con `replaceState`. Si quedara puesta,
+   * recargar la página —o volver con el botón de atrás dos días después— te
+   * llevaría de nuevo a un ave de la que ya te olvidaste, y compartir el link
+   * mandaría a otro a una tarjeta que no es suya.
+   */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("ver");
+    if (!id) return;
+    setMostrar(`${id}#${Date.now()}`);
+    enfocar(id);
+    url.searchParams.delete("ver");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, [enfocar]);
+
   const [aviso, setAviso] = useState("");
   /** Modo "tocá el mapa para mudar tu nido". */
   const [mudando, setMudando] = useState(false);
@@ -136,57 +162,72 @@ export default function Nido() {
       conocidos.current.set(l.id, ahora);
       if (antes === ahora) continue;
 
-      const a = AVES[l.ave];
       const mio = l.direccion === "enviado";
       // Lo que apareció ya resuelto pasó con la app cerrada. Se avisa solo si
       // fue recién: nadie quiere enterarse hoy de algo de anteayer.
       const nuevo = antes === undefined;
       const reciente = ahoraServidor() - (l.abducido ?? l.extravio ?? l.llegada) < 120_000;
 
+      // Todos los textos salen de lib/avisos.ts, los mismos que manda el
+      // servidor. Acá solo se decide CUÁNDO corresponde cada uno; qué dice no
+      // se decide dos veces.
+      const contar = (av: Aviso) => {
+        mostrarAviso(unaLinea(av));
+        avisar(av);
+      };
+
       // Se lo llevó una nave. Le corresponde a quien lo ESPERABA: quien la
       // llamó ya sabe, la pidió él. Y del otro lado hace falta de verdad, que
       // es lo incómodo del asunto: a esa persona ya se le avisó que venía un
-      // loro, así que sin esto se queda esperando algo que no llega nunca.
+      // lorito, así que sin esto se queda esperando algo que no llega nunca.
       if (ahora === "abducido" && !mio && (!nuevo || reciente)) {
-        const texto = `Un plato volador interceptó el ${a.nombre.toLowerCase()} de ${l.otro.nombre}. No va a llegar.`;
-        mostrarAviso(`🛸 ${texto}`);
-        avisar("Se lo llevaron 🛸", texto, `loro:${l.id}`);
+        contar(avisoAbduccion({ idLoro: l.id, quien: l.otro.nombre, ave: l.ave }));
         continue;
       }
       if (ahora === "abducido") continue;
 
       if (ahora === "perdido" && (!nuevo || reciente)) {
-        const texto = mio
-          ? `Tu ${a.nombre.toLowerCase()} se perdió camino a ${l.otro.nombre}. ${l.motivo}`
-          : `Un ${a.nombre.toLowerCase()} de ${l.otro.nombre} se perdió en el camino.`;
-        mostrarAviso(`🍃 ${texto}`);
-        avisar("Se perdió un loro 🍃", texto, `loro:${l.id}`);
+        contar(
+          avisoExtravio({
+            idLoro: l.id,
+            quien: l.otro.nombre,
+            ave: l.ave,
+            motivo: l.motivo,
+            mio,
+          })
+        );
+        continue;
+      }
+
+      // El ave volvió y trae algo. Es su propio momento: entre soltarla y que
+      // aterrice pueden pasar días, y sin este aviso la respuesta se queda ahí
+      // sin que nadie sepa que llegó.
+      if (mio && ahora.endsWith(":volvio") && antes && !antes.endsWith(":volvio")) {
+        contar(
+          avisoVuelta({
+            idLoro: l.id,
+            quien: l.otro.nombre,
+            ave: l.ave,
+            conRespuesta: Boolean(l.respuesta),
+          })
+        );
         continue;
       }
 
       // Qué hicieron con tu ave del otro lado. Es el único aviso que le
       // corresponde a quien MANDÓ: la decisión la tomó el otro, y sin esto no
       // se enteraba salvo que se le ocurriera volver a mirar la tarjeta.
-      // El ave volvió y trae algo. Es su propio momento: entre soltarla y que
-      // aterrice pueden pasar días, y sin este aviso la respuesta se queda ahí
-      // sin que nadie sepa que llegó.
-      if (mio && ahora.endsWith(":volvio") && antes && !antes.endsWith(":volvio")) {
-        const clave = l.respuesta ? "soltado:volvio" : "soltado:volvio:vacio";
-        const texto = NOTICIA_SUERTE[clave](l.otro.nombre, a.nombre.toLowerCase(), "");
-        mostrarAviso(`🕊 ${texto}`);
-        avisar(`🕊 Volvió tu ${a.nombre.toLowerCase()}`, texto, `loro:${l.id}`);
-        continue;
-      }
-
       if (mio && l.suerte && antes && !antes.includes(":")) {
-        const vuelve =
-          l.vuelta && l.vuelta.llegada > ahoraServidor()
-            ? formatearDuracion(l.vuelta.llegada - ahoraServidor())
-            : "";
-        const texto = NOTICIA_SUERTE[l.suerte](l.otro.nombre, a.nombre.toLowerCase(), vuelve);
-        const icono = l.suerte === "soltado" ? "🕊" : l.suerte === "enjaulado" ? "🔒" : "🍲";
-        mostrarAviso(`${icono} ${texto}`);
-        avisar(`${icono} Novedades de tu ${a.nombre.toLowerCase()}`, texto, `loro:${l.id}`);
+        contar(
+          avisoSuerte({
+            idLoro: l.id,
+            quien: l.otro.nombre,
+            ave: l.ave,
+            suerte: l.suerte,
+            conRespuesta: Boolean(l.respuesta),
+            vuelve: l.vuelta ? Math.max(0, l.vuelta.llegada - ahoraServidor()) : 0,
+          })
+        );
         continue;
       }
 
@@ -196,10 +237,14 @@ export default function Nido() {
       // que una tarjeta desaparecía en silencio y aparecía otra, y el premio
       // por haber invitado a alguien no se veía en ningún lado.
       if (mio && nuevo && l.parada && ahora === "vuelo") {
-        const falta = formatearDuracion(l.llegada - ahoraServidor());
-        const texto = `${l.otro.nombre} armó su nido. Tu ${a.nombre.toLowerCase()} está pagando la cuenta y llega en ${falta}.`;
-        mostrarAviso(`🎉 ${texto}`);
-        avisar("Se sumó a tu bandada 🦜", texto);
+        contar(
+          avisoBandada({
+            idLoro: l.id,
+            quien: l.otro.nombre,
+            ave: l.ave,
+            falta: Math.max(0, l.llegada - ahoraServidor()),
+          })
+        );
         continue;
       }
 
@@ -208,26 +253,29 @@ export default function Nido() {
       if (mio) continue;
 
       if (nuevo && ahora === "vuelo") {
-        const falta = formatearDuracion(l.llegada - ahoraServidor());
+        const falta = Math.max(0, l.llegada - ahoraServidor());
         // El que sale de una cervecería no "viene en camino" y ya: estuvo
         // esperando a que armaras tu nido, y eso es lo primero que esa persona
         // lee de la app. Contarlo como un vuelo más se come toda la historia.
-        const enLaBarra = ahoraServidor() < l.salida;
-        const texto = l.parada
-          ? enLaBarra
-            ? `${a.nombre} de ${l.otro.nombre} está terminando el copetín. Llega en ${falta}.`
-            : `${a.nombre} de ${l.otro.nombre} salió de la cervecería. Llega en ${falta}.`
-          : `${a.nombre} de ${l.otro.nombre} viene en camino. Llega en ${falta}.`;
-        mostrarAviso(`${l.parada ? "🍺" : "🪶"} ${texto}`);
-        avisar(
-          l.parada ? "Tu lorito viene de la barra 🍺" : "Viene un loro en camino 🦜",
-          texto,
-          `loro:${l.id}`
+        contar(
+          l.parada
+            ? avisoDeCopetines({
+                idLoro: l.id,
+                quien: l.otro.nombre,
+                ave: l.ave,
+                falta,
+                enLaBarra: ahoraServidor() < l.salida,
+              })
+            : avisoDespegue({
+                idLoro: l.id,
+                quien: l.otro.nombre,
+                ave: l.ave,
+                pollera: l.pollera,
+                falta,
+              })
         );
       } else if (ahora.startsWith("llego") && (antes === "vuelo" || reciente)) {
-        const texto = `${a.nombre} de ${l.otro.nombre} aterrizó en tu nido.`;
-        mostrarAviso(`🪶 ${texto}`);
-        avisar("Aterrizó un loro 🦜", texto, `loro:${l.id}`);
+        contar(avisoAterrizaje({ idLoro: l.id, quien: l.otro.nombre, ave: l.ave }));
       }
     }
   }, [est.loros, mostrarAviso, ahoraServidor]);
@@ -531,6 +579,7 @@ export default function Nido() {
           escala={est.escala}
           ahoraServidor={est.ahoraServidor}
           alEnfocar={enfocar}
+          mostrar={mostrar}
           convites={est.convites}
           alEscribir={(id) => setCompositor({ abierto: true, para: id })}
           alConvidar={() => setConvidando(true)}

@@ -3,9 +3,8 @@
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../lib/api";
 import { aveValida, enviarLoro, idsAmigos, nido } from "../../../lib/datos";
 import { verLoro } from "../../../lib/vista";
-import { AVES } from "../../../lib/aves";
-import { formatearDuracion } from "../../../lib/geo";
 import { empujarUnaVez } from "../../../lib/push";
+import { avisoDespegue } from "../../../lib/avisos";
 import type { Nido } from "../../../lib/datos";
 
 export const runtime = "nodejs";
@@ -51,17 +50,19 @@ export async function POST(req: Request) {
   // que haya que ir a mirar: es ahora, acá.
   //
   // El texto no va, ni un pedazo, igual que en todos los demás.
-  const a = AVES[r.loro.ave];
-  void empujarUnaVez(para.id, `despegue:${r.loro.id}`, {
-    titulo: r.loro.pollera ? "Viene una pollera 🩱" : `Viene ${a.articulo} ${a.nombre.toLowerCase()} 🦜`,
-    cuerpo: `${yo.nombre} te mandó algo. Aterriza en ${formatearDuracion(
-      Math.max(0, r.loro.llegada - Date.now())
-    )}.`,
-    // El mismo tag que usan el aviso de aterrizaje y el de la pestaña abierta:
-    // son capítulos del mismo loro, y apilarlos es contar tres veces una
-    // noticia que ya se leyó.
-    tag: `loro:${r.loro.id}`,
-  }).catch(() => {});
+  // El texto sale de lib/avisos.ts, que es el único lugar donde vive: la
+  // pestaña abierta arma el mismo aviso con la misma función.
+  void empujarUnaVez(
+    para.id,
+    `despegue:${r.loro.id}`,
+    avisoDespegue({
+      idLoro: r.loro.id,
+      quien: yo.nombre,
+      ave: r.loro.ave,
+      pollera: Boolean(r.loro.pollera),
+      falta: Math.max(0, r.loro.llegada - Date.now()),
+    })
+  ).catch(() => {});
 
   const nidos = new Map<string, Nido>([
     [yo.id, yo],

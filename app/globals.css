@@ -636,6 +636,25 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 
 .marcador-nido, .marcador-ave { background: none !important; border: none !important; }
 
+/* La tarjeta a la que te trajo un aviso.
+   Aparece en pantalla junto a otras cinco iguales, así que sin esto no hay
+   forma de saber cuál es la que te trajo hasta acá. Late dos veces y se apaga:
+   lo justo para que el ojo la encuentre, no tanto como para pedir que le
+   hagas algo. */
+.tarjeta.señalada {
+  animation: señalar 1.8s ease-out;
+}
+@keyframes señalar {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(125, 211, 252, 0); }
+  15%, 55% { box-shadow: 0 0 0 3px rgba(125, 211, 252, .55); }
+  35%      { box-shadow: 0 0 0 3px rgba(125, 211, 252, .18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Sin latido, pero el anillo se queda: el problema que resuelve —cuál de
+     todas es— no desaparece porque alguien prefiera menos movimiento. */
+  .tarjeta.señalada { animation: none; box-shadow: 0 0 0 3px rgba(125, 211, 252, .5); }
+}
+
 /* El ave se puede tocar para llamarle al plato volador, y mide 34x28: un dedo
    no acierta eso, menos con el bicho en movimiento. El area sensible se
    agranda con un pseudo-elemento en vez de agrandar el icono, para no tocar

@@ -8,6 +8,7 @@
 // en el celular eso es batería, y al volver se refresca de inmediato.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Aviso } from "./avisos";
 import type { Punto } from "./geo";
 import type { ConviteVista, LoroVista, NidoVista, VueloMundo } from "./vista";
 import { hayQueInstalarParaAvisar } from "./navegador";
@@ -474,14 +475,24 @@ export function sincronizarAvisos(): void {
  * usa el servidor —`loro:<id>`— la segunda reemplaza a la primera en vez de
  * sumarse. Un loro es una noticia, no tres.
  */
-export function avisar(titulo: string, cuerpo: string, tag?: string): void {
+export function avisar(a: Aviso): void {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   serviceWorker()
     .then((sw) => {
-      if (sw) return sw.showNotification(titulo, { body: cuerpo, icon: "/apple-icon.png", tag: tag || titulo });
+      if (sw) {
+        return sw.showNotification(a.titulo, {
+          body: a.cuerpo,
+          icon: "/apple-icon.png",
+          tag: a.tag,
+          // Lo mismo que manda el servidor, para que tocar el aviso de la
+          // pestaña abierta lleve al mismo lugar que el de la app cerrada.
+          // Lo lee `notificationclick` en public/sw.js.
+          data: { url: a.url },
+        });
+      }
       // Sin service worker —navegador viejo, o el registro falló— se usa lo de
       // antes. En iOS no hay nada que hacer y esto tira, por eso el catch.
-      new Notification(titulo, { body: cuerpo, icon: "/icon.svg", tag: titulo });
+      new Notification(a.titulo, { body: a.cuerpo, icon: "/icon.svg", tag: a.tag });
     })
     .catch(() => {});
 }

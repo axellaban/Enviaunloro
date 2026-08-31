@@ -23,7 +23,6 @@
 // cualquiera podría llamarlo en bucle. Los avisos igual no se duplicarían
 // (cada uno pide su turno único), pero el trabajo sí.
 
-import { AVES } from "../../../lib/aves";
 import { error, ok } from "../../../lib/api";
 import { formatearDuracion } from "../../../lib/geo";
 import {
@@ -34,6 +33,7 @@ import {
   vueloTerminado,
 } from "../../../lib/datos";
 import { empujarUnaVez, hayPush } from "../../../lib/push";
+import { avisoAterrizaje, avisoExtravio, avisoVuelta } from "../../../lib/avisos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,19 +68,24 @@ export async function GET(req: Request) {
       cerrados++;
       continue;
     }
-    const a = AVES[l.ave];
-    const ave = a.nombre.toLowerCase();
     const perdido = l.extravio !== null && ahora >= l.extravio;
 
     if (perdido) {
       const de = await nido(l.de);
+      const para = await nido(l.para);
       if (
         de &&
-        (await empujarUnaVez(l.de, `perdido:${l.id}`, {
-          titulo: `Se perdió tu ${ave} 🍃`,
-          cuerpo: l.motivo || "No llegó, y no va a llegar.",
-          tag: `loro:${l.id}`,
-        }))
+        (await empujarUnaVez(
+          l.de,
+          `perdido:${l.id}`,
+          avisoExtravio({
+            idLoro: l.id,
+            quien: para?.nombre || "alguien",
+            ave: l.ave,
+            motivo: l.motivo || "No llegó, y no va a llegar.",
+            mio: true,
+          })
+        ))
       ) {
         avisados++;
       }
@@ -92,21 +97,29 @@ export async function GET(req: Request) {
       const de = await nido(l.de);
       if (
         para &&
-        (await empujarUnaVez(l.para, `llegada:${l.id}`, {
-          titulo: `Aterrizó un ${ave} 🦜`,
-          cuerpo: `${de?.nombre || "Alguien"} te mandó algo. Tocá para abrirlo.`,
-          tag: `loro:${l.id}`,
-        }))
+        (await empujarUnaVez(
+          l.para,
+          `llegada:${l.id}`,
+          avisoAterrizaje({ idLoro: l.id, quien: de?.nombre || "Alguien", ave: l.ave })
+        ))
       ) {
         avisados++;
       }
 
       // Y si volvió, le avisa a quien lo había mandado.
       if (l.suerte === "soltado" && l.regreso && ahora >= l.regreso) {
-        const cuerpo = l.respuesta
-          ? `Volvió con la respuesta de ${para?.nombre || "alguien"}.`
-          : `${para?.nombre || "Alguien"} lo soltó y ya está en tu nido.`;
-        if (await empujarUnaVez(l.de, `vuelta:${l.id}`, { titulo: `Volvió tu ${ave} 🕊`, cuerpo, tag: `loro:${l.id}` })) {
+        if (
+          await empujarUnaVez(
+            l.de,
+            `vuelta:${l.id}`,
+            avisoVuelta({
+              idLoro: l.id,
+              quien: para?.nombre || "Alguien",
+              ave: l.ave,
+              conRespuesta: Boolean(l.respuesta),
+            })
+          )
+        ) {
           avisados++;
         }
       }

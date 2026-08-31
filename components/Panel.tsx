@@ -8,7 +8,7 @@
 // reloj del servidor. No hace falta que llegue nada del backend para que se
 // mueva.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AVES, AVES_LISTA } from "../lib/aves";
 import {
   cuentaRegresiva,
@@ -65,6 +65,10 @@ type Props = {
   alElegirEnMapa: () => void;
   /** Abrir la pantalla de mandarle un lorito a alguien que no está en la app. */
   alConvidar: () => void;
+  /** "<idLoro>#<nonce>": el ave de la que hablaba el aviso que se tocó. Abre su
+   *  pestaña y trae su tarjeta a la vista. El nonce de atrás permite volver al
+   *  mismo lorito dos veces seguidas, igual que el `foco` del mapa. */
+  mostrar?: string | null;
   refrescar: () => void;
 };
 
@@ -98,6 +102,52 @@ export function Panel(p: Props) {
   // exacto para pedir que traiga a alguien de verdad — sobre todo mientras hay
   // un loro en el aire, que son minutos de espera sin nada que hacer.
   const soloLaVecina = p.amigos.every((a) => a.bot);
+
+  /**
+   * Traer a la vista el lorito del que hablaba un aviso.
+   *
+   * Hasta ahora toda notificación caía en el mapa: te avisaba que aterrizó algo
+   * de Ana y después te tocaba encontrarlo entre las tarjetas. Ahora el aviso
+   * viaja con `?ver=<id>` (lib/avisos.ts), la página lo lee y llega acá.
+   *
+   * Lo que hace: elige la pestaña donde está esa tarjeta, la trae a la vista y
+   * la resalta un segundo y medio. Lo que NO hace: abrirla. Abrir un ave es la
+   * ceremonia de la app —el confeti, el luto, el texto— y esa es de quien
+   * recibe, cuando quiera. Un aviso te lleva hasta la puerta; no la empuja.
+   */
+  useEffect(() => {
+    if (!p.mostrar) return;
+    const id = p.mostrar.split("#")[0];
+    const l = p.loros.find((x) => x.id === id);
+    if (!l) return;
+    // El buzón es donde viven las que ya no vuelan; el resto está "En vuelo".
+    setPestaña(l.llego || l.perdido || l.abducido ? "buzon" : "vuelo");
+    // Dos cuadros: uno para que React pinte la pestaña nueva, otro para que la
+    // tarjeta exista y se pueda medir. El resaltado se pone y se saca por DOM
+    // y no por estado: las cinco tarjetas son componentes distintos —en vuelo,
+    // de vuelta, llegada, perdida, abducida— y bajarles un `señalado` a las
+    // cinco sería atravesar media pantalla con una prop que dura segundo y
+    // medio y que no cambia nada de lo que la tarjeta ES.
+    let marcada: HTMLElement | null = null;
+    const cuadro = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        marcada = document.querySelector<HTMLElement>(`[data-loro="${CSS.escape(id)}"]`);
+        if (!marcada) return;
+        marcada.scrollIntoView({ block: "center", behavior: "smooth" });
+        marcada.classList.add("señalada");
+      })
+    );
+    const t = setTimeout(() => marcada?.classList.remove("señalada"), 1800);
+    return () => {
+      cancelAnimationFrame(cuadro);
+      clearTimeout(t);
+      marcada?.classList.remove("señalada");
+    };
+    // `p.loros` a propósito afuera: el efecto es para el toque del aviso, y con
+    // la lista adentro se volvería a correr en cada consulta al servidor,
+    // robándole el scroll a quien está leyendo otra cosa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.mostrar]);
 
   const pestañas = [
     {
@@ -537,6 +587,7 @@ function TarjetaVuelo({
   // y llamar a la nave es un acto aparte que no se dispara sin querer.
   return (
     <div
+      data-loro={loro.id}
       className="tarjeta"
       style={{ marginBottom: 10, borderColor: `${a.color}55` }}
     >
@@ -751,6 +802,7 @@ function TarjetaVuelta({
 
   return (
     <button
+      data-loro={loro.id}
       onClick={alTocar}
       className="tarjeta"
       style={{
@@ -1024,6 +1076,7 @@ function TarjetaBuzon({
   return (
     <div
       ref={caja}
+      data-loro={loro.id}
       className="tarjeta"
       style={{
         marginBottom: 10,
@@ -1404,6 +1457,7 @@ function TarjetaAbducido({ loro }: { loro: LoroVista }) {
   const enviado = loro.direccion === "enviado";
   return (
     <div
+      data-loro={loro.id}
       className="tarjeta"
       style={{
         marginBottom: 10,
@@ -1443,6 +1497,7 @@ function TarjetaPerdido({
 
   return (
     <div
+      data-loro={loro.id}
       className="tarjeta"
       style={{
         marginBottom: 10,

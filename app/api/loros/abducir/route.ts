@@ -14,7 +14,7 @@ import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../.
 import { abducirLoro, nido } from "../../../../lib/datos";
 import { verLoro } from "../../../../lib/vista";
 import { empujarUnaVez } from "../../../../lib/push";
-import { AVES } from "../../../../lib/aves";
+import { avisoAbduccion } from "../../../../lib/avisos";
 import type { Nido } from "../../../../lib/datos";
 
 export const runtime = "nodejs";
@@ -39,12 +39,11 @@ export async function POST(req: Request) {
   //
   // El texto no va, igual que en todos los demás: el mensaje se lo llevó la
   // nave y nadie de este lado lo va a leer.
-  const ave = AVES[l.ave].nombre.toLowerCase();
-  void empujarUnaVez(l.para, `abduccion:${l.id}`, {
-    titulo: "Se lo llevaron 🛸",
-    cuerpo: `Un plato volador interceptó el ${ave} que te mandaba ${yo.nombre}. No va a llegar.`,
-    tag: `loro:${l.id}`,
-  }).catch(() => {});
+  void empujarUnaVez(
+    l.para,
+    `abduccion:${l.id}`,
+    avisoAbduccion({ idLoro: l.id, quien: yo.nombre, ave: l.ave })
+  ).catch(() => {});
 
   const para = await nido(l.para);
   const nidos = new Map<string, Nido>([[yo.id, yo]]);

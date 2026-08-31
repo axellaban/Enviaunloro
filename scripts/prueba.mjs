@@ -952,8 +952,17 @@ const conCotorra = (
 const esperaCotorra = Math.round((conCotorra.llegada - conCotorra.salida) / 1000) + 4;
 console.log(`  cotorra en el aire, ${esperaCotorra} s…`);
 
+// El mismo cuidado que el desvío del perico, y por lo mismo: con la escala
+// acelerada esta cotorra está en el aire menos de lo que tarda un viaje de ida
+// y vuelta al servidor, así que para cuando llega la respuesta puede haber
+// aterrizado —y ahí `olvido` en true es lo correcto, no un adelanto—. Lo que
+// de verdad no puede pasar es que se sepa MIENTRAS vuela, y eso es lo que se
+// afirma acá.
 const volando = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conCotorra.id);
-chequear(volando.olvido === false, "mientras vuela no se adelanta que va a llegar mezclado");
+chequear(
+  volando.llego === true || volando.olvido === false,
+  "mientras vuela no se adelanta que va a llegar mezclado"
+);
 
 await new Promise((r) => setTimeout(r, esperaCotorra * 1000));
 const mordido = (await beto.llamar("/api/estado")).loros.find((l) => l.id === conCotorra.id);
