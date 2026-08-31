@@ -387,6 +387,18 @@ chequear(
     salud.convites?.esperando === 1 && salud.convites?.reclamados === 0,
     "/api/salud dice cuántos loritos hay esperando en la barra"
   );
+  // Y todavía nadie lo abrió. Es la mitad del embudo que faltaba: sin este
+  // número, "nadie abrió el link" y "lo abrieron y no armaron el nido" se ven
+  // exactamente igual, y se arreglan para lados opuestos.
+  chequear(salud.convites?.abiertos === 0, "y que a este todavía no lo abrió nadie");
+
+  // El dueño mirando su propio link no cuenta. Es la visita más común de todas
+  // —"a ver si anda"— y la única que no significa nada.
+  await emisor.llamar(`/api/convite?c=${encodeURIComponent(llave)}`);
+  chequear(
+    (await emisor.llamar("/api/salud")).convites?.abiertos === 0,
+    "y que el dueño probando su propio link no cuenta como apertura"
+  );
 
   // El ave no espera para siempre: a las 48 horas se cansa y se vuelve. Los dos
   // horarios se calculan, no se guardan, así que lo que se verifica es la
@@ -417,6 +429,18 @@ chequear(
     Object.keys(publico.convite).sort().join(",") ===
       "ave,barrio,copetines,de,enLaBarra,estado,haciendo,llegadaPosada,lugar,para,salida,yaSalio",
     "ni dónde queda la cervecería, que está a metros de la casa de quien lo mandó"
+  );
+
+  // Pero el de afuera sí, y una sola vez por link aunque lo abra seis veces:
+  // se cuentan links, no visitas. Es lo que hace que el porcentaje signifique
+  // algo — y de paso, la página lo pide dos veces sola, así que sin dedup el
+  // número saldría al doble.
+  await afuera.llamar(`/api/convite?c=${encodeURIComponent(llave)}`);
+  await afuera.llamar(`/api/convite?c=${encodeURIComponent(llave)}`);
+  const conApertura = await emisor.llamar("/api/salud");
+  chequear(
+    conApertura.convites?.abiertos === 1,
+    `pero alguien de afuera sí, y una sola vez por link (${conApertura.convites?.abiertos})`
   );
 
   // Del otro lado: alguien arma su nido y el ave se levanta de la mesa. Se lo
@@ -470,6 +494,16 @@ chequear(
   chequear(
     (emisorAhora.convites ?? []).length === 0,
     "y el convite deja de estar esperando: ahora la historia la cuenta el loro"
+  );
+
+  // El embudo, ya completo: se abrió y se convirtió. Un reclamado sigue
+  // contando como abierto —para reclamarlo hubo que abrirlo— y eso importa
+  // porque desde el reclamo se deja de escribir la apertura: si no se contara
+  // acá, el número bajaría solo justo cuando el link funcionó.
+  const saludFinal = await emisor.llamar("/api/salud");
+  chequear(
+    saludFinal.convites?.abiertos === 1 && saludFinal.convites?.reclamados === 1,
+    `y el embudo cierra: 1 abierto, 1 reclamado (${saludFinal.convites?.abiertos}/${saludFinal.convites?.reclamados})`
   );
 
   // El ave es una y el mensaje era para una persona.

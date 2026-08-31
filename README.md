@@ -306,6 +306,27 @@ kilómetros de la casa de quien lo mandó. Va el nombre del barrio, que es la
 misma precisión que ya da el link de invitación. La prueba de punta a punta lo
 verifica campo por campo.
 
+**Cuántos llegaron a abrirlo.** Es el único punto de la app donde se puede
+saber si alguien de afuera llegó a mirar, y sin eso el embudo tiene un agujero
+en el medio: "nadie abrió el link" y "lo abrieron y no armaron el nido" se ven
+exactamente igual desde `/api/salud`, y se arreglan para lados opuestos. Ahora
+sale ahí, al lado de esperando y reclamados.
+
+Cuenta **links y no visitas** —el mismo lorito abierto seis veces es uno, que es
+lo que hace que el porcentaje signifique algo— y no cuenta al dueño probando el
+suyo, que es la visita más común de todas y la única que no significa nada. Vive
+en un conjunto aparte y **no en un campo del convite**, a propósito: escribirlo
+adentro del documento sería leer-modificar-escribir contra un pedido que puede
+estar reclamando ese mismo lorito, y si una apertura pisara un `reclamado` el
+ave saldría dos veces. Es la forma de bug que este proyecto ya pagó una vez.
+
+Y deja de escribirse en cuanto lo reclaman: un reclamado ya cuenta como abierto
+—para reclamarlo hubo que abrirlo— así que seguir anotando sería pagar una
+escritura por visita para no enterarse de nada nuevo. Ojo con lo que el número
+**no** es: la vista previa de WhatsApp no llega hasta ahí, porque el robot no
+ejecuta JavaScript. Son personas que abrieron de verdad, así que da más chico y
+más útil de lo que uno esperaría.
+
 **Y el lorito también puede salir en pollera.** Es la misma gracia del loro de
 siempre, pero acá tiene un momento que en un envío común no existe: **entra a la
 cervecería siendo un loro y sale convertido**. Lo que despega del nido es un
@@ -497,6 +518,7 @@ que no haya nada**.
 | Pregunta | Por qué está |
 |---|---|
 | ¿Escribe y lee documentos? | Lo básico. |
+| ¿Cuántos loritos **abrieron**? | Esperando y reclamados solos cuentan dos historias que se ven idénticas: 40 abiertos y 5 nidos es un problema de alta; 6 abiertos y 5 nidos es que nadie comparte. Se arreglan para lados opuestos. |
 | ¿Y **conjuntos**? | Viven en otra tabla. Sin ellos la bandada queda vacía, y con solo lo de arriba el diagnóstico decía "todo bien". Pasó, y borró amistades. |
 | ¿Cómo está **tu** bandada? | Cuántas guardadas, cuántas en formato viejo, cuántas personas hay en tu historial. Desde afuera, una bandada vacía y una base que no escribe se ven igual. |
 | ¿Anda **Nominatim**? | Hace una consulta de verdad —las coordenadas del Obelisco— y espera "Buenos Aires, Argentina". Si falla dice por qué: un 403, un timeout, un bloqueo. Sin esto, "vivís en un descampado sin nombre" y "nos bloquearon" se ven los dos como un nido sin lugar. |

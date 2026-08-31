@@ -13,7 +13,7 @@
 import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
 import { diagnosticar, rolDeClaveSupabase } from "../../../lib/store";
 import { estadoDeBandada } from "../../../lib/datos";
-import { convitesDe } from "../../../lib/convite";
+import { abiertosDe, convitesDe } from "../../../lib/convite";
 import { probarGeocode } from "../../../lib/geocode";
 import { hayPush } from "../../../lib/push";
 
@@ -74,11 +74,23 @@ export async function GET(req: Request) {
   // Los loritos de convite. El síntoma de que algo no anda con ellos es un ave
   // que "no salió nunca", y desde afuera eso se ve igual que un link que nadie
   // abrió. Acá se distingue: cuántos hay esperando y cuántos ya se destrabaron.
+  //
+  // Y `abiertos`, que es el que convierte esto en algo con lo que se puede
+  // decidir. Con esperando y reclamados solos hay dos historias distintas que
+  // se ven idénticas: cuarenta links abiertos y cinco nidos es un problema de
+  // onboarding; seis abiertos y cinco nidos es un problema de que nadie
+  // comparte. Se arreglan para lados opuestos.
+  //
+  // Cuenta LINKS y no visitas —el mismo lorito abierto seis veces es uno— y no
+  // cuenta al dueño probando el suyo. Un reclamado cuenta como abierto aunque
+  // no esté en el conjunto: para reclamarlo hubo que abrirlo, y dejar de
+  // escribir ahí es lo que hace que esto no cueste una escritura por visita.
   const convites = yo
-    ? await convitesDe(yo.id)
-        .then((cs) => ({
+    ? await Promise.all([convitesDe(yo.id), abiertosDe(yo.id)])
+        .then(([cs, abiertos]) => ({
           esperando: cs.filter((c) => !c.reclamado).length,
           reclamados: cs.filter((c) => c.reclamado).length,
+          abiertos: cs.filter((c) => c.reclamado || abiertos.has(c.id)).length,
         }))
         .catch(() => null)
     : null;

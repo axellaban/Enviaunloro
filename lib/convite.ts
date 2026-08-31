@@ -100,6 +100,8 @@ export type Convite = {
 
 const claveConvite = (id: string) => `convite:${id}`;
 const claveConvitesDe = (idNido: string) => `convites:${idNido}`;
+/** Los loritos de alguien que alguien MÁS llegó a abrir. Ver `marcarAbierto`. */
+const claveAbiertosDe = (idNido: string) => `convites-abiertos:${idNido}`;
 
 /** Cuántos loritos puede tener alguien esperando en la barra a la vez. */
 export const MAX_CONVITES = 20;
@@ -233,6 +235,55 @@ export async function convitesDe(idNido: string): Promise<Convite[]> {
     } catch {}
   }
   return lista.sort((x, y) => y.salida - x.salida);
+}
+
+// ---------- quién llegó a abrir el link ----------
+//
+// El número que faltaba para poder decidir algo. `/api/salud` contaba loritos
+// esperando y reclamados, y con esos dos solos hay dos historias distintas que
+// se ven idénticas: si de cuarenta links abiertos se arman cinco nidos, el
+// problema está en el onboarding; si se abrieron seis y se armaron cinco, el
+// problema es que nadie comparte links. Son decisiones opuestas — arreglar el
+// alta, o dar más razones para compartir— y sin esto no hay con qué elegir.
+//
+// POR QUÉ UN CONJUNTO Y NO UN CAMPO DEL DOCUMENTO. Escribirlo adentro del
+// convite sería leer-modificar-escribir sobre un documento que otro pedido
+// puede estar reclamando en el mismo segundo, y esa es exactamente la forma de
+// bug que este proyecto ya pagó una vez (ver "Lo que aprendimos rompiéndola").
+// Si una apertura pisara un `reclamado`, el lorito volvería a estar libre y
+// podría salir dos veces. Un conjunto se agrega solo, es atómico, y no toca el
+// convite.
+//
+// Lo que se cuenta es el LINK, no la visita: el mismo lorito abierto seis veces
+// es uno. Es lo que hace que el porcentaje signifique algo — y sale gratis,
+// porque agregar dos veces al mismo conjunto es agregar una.
+
+/**
+ * Alguien que no lo mandó abrió este link.
+ *
+ * Se llama sin esperarlo y sin que pueda romper nada: es una cuenta, y ninguna
+ * cuenta vale demorar el link que alguien está abriendo en este momento.
+ *
+ * Solo mientras el lorito NO esté reclamado: un convite reclamado ya cuenta
+ * como abierto —para reclamarlo hubo que abrirlo— así que seguir escribiendo
+ * sería pagar una escritura por cada visita para no enterarse de nada nuevo.
+ */
+export function marcarAbierto(c: Convite): void {
+  if (c.reclamado) return;
+  void store()
+    .agregarAConjunto(claveAbiertosDe(c.de), c.id)
+    .catch(() => {});
+}
+
+/**
+ * De los loritos de este nido, cuáles llegó a abrir alguien.
+ *
+ * Puede traer ids de convites que ya se cayeron de la lista —el conjunto no
+ * tiene tope y la lista guarda 60—, y no importa: quien cuenta cruza contra los
+ * convites que tiene, así que lo que sobra no se ve. Son un puñado de ids.
+ */
+export async function abiertosDe(idNido: string): Promise<Set<string>> {
+  return new Set(await store().leerConjunto(claveAbiertosDe(idNido)));
 }
 
 export type ResultadoReclamo =

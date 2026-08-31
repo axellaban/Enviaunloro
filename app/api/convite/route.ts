@@ -25,6 +25,7 @@ import {
   convite,
   crearConvite,
   horariosDelConvite,
+  marcarAbierto,
 } from "../../../lib/convite";
 import { escalaGlobal, nido } from "../../../lib/datos";
 import { verConvite } from "../../../lib/vista";
@@ -46,6 +47,21 @@ export async function GET(req: Request) {
   if (!de) return ok({ convite: null });
 
   const yo = await nidoDeRequest(req).catch(() => null);
+
+  // Alguien que no lo mandó está mirando este link. Es el único lugar de la app
+  // donde se puede saber, y es la mitad del embudo: sin esto, "nadie abrió el
+  // link" y "lo abrieron y no armaron el nido" se ven exactamente igual.
+  //
+  // No se espera y no puede fallar hacia afuera. Y no cuenta al dueño probando
+  // que su propio link ande, que es la visita más común de todas y la única que
+  // no significa nada.
+  //
+  // Ojo con lo que este número NO es: la vista previa de WhatsApp no llega
+  // hasta acá —el robot no ejecuta JavaScript, y esto lo piden dos componentes
+  // del navegador—, así que cuenta personas que abrieron de verdad. Eso lo hace
+  // más útil y más chico de lo que uno esperaría.
+  if (!yo || yo.id !== c.de) marcarAbierto(c);
+
   const ahora = Date.now();
   const escala = escalaGlobal();
   const { abandona, enCasa } = horariosDelConvite(c, { lat: de.lat, lng: de.lng }, escala);
