@@ -664,7 +664,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
    quieta: sin nave no se entiende qué pasó con el ave, y ese es justo el caso
    en que hace falta entenderlo. Lo que se saca es el movimiento, no la
    noticia. */
-.marcador-nave { animation: abducir 9s cubic-bezier(.34, .8, .3, 1) both; }
+.marcador-nave .nave-baja { animation: abducir 9s cubic-bezier(.34, .8, .3, 1) both; }
 
 @keyframes abducir {
   /* Baja del cielo, rápido. */
@@ -680,7 +680,7 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .marcador-nave { animation: none; }
+  .marcador-nave .nave-baja { animation: none; }
 }
 
 /* ---------- scrollbar ---------- */

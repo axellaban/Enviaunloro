@@ -13,7 +13,7 @@ import { Onboarding } from "../../components/Onboarding";
 import { Panel } from "../../components/Panel";
 import { Compositor } from "../../components/Compositor";
 import { Convite } from "../../components/Convite";
-import { HojaInferior } from "../../components/HojaInferior";
+import { HojaInferior, mirarElMapa } from "../../components/HojaInferior";
 import { VistaMapa, type Vista } from "../../components/VistaMapa";
 import { esCodigo, normalizarCodigo } from "../../lib/codigo";
 import { Ave } from "../../components/Ave";
@@ -83,7 +83,13 @@ export default function Nido() {
   // El foco lleva un número pegado atrás para que tocar dos veces el mismo nido
   // vuelva a mover la cámara: si fuera solo el id, React no vería un cambio.
   const [foco, setFoco] = useState<string | null>(null);
-  const enfocar = useCallback((id: string) => setFoco(`${id}#${Date.now()}`), []);
+  // Enfocar es "mirá esto en el mapa", así que además de mover la cámara hay
+  // que correr la hoja: en el celular tapa el 58% de la pantalla y la cámara
+  // estaba apuntando a algo que quedaba abajo del panel.
+  const enfocar = useCallback((id: string) => {
+    setFoco(`${id}#${Date.now()}`);
+    mirarElMapa();
+  }, []);
   const [aviso, setAviso] = useState("");
   /** Modo "tocá el mapa para mudar tu nido". */
   const [mudando, setMudando] = useState(false);

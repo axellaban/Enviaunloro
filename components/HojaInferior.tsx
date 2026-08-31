@@ -69,6 +69,16 @@ function margenDeAbajo(): number {
   return margenAbajo;
 }
 
+/** El nombre del evento que le pide a la hoja que se corra. Ver el efecto que
+ *  lo escucha, más abajo. */
+export const MIRAR_EL_MAPA = "loros:mirar-el-mapa";
+
+/** Pedirle a la hoja que baje para que se vea el mapa. En pantalla ancha y con
+ *  la hoja ya abajo no hace nada, así que se puede llamar sin preguntar. */
+export function mirarElMapa(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(MIRAR_EL_MAPA));
+}
+
 export function HojaInferior({ children }: { children: ReactNode }) {
   const caja = useRef<HTMLDivElement>(null);
   const [tope, setTope] = useState<Altura>("media");
@@ -150,6 +160,27 @@ export function HojaInferior({ children }: { children: ReactNode }) {
     },
     [topes]
   );
+
+  /**
+   * "Sacate de encima el mapa."
+   *
+   * Cuando algo pasa a ser digno de mirarse EN el mapa —acabás de soltar un
+   * loro, entró alguien a tu bandada, llamaste al plato volador— la hoja está
+   * tapando el 58% de la pantalla justo donde está lo que hay que ver. Bajarla
+   * es parte del acto, no una cortesía.
+   *
+   * Va por evento y no por prop porque el alto es asunto privado de esta hoja
+   * y de nadie más: cablear un ref hasta acá desde la página obligaría a todos
+   * los del medio a saber que existe un tope. Solo baja: si ya estás abajo, o
+   * si estás en pantalla ancha —donde la hoja es una columna al costado y no le
+   * saca espacio a nada—, no hace nada.
+   */
+  useEffect(() => {
+    if (!hoja) return;
+    const bajar = () => setTope((t) => (t === "media" || t === "alta" ? "baja" : t));
+    window.addEventListener(MIRAR_EL_MAPA, bajar);
+    return () => window.removeEventListener(MIRAR_EL_MAPA, bajar);
+  }, [hoja]);
 
   // El alto arranca en el default, y se recalcula al girar el teléfono: 58% de
   // una pantalla apaisada no son los mismos píxeles.

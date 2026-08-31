@@ -642,7 +642,9 @@ function TarjetaVuelo({
 
       {/* Solo sobre lo tuyo y solo mientras esté en el aire: lo que se hace con
           un ave que ya llegó lo decide quien la recibió. */}
-      {enviado && <LlamarLaNave loro={loro} refrescar={refrescar} />}
+      {enviado && (
+        <LlamarLaNave loro={loro} refrescar={refrescar} alMirar={alTocar} />
+      )}
     </div>
   );
 }
@@ -663,9 +665,15 @@ function TarjetaVuelo({
 function LlamarLaNave({
   loro,
   refrescar,
+  alMirar,
 }: {
   loro: LoroVista;
   refrescar: () => void;
+  /** Enfocar el vuelo en el mapa. La escena dura nueve segundos y desde acá se
+   *  la está mirando de espaldas: la hoja tapa medio celular y la cámara puede
+   *  estar en cualquier lado. Llamar a la nave y no ver la nave es el chiste
+   *  entero perdido. */
+  alMirar: () => void;
 }) {
   const [porLlamar, setPorLlamar] = useState(false);
   const [llamando, setLlamando] = useState(false);
@@ -692,6 +700,10 @@ function LlamarLaNave({
           setError("");
           try {
             await pedir("/api/loros/abducir", { datos: { id: loro.id } });
+            // Primero la cámara y recién después el refresco: así la hoja ya
+            // está abajo y el mapa encuadrado cuando llega el loro abducido y
+            // el plato volador empieza a bajar.
+            alMirar();
             refrescar();
           } catch (e: any) {
             setError(e?.message || "La nave no vino.");
@@ -706,7 +718,7 @@ function LlamarLaNave({
         {llamando
           ? "Llamando a la nave…"
           : porLlamar
-            ? "🛸 Confirmar: el mensaje se pierde para siempre"
+            ? "🛸 Confirmar (el mensaje se pierde en el espacio infinito)"
             : "🛸 Solicitar abducción"}
       </button>
       {error && (

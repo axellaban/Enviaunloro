@@ -129,7 +129,11 @@ function iconoNave(): L.DivIcon {
     // Anclada abajo del todo y al medio: lo que tiene que caer justo sobre el
     // ave es la punta del rayo, no el centro del dibujo.
     iconAnchor: [23, 53],
-    html: svgPlatoVolador(46),
+    // La animación va en un div interno y NO en la raíz del marcador, por la
+    // misma razón que la rotación del ave: la raíz la posiciona Leaflet con su
+    // propio `transform: translate3d(...)`, y animar `transform` ahí lo pisa.
+    // La nave aparecía en la esquina del mapa en vez de sobre el bicho.
+    html: `<div class="nave-baja">${svgPlatoVolador(46)}</div>`,
   });
 }
 
@@ -146,8 +150,8 @@ function iconoAve(
       ? `<span style="position:absolute;left:50%;top:19px;transform:translateX(-50%);font-size:13px;filter:drop-shadow(0 1px 3px #000)">🍫</span>`
       : "";
   return L.divIcon({
-    // `tocable` agranda el area sensible en CSS y pone el cursor de mano: el
-    // ave mide 34x28 y un dedo no acierta eso en movimiento.
+    // `tocable` agranda el área sensible en CSS y pone el cursor de mano: el
+    // ave mide 34×28 y un dedo no acierta eso en movimiento.
     className: tocable ? "marcador-ave tocable" : "marcador-ave",
     iconSize: [34, 28],
     iconAnchor: [17, 14],
@@ -413,7 +417,7 @@ export default function Mapa({
    *  app donde verlos no servía para nada. */
   alEscribirle?: (idAmigo: string) => void;
   /** Tocar un ave tuya en el aire ofrece llamar al plato volador. Devuelve la
-   *  promesa de la abduccion para que el globo pueda mostrar el error si la
+   *  promesa de la abducción para que el globo pueda mostrar el error si la
    *  nave no vino. */
   alAbducir?: (idLoro: string) => Promise<void>;
 }) {
@@ -518,9 +522,9 @@ export default function Mapa({
     const el = contenedor.current;
     if (!el) return;
     el.style.cursor = modoElegir ? "crosshair" : "";
-    // Mientras se elige donde poner el nido, las aves vuelven a ser dibujo: un
-    // marcador interactivo se come el toque y el mapa nunca se entera, asi que
-    // tocar justo donde pasaba un loro no plantaria el nido en ningun lado.
+    // Mientras se elige dónde poner el nido, las aves vuelven a ser dibujo: un
+    // marcador interactivo se come el toque y el mapa nunca se entera, así que
+    // tocar justo donde pasaba un loro no plantaría el nido en ningún lado.
     el.classList.toggle("eligiendo", modoElegir);
   }, [modoElegir]);
 
@@ -676,8 +680,8 @@ export default function Mapa({
   /**
    * El marcador del ave, tocable salvo que sea de un desconocido.
    *
-   * En la vista del resto los vuelos son anonimos y vienen corridos 25 km:
-   * abrirles un globo seria contar de quien es y adonde va, que es exactamente
+   * En la vista del resto los vuelos son anónimos y vienen corridos 25 km:
+   * abrirles un globo sería contar de quién es y adónde va, que es exactamente
    * lo que esa vista existe para no contar. Esas aves siguen siendo dibujo.
    */
   function aveTocable(v: Tramo, m: L.Map): L.Marker {
@@ -687,9 +691,9 @@ export default function Mapa({
       interactive: propio,
       zIndexOffset: 500,
     }).addTo(m);
-    // Leaflet acepta una funcion como contenido y la llama en cada apertura.
-    // Es lo que mantiene el globo al dia sin tener que ir a refrescarlo desde
-    // el bucle de animacion.
+    // Leaflet acepta una función como contenido y la llama en cada apertura.
+    // Es lo que mantiene el globo al día sin tener que ir a refrescarlo desde
+    // el bucle de animación.
     if (propio) {
       marcador.bindPopup(() => globoDeAve(v.loroId, v.vuelta, marcador) ?? "", {
         closeButton: false,
@@ -702,15 +706,15 @@ export default function Mapa({
   /**
    * El globo que aparece al tocar un ave en vuelo.
    *
-   * Hasta ahora el ave era decoracion: `interactive: false`, no se podia tocar.
+   * Hasta ahora el ave era decoración: `interactive: false`, no se podía tocar.
    * Pero el bicho volando ES el objeto de esta app, y es el primer lugar donde
-   * la mano va a buscar que hacer con el. El boton de la abduccion tambien
+   * la mano va a buscar qué hacer con él. El botón de la abducción también
    * vive en la tarjeta del panel; este es el mismo acto desde el otro lado.
    *
    * Se arma con DOM y no con React, igual que `globoDeNido` y por lo mismo.
-   * Y se arma DENTRO de la funcion que Leaflet llama al abrirlo, no al crear
+   * Y se arma DENTRO de la función que Leaflet llama al abrirlo, no al crear
    * la capa: entre que el ave despega y que alguien la toca pasan horas, y
-   * "faltan 3 h" congelado en el momento del despegue seria mentira.
+   * "faltan 3 h" congelado en el momento del despegue sería mentira.
    */
   function globoDeAve(
     loroId: string,
@@ -736,19 +740,19 @@ export default function Mapa({
 
     const donde = document.createElement("span");
     donde.className = "globo-donde";
-    // Un lorito de convite que todavia no despego esta sentado en la barra:
-    // decir "llega en" con el bicho quieto en una cerveceria es la misma
+    // Un lorito de convite que todavía no despegó está sentado en la barra:
+    // decir "llega en" con el bicho quieto en una cervecería es la misma
     // mentira chica que el panel ya evita.
     donde.textContent =
       l.parada && ahora < l.salida
-        ? `🍺 Terminando el copetin · sale en ${cuentaRegresiva(l.salida - ahora)}`
+        ? `🍺 Terminando el copetín · sale en ${cuentaRegresiva(l.salida - ahora)}`
         : `Llega en ${cuentaRegresiva(Math.max(0, l.llegada - ahora))} · ${formatearDistancia(
             l.distanciaKm
           )} en total`;
     caja.appendChild(donde);
 
-    // Solo sobre lo tuyo, solo mientras este en el aire, y nunca sobre la
-    // vuelta: eso ya es un ave que entrego y se la esta devolviendo el otro.
+    // Solo sobre lo tuyo, solo mientras esté en el aire, y nunca sobre la
+    // vuelta: eso ya es un ave que entregó y se la está devolviendo el otro.
     const sePuede =
       !vuelta &&
       l.direccion === "enviado" &&
@@ -760,14 +764,14 @@ export default function Mapa({
 
     const boton = document.createElement("button");
     boton.className = "boton chico fantasma";
-    boton.textContent = "🛸 Solicitar abduccion";
-    // Dos toques, como todo lo que no tiene vuelta atras en esta app, y el
-    // segundo dice que pasa y no "¿seguro?".
+    boton.textContent = "🛸 Solicitar abducción";
+    // Dos toques, como todo lo que no tiene vuelta atrás en esta app, y el
+    // segundo dice qué pasa y no "¿seguro?".
     let armado = false;
     boton.onclick = async () => {
       if (!armado) {
         armado = true;
-        boton.textContent = "🛸 Confirmar: el mensaje se pierde para siempre";
+        boton.textContent = "🛸 Confirmar (el mensaje se pierde en el espacio infinito)";
         return;
       }
       boton.disabled = true;
@@ -775,12 +779,12 @@ export default function Mapa({
       try {
         await alAbducirRef.current?.(loroId);
         // La capa se poda sola cuando el servidor confirme; cerrar el globo
-        // aca deja ver la nave, que es el punto de todo esto.
+        // acá deja ver la nave, que es el punto de todo esto.
         marcador.closePopup();
       } catch (e: any) {
         boton.disabled = false;
         armado = false;
-        boton.textContent = "🛸 Solicitar abduccion";
+        boton.textContent = "🛸 Solicitar abducción";
         const error = document.createElement("span");
         error.className = "globo-donde";
         error.style.color = "#fca5a5";
