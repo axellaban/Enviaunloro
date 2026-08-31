@@ -768,6 +768,26 @@ un aviso que adelanta el texto se la come. Es la misma regla que `lib/vista.ts`
 ya respeta del lado del servidor, y la prueba la deja escrita: estas funciones
 **no reciben** el mensaje, así que no tienen de dónde filtrarlo.
 
+**Un aviso nombra un solo pájaro.** Esta salió de una captura de la vida real:
+
+> **Aterrizó el lorito de Manchu 🦜**
+> Esa paloma te está esperando en el nido.
+
+Dos animales en dos renglones, para el mismo vuelo. Pasó porque el título se
+quedó con la palabra de la app —"lorito"— y el cuerpo seguía presentando la
+especie como si fuera otro bicho, con un demostrativo que apuntaba a algo que
+nadie había mencionado.
+
+La especie sigue apareciendo donde **explica** algo: *"Es un guacamayo: llega
+en 3 h"* dice por qué tarda tres horas, e identifica al mismo lorito en vez de
+presentar otro. La prueba distingue las dos formas — descuenta la especie
+cuando viene justo después de "es un/una" y la cuenta en cualquier otro lado.
+
+Vale la pena saber que el sistema **ya escribe el nombre de la app al lado de
+cada aviso** ("from Enviaunlorito" en iPhone). Esa parte es del sistema
+operativo y no se puede sacar; lo que sí se puede es no repetir la palabra tres
+veces entre el nombre, el título y el cuerpo.
+
 Una cuarta, más chica, que igual se nota: **el género de la especie**. Tres de
 las seis aves son femeninas y la tabla ya lo sabía (`AVES[x].articulo`). Sin
 usarlo salían *"Ese paloma"* y *"Va el guacamayo"* — la clase de detalle que

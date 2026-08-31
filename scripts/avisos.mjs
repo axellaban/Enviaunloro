@@ -121,7 +121,40 @@ for (const [que, arma] of [
   );
 }
 
-// 4. El nombre, en el TÍTULO. Es la regla que hace que sirvan de reojo.
+// 4. UN AVISO NOMBRA UN SOLO PÁJARO.
+//
+// Esta regla existe por una captura de la vida real:
+//
+//     Aterrizó el lorito de Manchu 🦜
+//     Esa paloma te está esperando en el nido.
+//
+// Dos animales en dos renglones, para el mismo vuelo. Pasó porque el título se
+// quedó con la palabra de la app —"lorito"— y el cuerpo seguía presentando la
+// especie como si fuera otro bicho, con un demostrativo que apuntaba a algo
+// que nadie había mencionado.
+//
+// La especie puede aparecer, y aparece donde explica algo: "es un guacamayo"
+// explica por qué tarda tres horas. Lo que no puede es haber DOS nombres de
+// pájaro distintos en el mismo aviso.
+// La forma permitida es la IDENTIFICACIÓN: "es un guacamayo" dice que ese
+// lorito ES un guacamayo, y de paso explica por qué tarda tres horas. La
+// prohibida es el demostrativo suelto —"esa paloma"— que presenta un animal
+// nuevo. Así que la especie se descuenta solo si viene justo después de
+// "es un" o "es una".
+const ESPECIES = ["perico", "cotorra", "loro", "guacamayo", "paloma", "cuervo"];
+for (const [que, av] of TODOS) {
+  const texto = `${av.titulo} ${av.cuerpo}`.toLowerCase();
+  const presentado = texto.replace(/\bes un[a]? (perico|cotorra|loro|guacamayo|paloma|cuervo)\b/g, "");
+  const palabras = new Set(
+    presentado.split(/[^a-záéíóúñ]+/).filter((w) => ESPECIES.includes(w) || w === "lorito")
+  );
+  chequear(
+    palabras.size <= 1,
+    `${que}: nombra un solo pájaro${palabras.size > 1 ? ` (dice ${[...palabras].join(" y ")})` : ""}`
+  );
+}
+
+// 5. El nombre, en el TÍTULO. Es la regla que hace que sirvan de reojo.
 //
 // Tres se salvan a propósito y por el mismo motivo: hablan de TU ave y de nadie
 // más, así que meter un nombre ahí diría lo contrario de lo que pasó.
@@ -131,15 +164,17 @@ for (const [que, av] of TODOS) {
   chequear(av.titulo.includes("Ana"), `${que}: el nombre va en el título`);
 }
 
-// 5. Nadie promete "llega en 0 s". Un ave que ya venció no da una cuenta
+// 6. Nadie promete "llega en 0 s". Un ave que ya venció no da una cuenta
 //    regresiva vencida: dice que está por llegar.
 const vencido = A.avisoDespegue({ idLoro: ID, quien: "Ana", ave: "loro", pollera: false, falta: 0 });
+// Sin mirar mayúsculas: algunos cuerpos meten la frase a mitad de oración.
+const dice = vencido.cuerpo.toLowerCase();
 chequear(
-  !vencido.cuerpo.includes("Llega en") && vencido.cuerpo.includes("Está por llegar"),
+  !dice.includes("llega en") && dice.includes("está por llegar"),
   "un ave sin tiempo por delante no promete una cuenta regresiva vencida"
 );
 
-// 6. La línea de adentro de la app es el mismo aviso, no otro texto.
+// 7. La línea de adentro de la app es el mismo aviso, no otro texto.
 const uno = A.avisoAterrizaje({ idLoro: ID, quien: "Ana", ave: "loro" });
 chequear(
   A.unaLinea(uno) === `${uno.titulo} · ${uno.cuerpo}`,

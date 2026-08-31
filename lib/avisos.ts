@@ -20,6 +20,19 @@
 //    app, y un aviso que adelanta el texto se la come. Es la misma regla que
 //    el servidor ya respeta en `lib/vista.ts`, acá abajo.
 //
+// 4. UN AVISO NOMBRA UN SOLO PÁJARO. El título dice "lorito" —la palabra de la
+//    app, la que además el sistema repite al lado de cada aviso— y el cuerpo NO
+//    puede presentar otra especie como si fuera otro bicho. Se leía así:
+//
+//        Aterrizó el lorito de Manchu 🦜
+//        Esa paloma te está esperando en el nido.
+//
+//    Dos animales en dos renglones para el mismo vuelo. La especie sigue
+//    apareciendo donde explica algo —"es un guacamayo" explica por qué tarda
+//    tres horas— pero identificando al MISMO lorito, nunca con un demostrativo
+//    que apunta a algo que nadie mencionó. La prueba lo cuida contando cuántas
+//    especies distintas aparecen entre título y cuerpo: como mucho, una.
+//
 // Este archivo no importa nada del servidor a propósito: lo usan las rutas y
 // también el navegador, así que no puede arrastrar `node:crypto` ni el store.
 // Solo tipos y funciones puras.
@@ -46,12 +59,10 @@ const irA = (idLoro: string) => `/nido?ver=${encodeURIComponent(idLoro)}`;
 const especie = (ave: AveId) => AVES[ave].nombre.toLowerCase();
 
 // Tres de las seis aves son femeninas —paloma, cotorra— y la tabla ya lo sabe:
-// `AVES[x].articulo`. Sin esto salían "Ese paloma" y "Va el guacamayo", que es
-// la clase de detalle que hace que un texto se lea escrito por una máquina.
+// `AVES[x].articulo`. Sin esto salía "es un paloma", que es la clase de detalle
+// que hace que un texto se lea escrito por una máquina.
 /** "un" / "una". */
 const un = (ave: AveId) => (AVES[ave].articulo === "la" ? "una" : "un");
-/** "Ese" / "Esa", para empezar una oración. */
-const Ese = (ave: AveId) => (AVES[ave].articulo === "la" ? "Esa" : "Ese");
 
 /** "en 3 h 20 min", o nada si ya pasó. Sirve para no escribir "llega en 0 s". */
 const enTanto = (falta: number) =>
@@ -77,7 +88,7 @@ export function avisoDespegue(a: {
       : `${a.quien} te mandó un lorito 🦜`,
     cuerpo: a.pollera
       ? `Va cruzando el mapa. ${enTanto(a.falta)}`
-      : `Va ${un(a.ave)} ${especie(a.ave)} en camino. ${enTanto(a.falta)}`,
+      : `Es ${un(a.ave)} ${especie(a.ave)}: ${enTanto(a.falta).toLowerCase()}`,
     tag: tagDe(a.idLoro),
     url: irA(a.idLoro),
   };
@@ -101,8 +112,8 @@ export function avisoDeCopetines(a: {
   return {
     titulo: `Tu lorito viene de copetines 🍺`,
     cuerpo: a.enLaBarra
-      ? `${un(a.ave)[0].toUpperCase()}${un(a.ave).slice(1)} ${especie(a.ave)} de ${a.quien}, todavía terminando el copetín. ${enTanto(a.falta)}`
-      : `${un(a.ave)[0].toUpperCase()}${un(a.ave).slice(1)} ${especie(a.ave)} de ${a.quien}, ya salió de la cervecería. ${enTanto(a.falta)}`,
+      ? `Te lo manda ${a.quien}, y todavía está terminando el copetín. ${enTanto(a.falta)}`
+      : `Te lo manda ${a.quien}, y ya salió de la cervecería. ${enTanto(a.falta)}`,
     tag: tagDe(a.idLoro),
     url: irA(a.idLoro),
   };
@@ -118,7 +129,7 @@ export function avisoDeCopetines(a: {
 export function avisoAterrizaje(a: { idLoro: string; quien: string; ave: AveId }): Aviso {
   return {
     titulo: `Aterrizó el lorito de ${a.quien} 🦜`,
-    cuerpo: `${Ese(a.ave)} ${especie(a.ave)} te está esperando en el nido.`,
+    cuerpo: `Es ${un(a.ave)} ${especie(a.ave)}, y te está esperando en el nido.`,
     tag: tagDe(a.idLoro),
     url: irA(a.idLoro),
   };
@@ -142,7 +153,7 @@ export function avisoExtravio(a: {
     titulo: a.mio ? `Se perdió tu lorito 🍃` : `Se perdió un lorito de ${a.quien} 🍃`,
     cuerpo: a.mio
       ? `Nunca llegó a lo de ${a.quien}. ${a.motivo}`.trim()
-      : `${un(a.ave)[0].toUpperCase()}${un(a.ave).slice(1)} ${especie(a.ave)} que venía hacia vos. ${a.motivo}`.trim(),
+      : `Venía hacia vos y no va a llegar. ${a.motivo}`.trim(),
     tag: tagDe(a.idLoro),
     url: irA(a.idLoro),
   };
@@ -161,7 +172,7 @@ export function avisoSuerte(a: {
   if (a.suerte === "enjaulado") {
     return {
       titulo: `${a.quien} se quedó con tu lorito 🔒`,
-      cuerpo: `${Ese(a.ave)} ${especie(a.ave)} no vuelve más.`,
+      cuerpo: "Ese no vuelve más.",
       tag: tagDe(a.idLoro),
       url: irA(a.idLoro),
     };
@@ -194,7 +205,7 @@ export function avisoVuelta(a: {
   return {
     titulo: `Volvió tu lorito 🕊`,
     cuerpo: a.conRespuesta
-      ? `${Ese(a.ave)} ${especie(a.ave)} trae la respuesta de ${a.quien}.`
+      ? `Trae la respuesta de ${a.quien} adentro.`
       : `${a.quien} lo soltó y ya está en tu nido.`,
     tag: tagDe(a.idLoro),
     url: irA(a.idLoro),
@@ -215,7 +226,7 @@ export function avisoBandada(a: {
 }): Aviso {
   return {
     titulo: `${a.quien} se sumó a tu bandada 🦜`,
-    cuerpo: `Armó su nido. Tu ${especie(a.ave)} está pagando la cuenta. ${enTanto(a.falta)}`,
+    cuerpo: `Armó su nido. Tu lorito está pagando la cuenta. ${enTanto(a.falta)}`,
     tag: tagDe(a.idLoro),
     url: irA(a.idLoro),
   };
@@ -231,9 +242,7 @@ export function avisoBandada(a: {
 export function avisoAbduccion(a: { idLoro: string; quien: string; ave: AveId }): Aviso {
   return {
     titulo: `Abdujeron el lorito de ${a.quien} 🛸`,
-    cuerpo: `Un plato volador interceptó ${AVES[a.ave].articulo} ${especie(
-      a.ave
-    )} en pleno vuelo. No va a llegar.`,
+    cuerpo: "Un plato volador lo interceptó en pleno vuelo. No va a llegar.",
     tag: tagDe(a.idLoro),
     url: irA(a.idLoro),
   };
