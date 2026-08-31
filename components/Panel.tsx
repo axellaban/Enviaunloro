@@ -256,7 +256,6 @@ export function Panel(p: Props) {
                     loro={l}
                     ahora={ahora}
                     alTocar={() => p.alEnfocar(l.id)}
-                    refrescar={p.refrescar}
                   />
                 ))}
                 {volviendo.map((l) => (
@@ -562,12 +561,10 @@ function TarjetaVuelo({
   loro,
   ahora,
   alTocar,
-  refrescar,
 }: {
   loro: LoroVista;
   ahora: number;
   alTocar: () => void;
-  refrescar: () => void;
 }) {
   const a = AVES[loro.ave];
   const { avance: t, girando } = avanceVuelo(loro, ahora);
@@ -579,32 +576,30 @@ function TarjetaVuelo({
   // cervecería es la clase de mentira chica que después nadie entiende.
   const enLaBarra = Boolean(loro.parada) && ahora < loro.salida;
 
-  // La tarjeta era un <button> entero. Dejó de serlo porque adentro va otro
-  // botón —el de la abducción— y un botón adentro de otro es HTML inválido: el
-  // navegador lo desarma y el de adentro deja de recibir sus toques. Ahora el
-  // contenedor es un div y lo tocable es todo menos la fila de abajo, que es
-  // exactamente lo que se quiere: tocar la tarjeta enfoca el vuelo en el mapa,
-  // y llamar a la nave es un acto aparte que no se dispara sin querer.
+  // La tarjeta entera es el botón, y volvió a serlo.
+  //
+  // Un rato fue un div con un botón adentro, porque abajo iba el de la
+  // abducción y un botón adentro de otro es HTML inválido —el navegador lo
+  // desarma y el de adentro deja de recibir sus toques—. Al sacar la abducción
+  // de acá no queda nada que anidar, así que se deshace el arreglo: vuelve a
+  // ser tocable de punta a punta, incluido el borde de abajo que antes no lo
+  // era.
   return (
-    <div
+    <button
       data-loro={loro.id}
+      onClick={alTocar}
       className="tarjeta"
-      style={{ marginBottom: 10, borderColor: `${a.color}55` }}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        cursor: "pointer",
+        marginBottom: 10,
+        borderColor: `${a.color}55`,
+        color: "inherit",
+        font: "inherit",
+      }}
     >
-      <button
-        onClick={alTocar}
-        style={{
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          cursor: "pointer",
-          background: "none",
-          border: 0,
-          padding: 0,
-          color: "inherit",
-          font: "inherit",
-        }}
-      >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <DibujoDelVuelo loro={loro} size={30} aletea />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -689,93 +684,7 @@ function TarjetaVuelo({
           </p>
         </div>
       )}
-      </button>
-
-      {/* Solo sobre lo tuyo y solo mientras esté en el aire: lo que se hace con
-          un ave que ya llegó lo decide quien la recibió. */}
-      {enviado && (
-        <LlamarLaNave loro={loro} refrescar={refrescar} alMirar={alTocar} />
-      )}
-    </div>
-  );
-}
-
-/**
- * "Solicitar abducción."
- *
- * Lo único que puede hacer quien mandó un loro después de soltarlo. Pide dos
- * toques, como todo lo que no tiene vuelta atrás en esta app —la suerte del
- * ave, llamar de vuelta un lorito de convite— y el segundo toque dice qué pasa,
- * no "¿seguro?": lo que hay que confirmar es la consecuencia.
- *
- * No se llama "eliminar" ni "cancelar" en ninguna parte, y eso no es sólo
- * chiste. Eliminar sugiere que la cosa deja de haber existido, y no es cierto:
- * del otro lado ya se avisó que venía un loro, y esa persona va a ver la nave
- * llevárselo. Una abducción es pública, y esto también.
- */
-function LlamarLaNave({
-  loro,
-  refrescar,
-  alMirar,
-}: {
-  loro: LoroVista;
-  refrescar: () => void;
-  /** Enfocar el vuelo en el mapa. La escena dura nueve segundos y desde acá se
-   *  la está mirando de espaldas: la hoja tapa medio celular y la cámara puede
-   *  estar en cualquier lado. Llamar a la nave y no ver la nave es el chiste
-   *  entero perdido. */
-  alMirar: () => void;
-}) {
-  const [porLlamar, setPorLlamar] = useState(false);
-  const [llamando, setLlamando] = useState(false);
-  const [error, setError] = useState("");
-
-  return (
-    <>
-      <button
-        className="boton chico fantasma"
-        style={{
-          width: "100%",
-          marginTop: 12,
-          ...(porLlamar
-            ? { borderColor: "rgba(103,232,249,.55)", color: "#a5f3fc" }
-            : null),
-        }}
-        disabled={llamando}
-        onClick={async () => {
-          if (!porLlamar) {
-            setPorLlamar(true);
-            return;
-          }
-          setLlamando(true);
-          setError("");
-          try {
-            await pedir("/api/loros/abducir", { datos: { id: loro.id } });
-            // Primero la cámara y recién después el refresco: así la hoja ya
-            // está abajo y el mapa encuadrado cuando llega el loro abducido y
-            // el plato volador empieza a bajar.
-            alMirar();
-            refrescar();
-          } catch (e: any) {
-            setError(e?.message || "La nave no vino.");
-            setLlamando(false);
-            setPorLlamar(false);
-          }
-        }}
-        // Perder el foco cancela la confirmación, igual que en las otras dos:
-        // un botón que se quedó armado es una trampa para el toque siguiente.
-        onBlur={() => setPorLlamar(false)}
-      >
-        {llamando
-          ? "Llamando a la nave…"
-          : porLlamar
-            ? "🛸 Confirmar (el mensaje se pierde en el espacio infinito)"
-            : "🛸 Solicitar abducción"}
-      </button>
-      {error && (
-        <p style={{ color: "#fca5a5", fontSize: 12, marginTop: 8 }}>{error}</p>
-      )}
-    </>
+    </button>
   );
 }
 

@@ -519,21 +519,24 @@ recibió; lo que se hace con uno que todavía está en el aire lo decide quien l
 soltó.** Nadie puede abducir el ave de otro, y después de aterrizar ya no se
 puede: ese mensaje ya es del otro.
 
-### Se entra por los dos lados
+### Se entra tocando el ave en el mapa, y solo ahí
 
-El botón vive en **dos lugares**, y no es duplicación por descuido: son las dos
-formas en que la mano llega al mismo bicho.
+El botón vivió un rato en **dos lugares**: al pie de la tarjeta, en la pestaña
+"En vuelo", y tocando el bicho en el mapa. Se quedó con el segundo.
 
-En la **tarjeta del panel**, al pie de cada ave tuya que esté en el aire — que
-es donde se busca cuando uno ya sabe que la cosa existe.
+El motivo no es ahorro de código: es **dónde corresponde que esté**. La lista de
+"En vuelo" se lee de arriba abajo, con el pulgar bajando, y ahí un botón
+irreversible al pie de cada tarjeta es una trampa esperando — por eso había que
+protegerlo con dos toques y con un `onBlur` que lo desarmara. Tocar el ave en el
+mapa es lo contrario: hay que **ir a buscar** ese bicho, apuntarle y darle. El
+gesto ya dice que la cosa es a propósito.
 
-Y **tocando el ave en el mapa**, que es donde la mano va primero. Durante un
-tiempo el ave fue `interactive: false`: decoración, imposible de tocar. Pero el
-bicho cruzando el mapa *es* el objeto de esta app, y que no pasara nada al
-tocarlo era el vacío más caro que teníamos. Ahora abre un globo con adónde va y
-cuánto falta, y si es tuya y sigue en el aire, con el botón.
+De paso, la tarjeta volvió a ser un `<button>` entero. Había dejado de serlo
+porque adentro iba el de la abducción, y un botón adentro de otro es HTML
+inválido: el navegador lo desarma y el de adentro deja de recibir sus toques.
+Sin nada que anidar, vuelve a ser tocable de punta a punta.
 
-Tres detalles de ese globo, porque los tres son bugs si se hacen distinto:
+Y sobre el globo del mapa, tres detalles que son bugs si se hacen distinto:
 
 - **Se arma al abrirlo, no al crear la capa.** Leaflet acepta una función como
   contenido y la llama en cada apertura. Entre que un ave despega y que alguien
