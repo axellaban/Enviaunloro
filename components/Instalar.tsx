@@ -24,6 +24,14 @@
 //
 // Y no se ofrece en iPhone. Allá este evento no existe —Safari nunca lo
 // implementó— y el paso es a mano; contarlo dos veces sería ruido.
+//
+// Y TAMPOCO APARECÍA POR LLEGAR TARDE. Chrome manda ese evento una sola vez, a
+// los pocos milisegundos de cargar la página, y esta tarjeta vive adentro del
+// panel: se monta recién cuando terminó de cargar el nido, después de la
+// pantalla de arranque y de la consulta al servidor. Para entonces el evento ya
+// había pasado y no vuelve. Ahora lo atrapa un script de app/layout.tsx que
+// corre antes que cualquier React y lo deja en `window.__instalar`; acá se lee
+// eso al montarse, además de seguir escuchando por si llega después.
 
 import { useEffect, useState } from "react";
 
@@ -45,29 +53,35 @@ export function Instalar() {
       if (localStorage.getItem(NO_GRACIAS)) return;
     } catch {}
 
-    const alPoder = (e: Event) => {
-      // Sin esto, Chrome muestra ADEMÁS su propio cartelito abajo. Dos ofertas
-      // para lo mismo, y la de él no explica por qué conviene.
-      e.preventDefault();
-      setEvento(e as EventoInstalar);
-    };
-    // Si la instalan por el menú del navegador en vez de por acá, la tarjeta
-    // sobra desde ese mismo segundo.
-    const alInstalar = () => setEvento(null);
+    const guardada = () =>
+      (window as unknown as { __instalar?: EventoInstalar | null }).__instalar ?? null;
 
-    window.addEventListener("beforeinstallprompt", alPoder);
-    window.addEventListener("appinstalled", alInstalar);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", alPoder);
-      window.removeEventListener("appinstalled", alInstalar);
-    };
+    // Lo que el script del layout ya atrapó, si atrapó algo. Este es el caso
+    // normal: para cuando esta tarjeta se monta, el evento ya pasó.
+    setEvento(guardada());
+
+    // Y por si llega después: el navegador puede tardar en decidir que la app
+    // es instalable. `loros:instalable` lo avisa el mismo script del layout,
+    // que es el único que escucha el evento de Chrome —si lo escucháramos los
+    // dos, `preventDefault` correría dos veces sobre el mismo evento—.
+    const alCambiar = () => setEvento(guardada());
+    window.addEventListener("loros:instalable", alCambiar);
+    return () => window.removeEventListener("loros:instalable", alCambiar);
   }, []);
+
+  /** El evento sirve una sola vez: usado, se tira también el guardado. */
+  function gastar() {
+    try {
+      (window as unknown as { __instalar?: EventoInstalar | null }).__instalar = null;
+    } catch {}
+    setEvento(null);
+  }
 
   function noGracias() {
     try {
       localStorage.setItem(NO_GRACIAS, "1");
     } catch {}
-    setEvento(null);
+    gastar();
   }
 
   if (!evento) return null;
@@ -98,7 +112,7 @@ export function Instalar() {
             // ofrecer solo cuando el navegador mande otro evento.
             await evento.userChoice;
           } catch {}
-          setEvento(null);
+          gastar();
           setInstalando(false);
         }}
       >

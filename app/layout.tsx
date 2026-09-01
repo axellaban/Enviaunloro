@@ -61,10 +61,50 @@ export const viewport: Viewport = {
   themeColor: "#060d0c",
 };
 
+/**
+ * Atrapar la oferta de instalar ANTES de que exista un componente que la mire.
+ *
+ * Chrome dispara `beforeinstallprompt` una sola vez, apenas decide que la app
+ * es instalable, y eso pasa a los pocos milisegundos de cargar la página. El
+ * cartel que la ofrece vive adentro del panel, que se dibuja recién cuando
+ * terminó de cargar el nido —después de la pantalla de arranque, de la consulta
+ * al servidor y de la hidratación—. Para entonces el evento ya pasó y no vuelve:
+ * quien escuchaba llegó tarde, y en Android la tarjeta de "ponela en tu
+ * pantalla" no aparecía nunca. Medido en Android; en iPhone este evento no
+ * existe y todo esto es un no-op.
+ *
+ * Por eso se escucha acá, en un script suelto que corre antes que cualquier
+ * React: guarda el evento en `window` y avisa por su cuenta. El componente,
+ * cuando por fin se monta, encuentra la oferta esperándolo.
+ *
+ * `dangerouslySetInnerHTML` es la única forma de meter un script que corra
+ * antes de la hidratación. Es texto fijo escrito acá, sin nada de afuera.
+ */
+const ATRAPAR_INSTALAR = `
+(function () {
+  try {
+    window.__instalar = null;
+    window.addEventListener("beforeinstallprompt", function (e) {
+      // Sin esto Chrome muestra ADEMÁS su propio cartelito abajo.
+      e.preventDefault();
+      window.__instalar = e;
+      window.dispatchEvent(new Event("loros:instalable"));
+    });
+    window.addEventListener("appinstalled", function () {
+      window.__instalar = null;
+      window.dispatchEvent(new Event("loros:instalable"));
+    });
+  } catch (_) {}
+})();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <script dangerouslySetInnerHTML={{ __html: ATRAPAR_INSTALAR }} />
+        {children}
+      </body>
     </html>
   );
 }

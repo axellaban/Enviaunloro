@@ -449,12 +449,28 @@ export function marcarSinLeer(cuantos: number): void {
  * claves VAPID tiene el permiso puesto y ninguna suscripción guardada. Sin
  * esto, esa persona no recibe un solo aviso y desde afuera se ve como que el
  * push no anda.
+ *
+ * Y EL SERVICE WORKER SE REGISTRA SIEMPRE, con permiso o sin él.
+ *
+ * Antes se registraba solamente acá adentro del `permission === "granted"`, o
+ * al tocar "Avisame". O sea: quien todavía no había dado permiso —o sea todo el
+ * mundo la primera vez— navegaba sin service worker. Y tener uno registrado es
+ * uno de los requisitos de Chrome para considerar la app instalable: sin él no
+ * dispara `beforeinstallprompt`, y sin ese evento la tarjeta de "ponela en tu
+ * pantalla" no se puede mostrar. En Android no aparecía nunca, y la causa
+ * estaba acá: el requisito de una cosa colgado adentro del `if` de otra.
+ *
+ * Registrarlo no muestra nada ni pide nada. El de esta app no cachea —su
+ * manejador de `fetch` está vacío a propósito, que para un mapa en vivo es lo
+ * correcto— y sin suscripción de push no tiene nada que hacer. Lo único que
+ * cambia es que el navegador ahora sabe que esto es una app.
  */
 export function sincronizarAvisos(): void {
   try {
+    // Primero y sin condiciones: es lo que habilita la oferta de instalar.
+    void serviceWorker();
     if (typeof Notification === "undefined") return;
     if (Notification.permission !== "granted") return;
-    void serviceWorker();
     void suscribirAlPush();
   } catch {}
 }

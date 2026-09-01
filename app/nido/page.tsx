@@ -116,6 +116,23 @@ export default function Nido() {
   }, [enfocar]);
 
   /**
+   * Al abrir la app, y una sola vez: dejar listo el service worker.
+   *
+   * Estaba solo en dos momentos —al terminar el onboarding y al soltar un
+   * lorito—, o sea nunca para quien simplemente vuelve a abrir la app, que es
+   * lo que hace la mayoría casi siempre. Y sin service worker registrado
+   * Chrome no considera instalable la app: no dispara `beforeinstallprompt` y
+   * la tarjeta de "ponela en tu pantalla" no tiene con qué aparecer.
+   *
+   * No pregunta nada ni muestra nada: si el permiso de avisos ya está dado
+   * revalida la suscripción, y si no, se queda con el service worker puesto y
+   * listo. Ver sincronizarAvisos en lib/cliente.ts.
+   */
+  useEffect(() => {
+    sincronizarAvisos();
+  }, []);
+
+  /**
    * El alto real del pie, medido, para que la lista pueda pasar por debajo.
    *
    * El pie flota SOBRE la lista —es un `position:absolute` con degradado— así
