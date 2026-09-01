@@ -65,6 +65,10 @@ type Props = {
   alElegirEnMapa: () => void;
   /** Abrir la pantalla de mandarle un lorito a alguien que no está en la app. */
   alConvidar: () => void;
+  /** Se prende mientras hay una respuesta abierta en el buzón, para que el pie
+   *  se aparte: los dos botones de la respuesta ocupan el mismo lugar que el
+   *  botón grande de "Soltar un loro". */
+  alContestar: (abierto: boolean) => void;
   /** "<idLoro>#<nonce>": el ave de la que hablaba el aviso que se tocó. Abre su
    *  pestaña y trae su tarjeta a la vista. El nonce de atrás permite volver al
    *  mismo lorito dos veces seguidas, igual que el `foco` del mapa. */
@@ -87,7 +91,18 @@ export function Panel(p: Props) {
     .filter((l) => l.vuelta && ahora < l.vuelta.llegada)
     .sort((a, b) => a.vuelta!.llegada - b.vuelta!.llegada);
   // El buzón guarda lo que terminó, haya terminado bien o mal.
-  const llegados = p.loros.filter((l) => l.llego || l.perdido || l.abducido);
+  //
+  // Ordenado por cuándo TERMINÓ, no por cuándo salió. La lista viene del
+  // servidor ordenada por salida, y en cualquier otra app de mensajes eso da
+  // lo mismo porque el mensaje llega en el momento en que se manda. Acá no: un
+  // guacamayo que cruza el Atlántico sale hoy y aterriza dentro de dieciséis
+  // días. Ordenado por salida, ese guacamayo aparecía debajo de todos los
+  // periquitos de la última quincena —abajo de todo— justo el día que llegaba.
+  // Lo último que te llegó va arriba, que es lo que la lista promete.
+  const fin = (l: LoroVista) => l.abducido ?? l.extravio ?? l.llegada;
+  const llegados = p.loros
+    .filter((l) => l.llego || l.perdido || l.abducido)
+    .sort((a, b) => fin(b) - fin(a));
   // `llego` y no solo `!leido`: un ave que se perdió no trae nada que abrir y su
   // tarjeta no tiene con qué marcarse leída, así que sin esto el contador de la
   // pestaña se quedaba en 1 para siempre. Pasa 2 de cada 1000 envíos, y cuando
@@ -304,6 +319,7 @@ export function Panel(p: Props) {
         {pestaña === "buzon" && (
           <Buzon
             llegados={llegados}
+            alContestar={p.alContestar}
             refrescar={p.refrescar}
             alReenviar={p.alReenviar}
             escala={p.escala}
@@ -913,11 +929,13 @@ function Buzon({
   refrescar,
   alReenviar,
   escala,
+  alContestar,
 }: {
   llegados: LoroVista[];
   refrescar: () => void;
   alReenviar: (loro: LoroVista) => void;
   escala: number;
+  alContestar: (abierto: boolean) => void;
 }) {
   // Mismo criterio que el contador de la pestaña, y por el mismo motivo: un ave
   // perdida no se puede abrir, así que no puede estar "sin abrir".
@@ -954,7 +972,14 @@ function Buzon({
   const sinAbrir = llegados.filter((l) => arriba.current.has(l.id));
   const vistos = llegados.filter((l) => !arriba.current.has(l.id));
   const tarjeta = (l: LoroVista) => (
-    <TarjetaBuzon key={l.id} loro={l} refrescar={refrescar} alReenviar={alReenviar} escala={escala} />
+    <TarjetaBuzon
+      key={l.id}
+      loro={l}
+      refrescar={refrescar}
+      alReenviar={alReenviar}
+      escala={escala}
+      alContestar={alContestar}
+    />
   );
 
   // Debajo del umbral no se ponen títulos —dos renglones para separar tres
@@ -987,11 +1012,13 @@ function TarjetaBuzon({
   refrescar,
   alReenviar,
   escala,
+  alContestar,
 }: {
   loro: LoroVista;
   refrescar: () => void;
   alReenviar: (loro: LoroVista) => void;
   escala: number;
+  alContestar: (abierto: boolean) => void;
 }) {
   const [abriendo, setAbriendo] = useState(false);
   const [abierto, setAbierto] = useState(Boolean(loro.leido));
@@ -1123,7 +1150,14 @@ function TarjetaBuzon({
           {loro.olvido && <PorQueLlegoAsi loro={loro} />}
 
           {/* El ave sigue posada del otro lado. Quien la recibió decide. */}
-          {!enviado && !loro.perdido && <QueHagoConElAve loro={loro} refrescar={refrescar} escala={escala} />}
+          {!enviado && !loro.perdido && (
+            <QueHagoConElAve
+              loro={loro}
+              refrescar={refrescar}
+              escala={escala}
+              alContestar={alContestar}
+            />
+          )}
           {loro.suerte && <FinalDelAve loro={loro} />}
         </div>
       )}
@@ -1252,10 +1286,12 @@ function QueHagoConElAve({
   loro,
   refrescar,
   escala,
+  alContestar,
 }: {
   loro: LoroVista;
   refrescar: () => void;
   escala: number;
+  alContestar: (abierto: boolean) => void;
 }) {
   const [ocupado, setOcupado] = useState<Suerte | null>(null);
   const [error, setError] = useState("");
@@ -1263,7 +1299,46 @@ function QueHagoConElAve({
    *  y hacerlo sin ofrecer dónde escribir era devolverla vacía. */
   const [escribiendo, setEscribiendo] = useState(false);
   const [texto, setTexto] = useState("");
+  const caja = useRef<HTMLDivElement>(null);
   const a = AVES[loro.ave];
+
+  // Mientras esta respuesta está abierta, el pie se aparta.
+  //
+  // El problema no era solo que se taparan: es que había DOS botones grandes
+  // pidiendo lo mismo, uno arriba del otro. "Soltar con esto" manda esta
+  // respuesta; "Soltar un loro" abre un compositor nuevo para cualquier otra
+  // persona. Escritos casi igual, pegados, y el de abajo —el que NO servía
+  // para lo que estabas haciendo— era el más grande y el más visible.
+  //
+  // Se avisa hacia arriba en vez de esconderlo desde acá porque el pie no es
+  // de este componente: vive en la página, al lado del panel. El pie se
+  // esconde pero NO se desmonta, así que el hueco que la lista le reserva
+  // (`--alto-pie`) sigue existiendo y la respuesta cae justo ahí, sin saltos.
+  //
+  // El aviso se equilibra solo: se prende al abrir y se apaga tanto al cerrar
+  // como al desmontarse la tarjeta —cambiar de pestaña, por ejemplo—, así que
+  // el pie no se puede quedar escondido para siempre.
+  useEffect(() => {
+    if (!escribiendo) return;
+    alContestar(true);
+    return () => alContestar(false);
+  }, [escribiendo, alContestar]);
+
+  // Y además se trae la respuesta a la vista: la tarjeta creció de golpe y sus
+  // botones pueden haber quedado abajo del borde. Con el pie ya apartado, el
+  // scroll del navegador alcanza —no hay nada flotando que él no vea—.
+  useEffect(() => {
+    if (!escribiendo) return;
+    const el = caja.current;
+    if (!el) return;
+    const quieto =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const id = requestAnimationFrame(() =>
+      el.scrollIntoView({ block: "nearest", behavior: quieto ? "auto" : "smooth" })
+    );
+    return () => cancelAnimationFrame(id);
+  }, [escribiendo]);
 
   if (loro.suerte) return null;
 
@@ -1282,7 +1357,10 @@ function QueHagoConElAve({
   if (escribiendo) {
     const vuelve = formatearDuracion(duracionVuelo(loro.distanciaKm, loro.ave, escala));
     return (
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--borde)" }}>
+      <div
+        ref={caja}
+        style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--borde)" }}
+      >
         <p style={{ fontSize: 12.5, color: "var(--suave)", lineHeight: 1.5 }}>
           {a.articulo === "la" ? "La" : "Lo"} soltás con tu respuesta. Tarda lo mismo
           en volver: <strong style={{ color: a.color }}>{vuelve}</strong>.

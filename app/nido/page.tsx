@@ -145,6 +145,27 @@ export default function Nido() {
     return () => ro.disconnect();
   }, []);
 
+  /**
+   * Cuántas respuestas hay abiertas en el buzón ahora mismo.
+   *
+   * Mientras haya al menos una, el pie se aparta: los botones de la respuesta
+   * ("Volver" / "Soltar con esto") y el botón grande de "Soltar un loro" caen
+   * en el mismo lugar de la pantalla y dicen casi lo mismo, y el que no servía
+   * era el más visible de los dos.
+   *
+   * Un contador y no un booleano porque puede haber dos tarjetas contestando a
+   * la vez: si una se cierra, el pie tiene que seguir apartado por la otra.
+   */
+  const [contestando, setContestando] = useState(0);
+  // `useCallback` y no una flecha suelta: del otro lado esto es la dependencia
+  // de un efecto que suma al abrir y resta al cerrarse. Si cambiara de
+  // identidad en cada render, ese efecto se desarmaría y se rearmaría solo, y
+  // el contador estaría restando y sumando de más todo el tiempo.
+  const alContestar = useCallback(
+    (abierto: boolean) => setContestando((n) => Math.max(0, n + (abierto ? 1 : -1))),
+    []
+  );
+
   const [aviso, setAviso] = useState("");
   /** Modo "tocá el mapa para mudar tu nido". */
   const [mudando, setMudando] = useState(false);
@@ -441,8 +462,9 @@ export default function Nido() {
   // mueve —que es lo que dice "esperá, está cargando"— y sale del mismo
   // componente que dibuja todo lo demás.
   //
-  // El nombre debajo es lo que la convierte en una pantalla de arranque y no en
-  // un spinner con un pájaro.
+  // Sin nombre debajo: el bicho solo. La pantalla dura un segundo y el nombre
+  // ya está en la portada, en el ícono y en la barra del navegador; repetirlo
+  // acá lo único que hace es dar algo para leer justo cuando no hay tiempo.
   if (est.cargando && !est.yo) {
     return (
       <div
@@ -451,20 +473,9 @@ export default function Nido() {
           display: "grid",
           placeItems: "center",
           alignContent: "center",
-          gap: 18,
         }}
       >
         <Ave especie="perico" size={62} aletea />
-        <p
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            letterSpacing: "-0.01em",
-            color: "var(--tenue)",
-          }}
-        >
-          Enviaunlorito
-        </p>
       </div>
     );
   }
@@ -662,6 +673,7 @@ export default function Nido() {
           convites={est.convites}
           alEscribir={(id) => setCompositor({ abierto: true, para: id })}
           alConvidar={() => setConvidando(true)}
+          alContestar={alContestar}
           alElegirEnMapa={() => setMudando(true)}
           alReenviar={(l) =>
             setCompositor({
@@ -673,7 +685,17 @@ export default function Nido() {
           }
           refrescar={est.refrescar}
         />
-        <div className="pie-panel" data-pie ref={pie}>
+        {/* `visibility` y no desmontarlo: escondido así el pie sigue midiendo lo
+            mismo, y por lo tanto el hueco que la lista le reserva
+            (`--alto-pie`) no cambia. La respuesta cae en ese hueco, sin salto y
+            sin nada encima. */}
+        <div
+          className="pie-panel"
+          data-pie
+          ref={pie}
+          style={contestando > 0 ? { visibility: "hidden" } : undefined}
+          aria-hidden={contestando > 0}
+        >
           <Cta ancho>
             <button className="boton" onClick={() => setCompositor({ abierto: true })}>
               🦜 Soltar un loro
