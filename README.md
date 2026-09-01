@@ -302,10 +302,14 @@ en la plataforma que originó la idea.
 
 Queda entonces lo único de esa idea que la web sí puede y que además **no
 interrumpe a nadie**: `navigator.setAppBadge()`, el globito en el ícono, con
-cuántas aves tuyas están cruzando el mapa ahora. Cuentan las que van y las que
-vuelven; los loritos esperando en una cervecería no, que es justo lo contrario
-de estar volando. Cero no dibuja un 0 — saca el globito, porque un 0 dice que
-hay algo.
+**los loritos que llegaron y no abriste**. Cero no dibuja un 0 — saca el
+globito, porque un 0 dice que hay algo.
+
+Un rato contó **las aves en el aire**, y estaba mal de fondo. Un globito es una
+tarea pendiente —WhatsApp, el mail, todos funcionan así— y un ave volando no es
+una tarea: no hay nada que hacer con ella, ni siquiera es tuya del todo hasta
+que aterriza. Encima el número **no se apagaba nunca**, porque siempre hay algo
+en el aire. Lo que sí te espera es el buzón.
 
 Anda en la app instalada, en las dos plataformas, iPhone incluido. En un
 navegador común la API no existe, y eso no es un error: es la mayoría de los
@@ -854,6 +858,36 @@ Dos detalles que sin ellos no funciona:
 - **La dirección se limpia al llegar.** Con `replaceState`, apenas se leyó. Si
   quedara puesta, recargar —o volver con el botón de atrás dos días después— te
   llevaría de nuevo a un ave de la que ya te olvidaste.
+
+### Agregarla a la pantalla te borraba el nido
+
+El peor de los agujeros que tuvo la app, y lo abría ella misma.
+
+En iPhone los avisos con la app cerrada **exigen** que esté agregada a la
+pantalla de inicio, así que un cartel invitaba a hacerlo. Pero para el iPhone
+**esa app es otro navegador**: arranca con un almacenamiento nuevo y no comparte
+la cookie con Safari. Del otro lado aparecía el onboarding —"armá tu nido"— con
+los loros, la bandada y el código del otro lado de una puerta cerrada.
+
+Y la llave, que existe desde el día uno para exactamente esto, **no servía**:
+solo funcionaba como link `/entrar?llave=…`, y adentro de una app agregada a la
+pantalla **no hay barra de direcciones donde pegarlo**.
+
+Se arregló por los dos lados:
+
+- **"Ya tengo un nido"**, en el paso 1 del onboarding. Se pega la llave y se
+  entra. Acepta el link entero o solo el token, porque nadie va a recortar una
+  URL a mano — y menos alguien que acaba de perder su nido. Navega a `/entrar`
+  en vez de resolverlo por fetch: esa ruta contesta un 303 con la cookie puesta
+  y el mapa aparece dibujado de una, sin que se vea el onboarding primero.
+- **La llave, ANTES de mandar a instalar.** El cartel ahora ofrece guardarla como
+  primer paso, con `navigator.share` —que en iPhone es lo que deja mandársela a
+  uno mismo por WhatsApp o guardarla en Notas, que es lo que de verdad sobrevive
+  a cerrar Safari— y el portapapeles como red.
+
+Verificado de punta a punta contra el servidor: nido con un loro y dos amigos en
+Safari, cliente nuevo sin cookie —"sin nido"—, llave pegada, y del otro lado el
+mismo id, el mismo loro y los mismos amigos.
 
 ### El permiso se pide una sola vez en la vida
 

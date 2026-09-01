@@ -24,7 +24,7 @@
 // aparece. Lo único que sirve ahí es contar el paso que lo desbloquea.
 
 import { useEffect, useState } from "react";
-import { estadoDeAvisos, pedirPermisoAvisos, type EstadoAvisos } from "../lib/cliente";
+import { estadoDeAvisos, pedir, pedirPermisoAvisos, type EstadoAvisos } from "../lib/cliente";
 
 /** "Ahora no" dura lo que dura la pestaña: es una postergación, no un no. */
 const AHORA_NO = "loros:avisos-ahora-no";
@@ -32,6 +32,8 @@ const AHORA_NO = "loros:avisos-ahora-no";
 export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
   const [estado, setEstado] = useState<EstadoAvisos | null>(null);
   const [pidiendo, setPidiendo] = useState(false);
+  const [copiando, setCopiando] = useState(false);
+  const [copiada, setCopiada] = useState(false);
   const [pospuesto, setPospuesto] = useState(true);
 
   useEffect(() => {
@@ -85,6 +87,12 @@ export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
             pantalla de inicio. Tocá <strong>Compartir</strong> y después{" "}
             <strong>Agregar a inicio</strong>. Después de eso te avisa aunque
             tengas el teléfono en el bolsillo.
+            <br />
+            <br />
+            <strong>Copiá tu llave antes.</strong> La app agregada arranca
+            vacía: para el iPhone es otro navegador y no comparte nada con
+            Safari. Con la llave entrás a este mismo nido desde adentro —
+            <em>Ya tengo un nido</em>— y no perdés nada.
           </>
         ) : (
           <>
@@ -93,6 +101,40 @@ export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
           </>
         )}
       </p>
+
+      {/* Antes de mandar a nadie a instalar, la llave. Es el único momento en
+          que se entiende para qué sirve, y el único en que todavía se puede
+          sacar: después de agregarla a la pantalla, del otro lado no hay
+          barra de direcciones ni cookie ni forma de volver. */}
+      {instalar && (
+        <button
+          className="boton chico"
+          style={{ width: "100%", marginBottom: 12 }}
+          disabled={copiando}
+          onClick={async () => {
+            setCopiando(true);
+            try {
+              const r = await pedir<{ llave: string }>("/api/sesion");
+              const url = `${window.location.origin}/entrar?llave=${encodeURIComponent(r.llave)}`;
+              // Compartir primero: en iPhone es lo que deja mandársela a uno
+              // mismo por WhatsApp o guardarla en Notas, que es lo que de
+              // verdad sobrevive a cerrar Safari. El portapapeles es la red.
+              if (navigator.share) {
+                await navigator.share({ title: "La llave de mi nido", url }).catch(() => {});
+              } else {
+                await navigator.clipboard.writeText(url).catch(() => {});
+              }
+              setCopiada(true);
+            } catch {
+              setCopiada(false);
+            } finally {
+              setCopiando(false);
+            }
+          }}
+        >
+          {copiando ? "Un segundo…" : copiada ? "✓ Llave guardada" : "🔑 Guardar mi llave primero"}
+        </button>
+      )}
 
       {!instalar && (
         <button

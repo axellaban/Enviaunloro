@@ -27,6 +27,37 @@ export function Onboarding({
   const [aMano, setAMano] = useState(false);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  /** La otra puerta: entrar a un nido que ya existe, con su llave. */
+  const [conLlave, setConLlave] = useState(false);
+  const [llave, setLlave] = useState("");
+
+  /**
+   * Canjear la llave pegada.
+   *
+   * Se acepta el link entero o solo el token: nadie va a recortar una URL a
+   * mano, y menos alguien que acaba de perder su nido y está nervioso.
+   *
+   * Y se navega a /entrar en vez de pedir por fetch a propósito. Esa ruta
+   * responde un 303 con la cookie puesta, así que el nido aparece dibujado de
+   * una; resolviéndolo con JavaScript se vería primero este onboarding y
+   * después el mapa, que es exactamente el susto que la llave viene a evitar.
+   */
+  function entrarConLlave() {
+    const crudo = llave.trim();
+    if (!crudo) return;
+    let token = crudo;
+    // Si pegaron un link, se le saca el parámetro. Si pegaron cualquier otra
+    // cosa, se manda tal cual y el servidor decide: una llave que no existe
+    // devuelve al mapa sin decir por qué, que es lo correcto.
+    try {
+      const u = new URL(crudo);
+      token = u.searchParams.get("llave") || crudo;
+    } catch {
+      // No era una URL. Se usa lo pegado.
+    }
+    setOcupado(true);
+    window.location.href = `/entrar?llave=${encodeURIComponent(token)}`;
+  }
 
   async function ubicar() {
     setOcupado(true);
@@ -124,6 +155,65 @@ export function Onboarding({
               >
                 Seguir
               </button>
+
+              {/* LA PUERTA QUE FALTABA, y faltaba justo donde más duele.
+                  
+                  La llave existe desde el día uno, pero SOLO funcionaba como
+                  link: `/entrar?llave=…`, pegado en una barra de direcciones.
+                  Y adentro de una app agregada a la pantalla de inicio NO HAY
+                  barra de direcciones. O sea que la app le decía a la gente
+                  "agregame a tu pantalla para que te avise", el iPhone le daba
+                  a esa app un almacenamiento nuevo y vacío —no comparte cookies
+                  con Safari—, y del otro lado aparecía este onboarding sin
+                  ninguna forma de volver al nido de siempre.
+                  
+                  Acá se pega la llave y listo. Acepta el link entero o solo el
+                  token, porque nadie va a recortar una URL a mano. */}
+              {!conLlave ? (
+                <button
+                  className="boton fantasma chico"
+                  style={{ width: "100%", marginTop: 10 }}
+                  onClick={() => setConLlave(true)}
+                >
+                  Ya tengo un nido
+                </button>
+              ) : (
+                <div style={{ marginTop: 14 }}>
+                  <p style={{ color: "var(--suave)", fontSize: 13.5, lineHeight: 1.6 }}>
+                    Pegá la llave de tu nido. La copiás desde la otra app o el
+                    otro navegador, en <strong>Nido → Copiar la llave</strong>.
+                  </p>
+                  <input
+                    className="campo"
+                    autoFocus
+                    style={{ marginTop: 10 }}
+                    placeholder="Pegá acá el link de tu llave"
+                    value={llave}
+                    onChange={(e) => setLlave(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") entrarConLlave();
+                    }}
+                  />
+                  <button
+                    className="boton"
+                    style={{ width: "100%", marginTop: 10 }}
+                    disabled={!llave.trim()}
+                    onClick={entrarConLlave}
+                  >
+                    Entrar a mi nido
+                  </button>
+                  <button
+                    className="boton fantasma chico"
+                    style={{ width: "100%", marginTop: 8 }}
+                    onClick={() => {
+                      setConLlave(false);
+                      setLlave("");
+                    }}
+                  >
+                    Mejor armo uno nuevo
+                  </button>
+                </div>
+              )}
             </>
           )}
 
