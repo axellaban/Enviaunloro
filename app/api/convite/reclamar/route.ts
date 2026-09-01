@@ -15,7 +15,7 @@ import { reclamarConvite } from "../../../../lib/convite";
 import { verLoro } from "../../../../lib/vista";
 import { empujarUnaVez } from "../../../../lib/push";
 import { avisoBandada } from "../../../../lib/avisos";
-import { avesEnElAire, nido, type Nido } from "../../../../lib/datos";
+import { loritosSinLeer, nido, type Nido } from "../../../../lib/datos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         ave: r.loro.ave,
         falta: Math.max(0, r.loro.llegada - Date.now()),
       }),
-      insignia: await avesEnElAire(r.loro.de, Date.now()),
+      insignia: await loritosSinLeer(r.loro.de, Date.now()),
     }
   ).catch(() => {});
 

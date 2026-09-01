@@ -26,6 +26,18 @@ export const metadata: Metadata = {
   description:
     "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",
   applicationName: "Enviaunlorito",
+  // EL NOMBRE QUE USA iOS, y faltaba.
+  //
+  // Al agregar a la pantalla de inicio, iPhone precarga el nombre desde acá; si
+  // no está, usa el <title> entero —"Enviaunlorito — Envía Loritos, no
+  // mensajes"— y la persona lo recorta a mano. De ahí salen los íconos que
+  // dicen cualquier cosa, y de ahí el "from Loritos" que aparece al lado de
+  // cada notificación: iOS muestra el nombre de la app instalada, no el de la
+  // web. Con esto precarga "Enviaunlorito" y no hay nada que recortar.
+  //
+  // OJO: no renombra lo que YA está instalado. Eso solo se arregla sacando el
+  // ícono de la pantalla y volviéndolo a agregar.
+  appleWebApp: { title: "Enviaunlorito", capable: true },
   openGraph: {
     type: "website",
     locale: "es_AR",

@@ -26,7 +26,7 @@
 import { error, ok } from "../../../lib/api";
 import { formatearDuracion } from "../../../lib/geo";
 import {
-  avesEnElAire,
+  loritosSinLeer,
   idsPendientes,
   loro as leerLoro,
   nido,
@@ -87,7 +87,7 @@ export async function GET(req: Request) {
               motivo: l.motivo || "No llegó, y no va a llegar.",
               mio: true,
             }),
-            insignia: await avesEnElAire(l.de, ahora),
+            insignia: await loritosSinLeer(l.de, ahora),
           }
         ))
       ) {
@@ -106,7 +106,7 @@ export async function GET(req: Request) {
           `llegada:${l.id}`,
           {
             ...avisoAterrizaje({ idLoro: l.id, quien: de?.nombre || "Alguien", ave: l.ave }),
-            insignia: await avesEnElAire(l.para, ahora),
+            insignia: await loritosSinLeer(l.para, ahora),
           }
         ))
       ) {
@@ -126,7 +126,7 @@ export async function GET(req: Request) {
                 ave: l.ave,
                 conRespuesta: Boolean(l.respuesta),
               }),
-              insignia: await avesEnElAire(l.de, ahora),
+              insignia: await loritosSinLeer(l.de, ahora),
             }
           )
         ) {

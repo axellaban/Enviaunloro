@@ -217,7 +217,21 @@ export function Panel(p: Props) {
         })}
       </div>
 
-      <div className="scroll" style={{ flex: 1, minHeight: 0, padding: "0 12px 74px" }}>
+      {/* El hueco de abajo sale del alto REAL del pie, que lo mide la página y
+          deja en `--alto-pie`. Antes eran 74 px escritos a mano y no alcanzaban:
+          con el halo del botón y la barra de gestos el pie mide más, y al
+          contestar un lorito los botones "Volver" y "Soltar con esto" quedaban
+          abajo del botón grande. El 74 queda de red por si la medición todavía
+          no corrió. */}
+      <div
+        className="scroll"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          padding: "0 12px",
+          paddingBottom: "calc(var(--alto-pie, 74px) + 14px)",
+        }}
+      >
         {pestaña === "vuelo" && (
           <>
             {/* Primero de todo, y solo cuando la app corre adentro del
@@ -1646,8 +1660,14 @@ function Bandada({
         return (
           <div key={f.id} className="tarjeta" style={{ marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Tocar la fila MANDA UN LORITO, que es el equivalente de abrir
+                  el chat al tocar un contacto en WhatsApp o Telegram: en una
+                  lista de gente, la acción es la persona. Antes tocaba enfocar
+                  en el mapa y mandar era un botón ancho debajo de cada tarjeta
+                  —doce amigos, doce botones gigantes, una lista impasable—. */}
               <button
-                onClick={() => alEnfocar(f.id)}
+                onClick={() => alEscribir(f.id)}
+                aria-label={`Mandarle un lorito a ${f.nombre}`}
                 style={{
                   background: "none",
                   border: "none",
@@ -1703,6 +1723,29 @@ function Bandada({
                   DOS lados y no hay cómo deshacerlo salvo volviéndose a sumar
                   con el código. Y se desarma solo al perder el foco, para que
                   no quede una cruz roja armada esperando un dedo distraído. */}
+              {/* Ver en el mapa deja de ser lo que hace la fila y pasa a ser
+                  esto: chiquito de dibujo, 44 px al dedo. Es una acción
+                  secundaria —mirar— contra la primaria, que es escribir. */}
+              <button
+                className="toque-comodo"
+                onClick={() => alEnfocar(f.id)}
+                aria-label={`Ver a ${f.nombre} en el mapa`}
+                style={{
+                  flex: "0 0 auto",
+                  alignSelf: "flex-start",
+                  minWidth: 44,
+                  padding: "4px 6px",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  font: "inherit",
+                  fontSize: 15,
+                  lineHeight: 1.2,
+                  opacity: 0.75,
+                }}
+              >
+                📍
+              </button>
               <button
                 className="toque-comodo"
                 onClick={() => (porSacar === f.id ? sacar(f.id) : setPorSacar(f.id))}
@@ -1737,19 +1780,6 @@ function Bandada({
                 Se dejan de ver los dos. Lo que ya está en el aire llega igual.
               </p>
             )}
-            {/* A lo ancho y debajo, no al costado: al costado, un botón con
-                texto de verdad le come la mitad a un nombre de lugar largo
-                —"Municipio de San Francisco del Monte de Oro"— y en las
-                tarjetas altas queda flotando en el medio de la nada. Acá el
-                objetivo de toque es toda la fila, que en un teléfono es lo que
-                importa. */}
-            <button
-              className="boton chico"
-              onClick={() => alEscribir(f.id)}
-              style={{ width: "100%", marginTop: 10 }}
-            >
-              Envíale un lorito
-            </button>
           </div>
         );
       })}

@@ -12,7 +12,7 @@
 
 import { error, freno, nidoDeRequest, ok } from "../../../lib/api";
 import { diagnosticar, rolDeClaveSupabase } from "../../../lib/store";
-import { avesEnElAire, estadoDeBandada } from "../../../lib/datos";
+import { loritosSinLeer, estadoDeBandada } from "../../../lib/datos";
 import { abiertosDe, convitesDe } from "../../../lib/convite";
 import { probarGeocode } from "../../../lib/geocode";
 import { hayPush } from "../../../lib/push";
@@ -101,7 +101,7 @@ export async function GET(req: Request) {
   // lo pone la página con la app abierta y el service worker con la app
   // cerrada, y si los dos lados contaran distinto el número saltaría cada vez
   // que abrís la app. La prueba compara estos dos números.
-  const insignia = yo ? await avesEnElAire(yo.id, Date.now()).catch(() => null) : null;
+  const insignia = yo ? await loritosSinLeer(yo.id, Date.now()).catch(() => null) : null;
 
   // Nominatim, preguntándole a Nominatim. Es lo único de la app que depende de
   // un servicio ajeno y gratuito, y cuando deja de andar el síntoma es un nido

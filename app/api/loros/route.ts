@@ -1,7 +1,7 @@
 // Soltar un loro.
 
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../lib/api";
-import { avesEnElAire, aveValida, enviarLoro, idsAmigos, nido } from "../../../lib/datos";
+import { loritosSinLeer, aveValida, enviarLoro, idsAmigos, nido } from "../../../lib/datos";
 import { verLoro } from "../../../lib/vista";
 import { empujarUnaVez } from "../../../lib/push";
 import { avisoDespegue } from "../../../lib/avisos";
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         pollera: Boolean(r.loro.pollera),
         falta: Math.max(0, r.loro.llegada - Date.now()),
       }),
-      insignia: await avesEnElAire(para.id, Date.now()),
+      insignia: await loritosSinLeer(para.id, Date.now()),
     }
   ).catch(() => {});
 

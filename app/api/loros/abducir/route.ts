@@ -11,7 +11,7 @@
 // mensaje no se recupera, y del otro lado se ve pasar la nave.
 
 import { cuerpo, error, freno, mismoOrigen, nidoDeRequest, ok } from "../../../../lib/api";
-import { abducirLoro, avesEnElAire, nido } from "../../../../lib/datos";
+import { abducirLoro, loritosSinLeer, nido } from "../../../../lib/datos";
 import { verLoro } from "../../../../lib/vista";
 import { empujarUnaVez } from "../../../../lib/push";
 import { avisoAbduccion } from "../../../../lib/avisos";
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     `abduccion:${l.id}`,
     {
       ...avisoAbduccion({ idLoro: l.id, quien: yo.nombre, ave: l.ave }),
-      insignia: await avesEnElAire(l.para, Date.now()),
+      insignia: await loritosSinLeer(l.para, Date.now()),
     }
   ).catch(() => {});
 

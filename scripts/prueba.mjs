@@ -1221,6 +1221,11 @@ chequear(
 
 // El globito del ícono: el servidor tiene que contar lo MISMO que la página.
 //
+// Cuenta los loritos que llegaron y NO se abrieron, como el globito de
+// WhatsApp: un globito es una tarea pendiente. Antes contaba las aves en el
+// aire, que no es una tarea —no hay nada que hacer con un ave volando— y que
+// además no se apagaba nunca, porque siempre hay algo en el aire.
+//
 // El número lo pone un efecto de la página cuando la app está abierta, y el
 // service worker cuando está cerrada, con el total que le manda el servidor en
 // cada aviso. Si los dos lados contaran distinto, el número saltaría cada vez
@@ -1233,8 +1238,11 @@ chequear(
   const ahoraAna = est.ahora;
   const comoLaPagina = est.loros.filter(
     (l) =>
-      (!l.llego && !l.perdido && !l.abducido) ||
-      (l.vuelta && ahoraAna < l.vuelta.llegada)
+      l.direccion === "recibido" &&
+      !l.abducido &&
+      !l.perdido &&
+      ahoraAna >= l.llegada &&
+      !l.leido
   ).length;
   const salud = await ana.llamar("/api/salud");
   chequear(

@@ -33,7 +33,7 @@ import { Cta } from "../../components/Cta";
 import {
   avisar,
   llaveDeConvite,
-  marcarAvesEnElAire,
+  marcarSinLeer,
   pedir,
   sincronizarAvisos,
   useEstado,
@@ -114,6 +114,36 @@ export default function Nido() {
     url.searchParams.delete("ver");
     window.history.replaceState(null, "", url.pathname + url.search);
   }, [enfocar]);
+
+  /**
+   * El alto real del pie, medido, para que la lista pueda pasar por debajo.
+   *
+   * El pie flota SOBRE la lista —es un `position:absolute` con degradado— así
+   * que lo último de la lista queda tapado. Había un `padding-bottom: 74px`
+   * escrito a mano y no alcanzaba: con el halo del botón, el hueco de la barra
+   * de gestos y el texto en dos renglones, el pie mide bastante más. Se veía
+   * al contestar un lorito: "Volver" y "Soltar con esto" quedaban abajo del
+   * botón grande y había que scrollear a ciegas para encontrarlos.
+   *
+   * Medido y no fijo porque el número cambia por teléfono —la barra de gestos—
+   * y por estado —el botón crece cuando el texto pasa a dos renglones—.
+   */
+  const pie = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = pie.current;
+    if (!el) return;
+    // En la RAÍZ y no en el propio pie: la lista que tiene que dejarle lugar es
+    // hermana del pie, no hija, así que ahí abajo la variable no le llegaría.
+    const medir = () =>
+      document.documentElement.style.setProperty(
+        "--alto-pie",
+        `${Math.ceil(el.getBoundingClientRect().height)}px`
+      );
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const [aviso, setAviso] = useState("");
   /** Modo "tocá el mapa para mudar tu nido". */
@@ -279,24 +309,27 @@ export default function Nido() {
     }
   }, [est.loros, mostrarAviso, ahoraServidor]);
 
-  // El numerito del ícono, con las aves que están cruzando el mapa ahora.
+  // El numerito del ícono: los loritos que te esperan sin abrir.
   //
-  // Es lo que quedó de haber querido la tarjeta viva de la pantalla bloqueada:
-  // aquello es una Live Activity de iOS y no tiene API web, así que en vez de
-  // imitarla con avisos de avance —que para un ave de dieciséis días sería una
-  // tortura— se hace lo único de esa idea que la web sí puede y que además no
-  // interrumpe a nadie.
+  // Contaba las aves EN EL AIRE, y estaba mal: un globito es una tarea
+  // pendiente —WhatsApp, el mail, todos funcionan así— y un ave volando no es
+  // una tarea. No hay nada que hacer con ella, y encima el número no se apagaba
+  // nunca, porque siempre hay algo en el aire. Lo que sí te espera es lo que
+  // llegó y no abriste.
   //
-  // Cuentan las que van y las que vuelven: las dos están en el aire. Los
-  // loritos esperando en una cervecería no, que es justamente lo contrario de
-  // estar volando.
+  // La cuenta es la MISMA que la del contador de la pestaña Buzón y la misma
+  // que hace el servidor en `loritosSinLeer` para mandarla con cada aviso: si
+  // los tres no coincidieran, el número saltaría al abrir la app.
   useEffect(() => {
     const ahora = ahoraServidor();
-    marcarAvesEnElAire(
+    marcarSinLeer(
       est.loros.filter(
         (l) =>
-          (!l.llego && !l.perdido && !l.abducido) ||
-          (l.vuelta && ahora < l.vuelta.llegada)
+          l.direccion === "recibido" &&
+          !l.abducido &&
+          !l.perdido &&
+          ahora >= l.llegada &&
+          !l.leido
       ).length
     );
   }, [est.loros, ahoraServidor]);
@@ -607,7 +640,7 @@ export default function Nido() {
           }
           refrescar={est.refrescar}
         />
-        <div className="pie-panel" data-pie>
+        <div className="pie-panel" data-pie ref={pie}>
           <Cta ancho>
             <button className="boton" onClick={() => setCompositor({ abierto: true })}>
               🦜 Soltar un loro
