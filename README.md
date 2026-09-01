@@ -836,18 +836,37 @@ Lo que sí es nuestro y está declarado, aunque no sea la causa:
   defecto abrir uno con la app instalada la sacaba a una pestaña del navegador
   en vez de abrirla adentro.
 
-### Los íconos, y los 87 píxeles que faltaban
+### El ícono
 
-Se generan del **mismo** `app/icon.svg` con `node scripts/iconos.mjs`, así que
-el dibujo vive en un solo archivo: 192 (el mínimo que Chrome pide para ofrecer
-instalar), 512 (de ahí sale el ícono del lanzador en todas las densidades), 180
-(iOS, que no acepta SVG) y un enmascarable aparte.
+Se generan todos del **mismo** `app/icon.svg` con `node scripts/iconos.mjs`, así
+que el dibujo vive en un solo archivo: 192 (el mínimo que Chrome pide para
+ofrecer instalar), 512 (de ahí sale el ícono del lanzador en todas las
+densidades), 180 (iOS, que no acepta SVG) y el enmascarable de Android.
 
-El **enmascarable es otro dibujo**, no el mismo con una etiqueta. Android
-recorta con la forma que tenga el teléfono —círculo, cuadrado redondeado, gota—
-y solo garantiza el círculo central del 80%: con el ícono normal ahí adentro, al
-perico se le comía el pico. Ese lleva fondo a sangre y el bicho achicado hasta
-caber.
+**Tres decisiones de dibujo, las tres tomadas mirándolo a 24, 40 y 60 px** — que
+es como se ve de verdad, no como se ve mientras uno lo dibuja:
+
+- **El fondo lleva el color.** Era casi negro con el bicho encima, y en una
+  pantalla de inicio llena de íconos de colores eso es un rectángulo oscuro más:
+  no se encuentra. Ahora el lima —el color de la app— hace de campo. Es lo que
+  hacen WhatsApp, Telegram y Spotify, y por lo mismo.
+- **Solo la cabeza, centrada y entera.** El dibujo anterior metía cuerpo, cola,
+  ala y líneas de velocidad, y no entraban: el bicho quedaba recortado contra la
+  esquina de abajo a la izquierda con medio cuadro vacío arriba. A 40 px era una
+  mancha verde con un punto naranja.
+- **El amarillo no es adorno.** Contra el lima, la cabeza tiene que ser oscura
+  para contrastar — y una cabeza oscura con pico naranja se lee **cuervo**, no
+  loro. El arco amarillo alrededor del ojo es lo único que dice de qué especie
+  es esto, y contrasta contra la cabeza, que es donde tiene que contrastar.
+  Probado sin él: se pierde a los 60 px.
+
+El **enmascarable** sale del mismo archivo con dos cambios: se le sacan las
+esquinas redondeadas —las pone el teléfono, y si vinieran de acá se verían dos
+veces— y se le achica **solo el bicho**, para que entre en el círculo central
+del 80%, que es lo único que Android garantiza. Solo el bicho: el campo de color
+tiene que seguir llegando al borde. Verificado recortándolo con las tres formas
+que usan los fabricantes —círculo, gota, cuadrado redondeado— y contra el círculo
+de seguridad.
 
 **Y salían cortados.** Chrome headless le descuenta a la ventana el alto de una
 barra que no existe: pidiendo `--window-size=W,W` el viewport queda 87 px más

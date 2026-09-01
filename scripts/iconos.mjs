@@ -80,11 +80,18 @@ const MEDIDAS = [
 // la suya. La especificación dice que solo el círculo central del 80% está
 // garantizado; todo lo de afuera puede desaparecer.
 //
-// Con el ícono normal ahí adentro, al perico se le comía el pico. Así que el
-// enmascarable se arma distinto: fondo a sangre —el mismo de la app, para que
-// no se vea dónde termina— y el dibujo achicado hasta caber en ese círculo.
+// El enmascarable se arma con el MISMO archivo, tocándole dos cosas:
+//
+//   - las esquinas redondeadas se van (`rx="0"`), porque el que las redondea
+//     es el teléfono y si vinieran de acá se verían dos veces;
+//   - el bicho se achica, para que entre en ese círculo del 80%. Se achica SOLO
+//     el bicho y no el SVG entero: el campo de color tiene que seguir llegando
+//     al borde. Antes esto se resolvía pegando el ícono achicado sobre un color
+//     plano, y con el fondo en degradado eso dejaba un escalón en las esquinas.
+//
+// El grupo del bicho está marcado con `data-bicho` en app/icon.svg justamente
+// para poder agarrarlo desde acá.
 const ZONA_SEGURA = 0.78;
-const FONDO = "#060d0c";
 
 /** Cuánto más alta se pide la ventana. Con 87 alcanzaba en esta máquina; van
  *  240 para no volver a atarse a un número que es de una versión de Chrome. */
@@ -198,12 +205,26 @@ try {
     // El normal: el SVG en una página del tamaño exacto, sin márgenes ni fondo
     // propio, porque el dibujo ya trae el suyo y sus esquinas redondeadas.
     // El enmascarable: fondo a sangre y el dibujo achicado y centrado.
-    const dibujo = Math.round(medida * (enmascarable ? ZONA_SEGURA : 1));
+    let dibujo = svg.replace(/width="\d+"\s+height="\d+"/, `width="${medida}" height="${medida}"`);
+    if (enmascarable) {
+      const antes = dibujo;
+      dibujo = dibujo
+        // Las esquinas las pone el teléfono.
+        .replace(/rx="\d+"/, 'rx="0"')
+        // Y el bicho se achica sobre el centro del cuadro.
+        .replace(
+          /(data-bicho transform="translate\([\d.]+ [\d.]+\) )scale\(([\d.]+)\)/,
+          (_, cabeza, escala) => `${cabeza}scale(${(Number(escala) * ZONA_SEGURA).toFixed(3)})`
+        );
+      if (dibujo === antes) {
+        throw new Error("No encontré `data-bicho` ni `rx` en app/icon.svg: el enmascarable saldría mal.");
+      }
+    }
     const html = `<!doctype html><meta charset="utf-8">
 <style>html,body{margin:0;padding:0;width:${medida}px;height:${medida}px;overflow:hidden}
-body{background:${enmascarable ? FONDO : "transparent"};display:grid;place-items:center}
-svg{display:block;width:${dibujo}px;height:${dibujo}px}</style>
-${svg.replace(/width="\d+"\s+height="\d+"/, `width="${dibujo}" height="${dibujo}"`)}`;
+body{background:transparent}
+svg{display:block;width:${medida}px;height:${medida}px}</style>
+${dibujo}`;
     const pagina = join(temporal, `i${medida}.html`);
     writeFileSync(pagina, html);
     const salida = join(temporal, `i${medida}.png`);

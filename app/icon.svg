@@ -1,30 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
-<!-- El perico, de cerca. Un pájaro entero en pose de vuelo se convierte en una
-     mancha verde a 16 px; lo que sí se lee a ese tamaño es la cara: el ojo
-     grande, la cresta y el pico naranja. Por eso está recortado así. -->
-<defs><clipPath id="marco"><rect width="120" height="120" rx="26"/></clipPath></defs>
-<rect width="120" height="120" rx="26" fill="#060d0c"/>
-<g clip-path="url(#marco)">
-<g transform="translate(58 60) scale(1.68) translate(-82 -44)">
-<g class="rastro" opacity="0.5">
-  <path d="M12 44 L26 46" stroke="#a3e635" stroke-width="4" stroke-linecap="round"/>
-  <path d="M6 58 L22 59" stroke="#a3e635" stroke-width="3" stroke-linecap="round"/>
-</g>
-<path d="M40 54 L18 44 L40 46 Z" fill="#84cc16"/>
-<path d="M40 60 L20 66 L40 54 Z" fill="#a3e635"/>
-<path d="M40 62 C38 50 50 43 66 44 C80 45 88 51 88 58 C88 66 77 71 60 71 C45 71 41 69 40 62 Z" fill="#a3e635"/>
-<path d="M46 66 C46 74 54 79 64 79 C56 80 47 76 45 70 Z" fill="#65a30d" opacity="0.85"/>
-<g class="ala">
-  <path d="M58 58 C50 44 58 28 76 26 C69 37 66 48 68 60 Z" fill="#bef264"/>
-  <path d="M62 56 C58 46 62 36 71 32 C67 41 65 48 66 56 Z" fill="#ffffff" opacity="0.35"/>
-</g>
-<circle cx="82" cy="45" r="16" fill="#a3e635"/>
-<path d="M74 32 C72 22 80 20 81 30 Z" fill="#facc15"/>
-<path d="M81 30 C81 20 90 21 87 33 Z" fill="#84cc16"/>
-<path d="M70 44 C70 34 78 30 86 32 C82 38 80 44 80 50 Z" fill="#facc15"/>
-<circle cx="74" cy="53" r="4" fill="#fb7185" opacity="0.5"/>
-<circle cx="83" cy="40" r="5.6" fill="#ffffff"/><circle cx="84.4" cy="40.3" r="3.136" fill="#10201c"/><circle cx="85.6" cy="38.4" r="1.232" fill="#ffffff"/>
-<g transform="translate(90 46) scale(0.9)"><path d="M-6 -9 C10 -10 18 -1 15 8 C13 15 6 16 3 10 C0 5 -3 -1 -6 -9 Z" fill="#fb923c"/><path d="M1 8 C5 15 14 14 14 7 C10 11 5 11 1 8 Z" fill="#ea580c"/></g>
-</g>
+<!-- El perico, de frente y sobre lima.
+     
+     TRES DECISIONES, y las tres se tomaron mirando el ícono a 24, 40 y 60 px,
+     que es como se ve de verdad y no como se ve mientras uno lo dibuja.
+     
+     1. EL FONDO LLEVA EL COLOR. Antes era casi negro con el bicho encima, y en
+        una pantalla de inicio llena de íconos de colores eso es un rectángulo
+        oscuro más: no se encuentra. El lima es el color de la app y acá hace de
+        campo. Es lo que hacen WhatsApp, Telegram y Spotify, y por lo mismo.
+     
+     2. SOLO LA CABEZA, centrada y entera. El dibujo anterior metía el cuerpo,
+        la cola, el ala y unas líneas de velocidad, y no entraban: el bicho
+        quedaba recortado contra la esquina de abajo a la izquierda con medio
+        cuadro vacío arriba. A 40 px era una mancha verde con un punto naranja.
+        Cuerpo y ala se fueron enteros; lo que se lee chico es la cara.
+     
+     3. EL AMARILLO NO ES ADORNO. Contra el fondo lima, la cabeza tiene que ser
+        oscura para contrastar — y una cabeza oscura con pico naranja se lee
+        cuervo, no loro. El arco amarillo alrededor del ojo es lo único que dice
+        de qué especie es esto, y contrasta contra la cabeza, que es donde tiene
+        que contrastar. Probado sin él: se pierde a los 60 px. -->
+<defs>
+  <linearGradient id="campo" x1="0" y1="0" x2="0" y2="120" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#c9f77a"/><stop offset="1" stop-color="#7ec213"/>
+  </linearGradient>
+</defs>
+<rect width="120" height="120" rx="26" fill="url(#campo)"/>
+<!-- data-bicho: scripts/iconos.mjs le achica esta escala para armar el ícono
+     enmascarable de Android, que necesita el dibujo adentro del 80% central. -->
+<g data-bicho transform="translate(59 62) scale(2.0) translate(-86 -41)">
+  <path d="M75 31 C71 20 82 17 82.5 29 Z" fill="#15412a"/>
+  <path d="M82.5 29 C83 18 93 20 89 32 Z" fill="#15412a"/>
+  <circle cx="82" cy="45" r="16" fill="#15412a"/>
+  <path d="M70 46 C69 34 78 29 88 32 C83 37 80 44 80 52 Z" fill="#facc15"/>
+  <g transform="translate(90 46) scale(0.98)">
+    <path d="M-6 -9 C10 -10 18 -1 15 8 C13 15 6 16 3 10 C0 5 -3 -1 -6 -9 Z" fill="#fb923c"/>
+    <path d="M1 8 C5 15 14 14 14 7 C10 11 5 11 1 8 Z" fill="#ea580c"/>
+  </g>
+  <circle cx="82.6" cy="40" r="6.8" fill="#ffffff"/>
+  <circle cx="84.4" cy="40.4" r="3.8" fill="#0b1a16"/>
+  <circle cx="85.9" cy="38.1" r="1.6" fill="#ffffff"/>
 </g>
 </svg>
