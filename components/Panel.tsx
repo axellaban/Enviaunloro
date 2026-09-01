@@ -99,7 +99,21 @@ export function Panel(p: Props) {
   // días. Ordenado por salida, ese guacamayo aparecía debajo de todos los
   // periquitos de la última quincena —abajo de todo— justo el día que llegaba.
   // Lo último que te llegó va arriba, que es lo que la lista promete.
-  const fin = (l: LoroVista) => l.abducido ?? l.extravio ?? l.llegada;
+  //
+  // Y "lo último que pasó" INCLUYE EL AVE QUE VUELVE. Un lorito que mandaste,
+  // que el otro soltó con una respuesta y que volvió a tu ventana es, en ese
+  // momento, el mensaje más nuevo que tenés — pero su `llegada` es la de la
+  // ida, o sea el día que el ave llegó allá. Ordenando por esa fecha, la
+  // respuesta aparecía enterrada donde había quedado el envío original: en un
+  // guacamayo son dieciséis días de ida y dieciséis de vuelta, así que la
+  // respuesta caía un mes más abajo que el día en que la recibiste. La vuelta
+  // solo cuenta una vez que aterrizó: mientras el ave está volviendo no llegó
+  // nada todavía —y esa tarjeta ni siquiera está en esta lista, está en «En
+  // vuelo»—.
+  const fin = (l: LoroVista) =>
+    l.vuelta && ahora >= l.vuelta.llegada
+      ? l.vuelta.llegada
+      : (l.abducido ?? l.extravio ?? l.llegada);
   const llegados = p.loros
     .filter((l) => l.llego || l.perdido || l.abducido)
     .sort((a, b) => fin(b) - fin(a));
