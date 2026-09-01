@@ -84,15 +84,24 @@ export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
         {instalar ? (
           <>
             En iPhone los avisos solo funcionan con la app agregada a la
-            pantalla de inicio. Tocá <strong>Compartir</strong> y después{" "}
-            <strong>Agregar a inicio</strong>. Después de eso te avisa aunque
-            tengas el teléfono en el bolsillo.
+            pantalla de inicio. Son tres pasos y el primero importa:
             <br />
             <br />
-            <strong>Copiá tu llave antes.</strong> La app agregada arranca
-            vacía: para el iPhone es otro navegador y no comparte nada con
-            Safari. Con la llave entrás a este mismo nido desde adentro —
-            <em>Ya tengo un nido</em>— y no perdés nada.
+            <strong>1.</strong> Guardá tu llave con el botón de acá abajo.
+            Mandátela por WhatsApp o guardala en Notas.
+            <br />
+            <strong>2.</strong> Tocá <strong>Compartir</strong> y después{" "}
+            <strong>Agregar a inicio</strong>.
+            <br />
+            <strong>3.</strong> Abrí la app desde tu pantalla. Va a pedirte que
+            armes un nido: no lo armes. Tocá{" "}
+            <strong>«Ya tengo un nido»</strong> y pegá la llave.
+            <br />
+            <br />
+            El paso 3 es raro y tiene motivo: para el iPhone, la app agregada es{" "}
+            <em>otro navegador</em>. Arranca vacía y no comparte nada con
+            Safari. La llave es lo que le dice cuál es tu nido — sin ella,
+            armarías uno nuevo y tus loritos quedarían del otro lado.
           </>
         ) : (
           <>
@@ -132,7 +141,7 @@ export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
             }
           }}
         >
-          {copiando ? "Un segundo…" : copiada ? "✓ Llave guardada" : "🔑 Guardar mi llave primero"}
+          {copiando ? "Un segundo…" : copiada ? "✓ Llave guardada" : "🔑 Paso 1: guardar mi llave"}
         </button>
       )}
 

@@ -836,6 +836,32 @@ Lo que sí es nuestro y está declarado, aunque no sea la causa:
   defecto abrir uno con la app instalada la sacaba a una pestaña del navegador
   en vez de abrirla adentro.
 
+### Los íconos, y los 87 píxeles que faltaban
+
+Se generan del **mismo** `app/icon.svg` con `node scripts/iconos.mjs`, así que
+el dibujo vive en un solo archivo: 192 (el mínimo que Chrome pide para ofrecer
+instalar), 512 (de ahí sale el ícono del lanzador en todas las densidades), 180
+(iOS, que no acepta SVG) y un enmascarable aparte.
+
+El **enmascarable es otro dibujo**, no el mismo con una etiqueta. Android
+recorta con la forma que tenga el teléfono —círculo, cuadrado redondeado, gota—
+y solo garantiza el círculo central del 80%: con el ícono normal ahí adentro, al
+perico se le comía el pico. Ese lleva fondo a sangre y el bicho achicado hasta
+caber.
+
+**Y salían cortados.** Chrome headless le descuenta a la ventana el alto de una
+barra que no existe: pidiendo `--window-size=W,W` el viewport queda 87 px más
+bajo, la captura se rellena en blanco abajo y el dibujo sale partido. Medido a
+192, 300, 400 y 512: **siempre faltan los mismos 87 px**. Se veía en el diálogo
+"Agregar a Inicio" del iPhone, con el perico cortado a la altura del pico — y en
+el enmascarable era peor, porque el fondo a sangre dejaba de serlo justo abajo.
+
+No se le resta 87 a mano —ese número es de una versión de Chrome y de un
+sistema— sino que se pide una ventana bastante más alta, se garantiza que el
+dibujo entre entero, y después se recorta el cuadrado de arriba. El recorte va
+en Node con `node:zlib`, que ya viene incluido: traer una librería de imágenes
+para cortar un PNG sería un camión para una silla.
+
 ### El toque lleva al lorito, no al mapa
 
 `public/sw.js` siempre supo navegar a una URL al tocar el aviso. **Ninguno la
