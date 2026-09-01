@@ -428,10 +428,43 @@ export default function Nido() {
   // ave sale del nido, siempre. Es un dato que se da una vez, a propósito, y no
   // uno que se toma de fondo.
 
+  // La pantalla de arranque: lo primero que se ve después de tocar el ícono.
+  //
+  // Es el ÚNICO momento de marca que hay adentro de la app, y hasta recién
+  // estaba desafinado: el ícono dibuja un PERICO y acá aleteaba un loro. Tocabas
+  // un bicho y se abría otro.
+  //
+  // No se pega acá el ícono entero. Un cuadrado redondeado con su propio fondo,
+  // parado sobre el fondo de la app, se lee como una calcomanía; y el dibujo del
+  // ícono tendría que vivir en dos archivos, que es justo lo que el resto del
+  // proyecto evita. Con el ave que ya existe alcanza: es la misma especie, se
+  // mueve —que es lo que dice "esperá, está cargando"— y sale del mismo
+  // componente que dibuja todo lo demás.
+  //
+  // El nombre debajo es lo que la convierte en una pantalla de arranque y no en
+  // un spinner con un pájaro.
   if (est.cargando && !est.yo) {
     return (
-      <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
-        <Ave especie="loro" size={54} aletea />
+      <div
+        style={{
+          minHeight: "100dvh",
+          display: "grid",
+          placeItems: "center",
+          alignContent: "center",
+          gap: 18,
+        }}
+      >
+        <Ave especie="perico" size={62} aletea />
+        <p
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            letterSpacing: "-0.01em",
+            color: "var(--tenue)",
+          }}
+        >
+          Enviaunlorito
+        </p>
       </div>
     );
   }

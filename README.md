@@ -860,6 +860,24 @@ es como se ve de verdad, no como se ve mientras uno lo dibuja:
   es esto, y contrasta contra la cabeza, que es donde tiene que contrastar.
   Probado sin él: se pierde a los 60 px.
 
+**Dónde va la marca y dónde no.** Adentro de la app, los pájaros de
+[`components/Ave.tsx`](components/Ave.tsx) son **contenido**: las seis especies,
+dibujadas en el mapa, en las tarjetas, en el selector. El ícono es la **marca**.
+Son cosas distintas y la app las mezcla en un solo lugar a propósito: la
+pantalla de arranque, que es lo primero que se ve después de tocar el ícono.
+
+Ahí estaba desafinada: el ícono dibuja un **perico** y la pantalla aleteaba un
+**loro**. Tocabas un bicho y se abría otro. Ahora es el mismo, con el nombre
+debajo — que es lo que la convierte en una pantalla de arranque y no en un
+spinner con un pájaro.
+
+Lo que **no** se hizo: pegar el ícono entero ahí. Un cuadrado redondeado con su
+propio fondo, parado sobre el fondo de la app, se lee como una calcomanía; y el
+dibujo tendría que vivir en dos archivos, que es justo lo que el resto del
+proyecto evita. Todos los demás pájaros de la app se quedan como están: son
+contenido, no marca, y un logo pegado adentro de un producto es algo que hacen
+las marcas que no confían en el suyo.
+
 El **enmascarable** sale del mismo archivo con dos cambios: se le sacan las
 esquinas redondeadas —las pone el teléfono, y si vinieran de acá se verían dos
 veces— y se le achica **solo el bicho**, para que entre en el círculo central
