@@ -22,15 +22,15 @@ const SITIO =
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITIO),
-  title: "Enviaunlorito — Envía Loritos, no mensajes",
+  title: "Enviaunlorito — Envía mensajes con Loritos",
   description:
-    "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",
+    "¿Qué pasa si los mensajes tomaran tiempo? Mensajes más lentos, conversaciones más profundas. La distancia vuelve a existir.",
   applicationName: "Enviaunlorito",
   // EL NOMBRE QUE USA iOS, y faltaba.
   //
   // Al agregar a la pantalla de inicio, iPhone precarga el nombre desde acá; si
-  // no está, usa el <title> entero —"Enviaunlorito — Envía Loritos, no
-  // mensajes"— y la persona lo recorta a mano. De ahí salen los íconos que
+  // no está, usa el <title> entero —"Enviaunlorito — Envía mensajes con
+  // Loritos"— y la persona lo recorta a mano. De ahí salen los íconos que
   // dicen cualquier cosa, y de ahí el "from Loritos" que aparece al lado de
   // cada notificación: iOS muestra el nombre de la app instalada, no el de la
   // web. Con esto precarga "Enviaunlorito" y no hay nada que recortar.
@@ -42,15 +42,15 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_AR",
     siteName: "Enviaunlorito",
-    title: "Envía Loritos, no mensajes 🦜",
+    title: "Envía mensajes con Loritos 🦜",
     description:
-      "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",
+      "¿Qué pasa si los mensajes tomaran tiempo? Mensajes más lentos, conversaciones más profundas. La distancia vuelve a existir.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Envía Loritos, no mensajes 🦜",
+    title: "Envía mensajes con Loritos 🦜",
     description:
-      "La aplicación de mensajería donde tu Lorito viaja en tiempo real según la distancia. Una experiencia de comunicación verdaderamente única.",
+      "¿Qué pasa si los mensajes tomaran tiempo? Mensajes más lentos, conversaciones más profundas. La distancia vuelve a existir.",
   },
 };
 

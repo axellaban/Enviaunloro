@@ -2,7 +2,7 @@
   "name": "enviaunloro",
   "version": "0.1.0",
   "private": true,
-  "description": "Envía Loros, no mensajes. Mensajería donde el mensaje vuela en tiempo real segun la distancia real.",
+  "description": "Envía mensajes con Loritos. Mensajes más lentos, conversaciones más profundas: el lorito cruza el mapa en tiempo real según la distancia real.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -153,7 +153,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
        lejos de la marca. -->
   <div style="position:absolute;right:58px;bottom:26px;transform:rotate(-8deg);z-index:8">${sobre}</div>
 
-  <div class="marca">🦜 Envía <span>Loritos</span>, no mensajes</div>
+  <div class="marca">🦜 Envía mensajes con <span>Loritos</span></div>
 </body></html>`;
 
 const nav = await chromium.launch();
