@@ -2141,9 +2141,9 @@ function MiNido({
                 marginTop: 4,
               }}
             >
-              Tus vuelos se ven en el mapa del mundo <strong>sin tu nombre</strong>, sin
-              el mensaje y con las puntas corridas unos kilómetros — a escala de
-              zona, nunca sobre tu casa. Si lo apagás, no aparece ninguno.
+              Tus vuelos se ven en el mapa del mundo <strong>sin tu nombre</strong> y
+              sin el mensaje, pero <strong>saliendo de donde de verdad salieron</strong>:
+              cualquiera con la app ve el punto. Si lo apagás, no aparece ninguno.
             </span>
           </span>
         </label>

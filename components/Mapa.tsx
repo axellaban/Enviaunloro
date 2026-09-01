@@ -680,9 +680,9 @@ export default function Mapa({
   /**
    * El marcador del ave, tocable salvo que sea de un desconocido.
    *
-   * En la vista del resto los vuelos son anónimos y vienen con las puntas corridas:
-   * abrirles un globo sería contar de quién es y adónde va, que es exactamente
-   * lo que esa vista existe para no contar. Esas aves siguen siendo dibujo.
+   * En la vista del resto los vuelos son anónimos: abrirles un globo sería
+   * contar de quién es, que es exactamente lo que esa vista existe para no
+   * contar. Esas aves siguen siendo dibujo.
    */
   function aveTocable(v: Tramo, m: L.Map): L.Marker {
     const propio = !v.ajeno;

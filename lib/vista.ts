@@ -315,11 +315,12 @@ export function verLoro(
 //   ✗ el texto del mensaje, ni siquiera después de aterrizar
 //   ✗ el id real del loro (va hasheado, para que sea una clave de dibujo y
 //     nada más)
-//   ✓ la especie, los horarios, y las dos puntas corridas (ver RADIO_MUNDO_KM)
+//   ✓ la especie, los horarios, y las dos puntas (ver RADIO_MUNDO_KM: hoy van
+//     sin corrimiento, o sea que son las de verdad)
 //
-// Ese corrimiento es toda la protección, y por eso el mapa no dibuja nido ajeno en
-// esta vista: no hay un punto que valga la pena marcar, y un pin sobre una
-// coordenada corrida al azar aparenta una precisión que no existe. Aparecen
+// Lo que protege, entonces, es el anonimato y no la ubicación: sale de dónde a
+// dónde, pero no de quién a quién. Y por eso el mapa no dibuja nido ajeno en
+// esta vista: no hay a quién ponerle un pin. Aparecen
 // únicamente los vuelos donde LAS DOS puntas aceptaron: el arco muestra las
 // dos, así que basta con que a una no le guste para que el vuelo no salga.
 

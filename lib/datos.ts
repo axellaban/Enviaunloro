@@ -45,8 +45,9 @@ export type Nido = {
   /** Doña Cotorra, la vecina de práctica. */
   bot: boolean;
   /**
-   * Si sus vuelos aparecen en la vista del resto, anónimos y con las puntas
-   * corridas (ver RADIO_MUNDO_KM en lib/privacidad.ts).
+   * Si sus vuelos aparecen en la vista del resto: anónimos, pero con las
+   * puntas donde de verdad están (ver RADIO_MUNDO_KM en lib/privacidad.ts).
+   * Es el interruptor con el que alguien se saca de ese mapa.
    * Sin definir cuenta como sí: los nidos que existían antes de que hubiera
    * vista del resto no tienen el campo, y dejarlos afuera vaciaría el mapa.
    * Se apaga desde el panel, en Nido.

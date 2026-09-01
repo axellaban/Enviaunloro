@@ -578,26 +578,15 @@ export default function Nido() {
         {/* left: 56 y no 12 — el control de zoom de Leaflet vive en la esquina. */}
         <VistaMapa
           vista={vista}
-          alCambiar={(v) => {
-            setVista(v);
-            // La PRIMERA vez que alguien entra a «Del resto», se le dice por
-            // qué los puntos no coinciden con los de su bandada.
-            //
-            // Sin esto parece un bug, y es exactamente lo contrario: acá los
-            // vuelos vienen corridos de 1 a 3 km y en la bandada hasta 300 m,
-            // con semillas distintas a propósito. Un mismo nido cae en dos
-            // lugares a veinte kilómetros uno del otro y no hay nada en
-            // pantalla que lo explique. Una vez en la vida y no más: es una
-            // aclaración, no una advertencia.
-            if (v !== "resto") return;
-            try {
-              if (localStorage.getItem("loros:mundo-explicado")) return;
-              localStorage.setItem("loros:mundo-explicado", "1");
-              mostrarAviso(
-                "🌎 Acá nadie ve dónde vive nadie: los vuelos se dibujan corridos de donde salieron de verdad."
-              );
-            } catch {}
-          }}
+          // Acá había un cartel que salía la primera vez que alguien entraba
+          // a «Del resto», explicando por qué esos puntos no coincidían con los
+          // de su bandada. Era cierto mientras el mundo corría los vuelos unos
+          // kilómetros: un mismo nido caía en dos lugares distintos según desde
+          // qué cuenta se lo mirara, y sin la aclaración parecía un bug. Con el
+          // corrimiento del mundo en cero las dos vistas coinciden, no queda
+          // nada que aclarar, y repetir la frase sería mentir. Lo que sigue
+          // existiendo es el interruptor para no aparecer, en Nido.
+          alCambiar={setVista}
         />
 
         {/* La cuenta de lo que hay en pantalla. Abajo y no arriba: arriba ya

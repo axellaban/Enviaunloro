@@ -1183,41 +1183,56 @@ chequear(
   "cada vuelo trae ruta y horarios, y nada más"
 );
 
-// Las puntas están a escala de zona, no de casa.
+// Las puntas del mundo salen de donde de verdad salieron.
 //
-// El radio se puede mover con LOROS_RADIO_MUNDO_KM, así que la prueba lo lee de
-// ahí en vez de tenerlo escrito: clavarle un número la haría fallar cada vez que
-// alguien mueve la perilla, que es justamente lo que la perilla existe para
-// permitir.
+// El radio del corrimiento está en cero (ver RADIO_MUNDO_KM en
+// lib/privacidad.ts): la vista del resto muestra el punto real. Fue una
+// decisión de producto, y lo que se entrega a cambio está escrito ahí.
 //
-// El piso NO es un detalle: el corrimiento reparte con raíz cuadrada sobre el
-// área del círculo, así que sin piso una parte de los nidos cae cerquísima del
-// centro. A radio 3 eso es el 1% a menos de 300 m — más preciso de lo que los ve
-// su PROPIA bandada, o sea al revés de lo que esta sección promete. Por eso el
-// mundo reparte sobre una rosca y nunca sobre el centro, y por eso se afirma un
-// mínimo y no solo un máximo.
-const RADIO_MUNDO_KM = Number(process.env.LOROS_RADIO_MUNDO_KM) > 0
-  ? Number(process.env.LOROS_RADIO_MUNDO_KM)
-  : 1;
+// La prueba lee el radio de la perilla en vez de tenerlo escrito, para que
+// mover LOROS_RADIO_MUNDO_KM no la haga fallar — que es justamente lo que la
+// perilla existe para permitir. Y cubre los dos lados de la perilla: en cero
+// exige que la punta caiga EXACTA, y con radio exige la rosca de siempre (un
+// piso, porque el reparto por raíz cuadrada apelotona cerca del centro y sin
+// piso una parte de los nidos se mostraría a los desconocidos más preciso que
+// a su propia bandada, o sea al revés).
+const leido = Number(process.env.LOROS_RADIO_MUNDO_KM);
+const RADIO_MUNDO_KM = Number.isFinite(leido) && leido >= 0 ? leido : 0;
 const PISO_MUNDO_KM = Math.min(1, RADIO_MUNDO_KM / 3);
 const lejos = metros(REAL_ANA, mio.origen);
-console.log(`  la punta del vuelo se ve a ${(lejos / 1000).toFixed(2)} km de donde salió`);
-chequear(
-  lejos >= PISO_MUNDO_KM * 1000 - 50,
-  `la punta NUNCA cae sobre el nido de verdad (piso ${PISO_MUNDO_KM} km)`
-);
-chequear(
-  lejos <= RADIO_MUNDO_KM * 1000 + 500,
-  `pero sí adentro de los ${RADIO_MUNDO_KM} km declarados`
-);
-
-// Y el corrimiento del mundo no es el mismo que el de la bandada: si lo fuera,
-// cruzar las dos vistas daría el rumbo del desvío, que es medio secreto.
 const enLaBandada = (await beto.llamar("/api/estado")).amigos.find((a) => a.nombre === "Ana");
-chequear(
-  metros(enLaBandada, mio.origen) > 500,
-  "el punto del mundo y el de la bandada son distintos (semillas separadas)"
-);
+
+if (RADIO_MUNDO_KM === 0) {
+  console.log(`  la punta del vuelo se ve a ${lejos.toFixed(2)} m de donde salió`);
+  // Un metro y no cero pelado: REAL_ANA viaja como JSON y vuelve a parsearse,
+  // y `metros` es trigonometría en punto flotante. Un metro es cero para
+  // cualquier mapa y sigue estando tres órdenes de magnitud abajo de los 300 m
+  // de la bandada, que es lo que esta prueba tiene que poder distinguir.
+  chequear(lejos < 1, "la punta del vuelo cae EXACTO donde salió: el mundo no corre nada");
+  // Y la bandada SÍ sigue corriendo. Es lo único que quedó de esta sección, y
+  // si se cayera junto con lo del mundo nadie se iba a enterar.
+  chequear(
+    metros(enLaBandada, REAL_ANA) > 20,
+    "pero la bandada sigue viendo el nido corrido: eso no se tocó"
+  );
+} else {
+  console.log(`  la punta del vuelo se ve a ${(lejos / 1000).toFixed(2)} km de donde salió`);
+  chequear(
+    lejos >= PISO_MUNDO_KM * 1000 - 50,
+    `la punta NUNCA cae sobre el nido de verdad (piso ${PISO_MUNDO_KM} km)`
+  );
+  chequear(
+    lejos <= RADIO_MUNDO_KM * 1000 + 500,
+    `pero sí adentro de los ${RADIO_MUNDO_KM} km declarados`
+  );
+  // Y el corrimiento del mundo no es el mismo que el de la bandada: si lo
+  // fuera, cruzar las dos vistas daría el rumbo del desvío, que es medio
+  // secreto.
+  chequear(
+    metros(enLaBandada, mio.origen) > 500,
+    "el punto del mundo y el de la bandada son distintos (semillas separadas)"
+  );
+}
 
 // El globito del ícono: el servidor tiene que contar lo MISMO que la página.
 //
