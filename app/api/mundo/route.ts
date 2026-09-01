@@ -1,13 +1,13 @@
 // Lo que está cruzando el mapa ahora mismo, de cualquiera.
 //
 // Es el respaldo de la pestaña "Del resto". Devuelve vuelos anónimos: especie,
-// horarios y las dos puntas corridas unos kilómetros, sin nombres, sin ids de
-// una sola letra del mensaje. Las reglas de qué sale y qué no viven en
+// horarios y las dos puntas —que hoy van sin corrimiento, ver RADIO_MUNDO_KM en
+// lib/privacidad.ts—, sin nombres, sin ids y sin una sola letra del mensaje. Las reglas de qué sale y qué no viven en
 // lib/vista.ts (`vuelosMundiales`), igual que las de la bandada.
 //
 // Y "del resto" quiere decir del resto: los vuelos de quien pregunta NO salen
-// acá. Los tuyos ya los ves en la otra pestaña, exactos; repetirlos acá
-// corridos veinte kilómetros solo servía para que parecieran un error.
+// acá. Los tuyos ya los ves en la otra pestaña; repetirlos de este lado solo
+// servía para dibujar dos veces lo mismo.
 //
 // Pide nido igual que el resto de la app. No porque haga falta para armar la
 // respuesta —es anónima— sino porque una vista del mundo abierta a internet es

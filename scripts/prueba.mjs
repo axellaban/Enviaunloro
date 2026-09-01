@@ -851,7 +851,9 @@ try {
 // daban exactamente ese número: elegir ave dejaba de significar nada justo con
 // la gente que uno tiene cerca. Ahora el piso es de distancia (400 m), así que
 // las proporciones sobreviven. Beto se muda al lado de Ana para probarlo — y de
-// paso los vuelos de acá abajo duran segundos y no horas.
+// paso los vuelos de acá abajo duran segundos y no horas. (Con la escala
+// acelerada duran DEMASIADO poco, así que el bloque siguiente lo vuelve a
+// correr un poco más lejos: ver "el vuelo".)
 const idBeto = anaAhora.amigos.find((a) => a.nombre === "Beto").id;
 await beto.llamar("/api/ubicacion", { lat: -34.6082, lng: -58.3816 }); // ~500 m de Ana
 const cerca = (await ana.llamar("/api/estado")).amigos.find((a) => a.id === idBeto);
@@ -880,6 +882,30 @@ chequear(
 );
 
 // --- el vuelo ---
+//
+// ANTES QUE NADA, UN VUELO QUE DURE. Todo lo de acá abajo afirma cosas sobre un
+// ave EN EL AIRE —que el texto no viaja, que figura en vuelo, que abrirla antes
+// de tiempo no revela nada— y cada una de esas afirmaciones cuesta un viaje al
+// servidor, unos 40 ms. Con Beto a 500 m y la escala en 600, el vuelo entero
+// dura 75 ms: para la tercera pregunta el ave ya aterrizó, y ahí ver el texto
+// es la respuesta CORRECTA. La prueba fallaba por eso —medido— y no por un
+// agujero de privacidad. Lo mismo que ya tiene en cuenta la cotorra, unas
+// líneas más abajo.
+//
+// Beto se aleja lo justo para que el vuelo dure unos segundos A LA ESCALA QUE
+// SE ESTÉ CORRIENDO, que la prueba ya sabe cuál es: la acaba de medir con las
+// cuatro aves de arriba. En tiempo real (`duraciones.loro` son 45 s) no se
+// mueve nada; a escala 600 se va a unos 50 km, que sigue siendo la misma
+// ciudad. Así el bloque no depende de que la red le gane una carrera al ave.
+const VUELO_MINIMO_MS = 8000;
+if (duraciones.loro < VUELO_MINIMO_MS) {
+  const factor = VUELO_MINIMO_MS / duraciones.loro;
+  // Derecho al sur: en grados de latitud, los 500 m de recién son 0,0045.
+  await beto.llamar("/api/ubicacion", { lat: -34.6082 - 0.0045 * (factor - 1), lng: -58.3816 });
+  const lejos = (await ana.llamar("/api/estado")).amigos.find((a) => a.id === idBeto);
+  console.log(`  Beto se corre a ${Math.round(lejos.distanciaKm)} km para que el vuelo se pueda mirar`);
+}
+
 const SECRETO = "Esto no lo puede leer Beto hasta que aterrice el ave.";
 const envio = await ana.llamar("/api/loros", { para: idBeto, ave: "loro", texto: SECRETO });
 const vuelo = envio.loro;
@@ -1341,6 +1367,31 @@ chequear(
 // si los vuelos de Ana están o no están.
 const veElDeAna = async () =>
   (await carla.llamar("/api/mundo")).vuelos.some((v) => v.ave === "guacamayo");
+
+// Y UN GUACAMAYO RECIÉN SOLTADO, porque si no esto no prueba lo que dice.
+//
+// La foto del mundo solo trae lo que está EN EL AIRE. El guacamayo que había
+// se soltó treinta segundos más arriba, y entre medio pasa el bloque del ave
+// que vuelve, que se toma sus veinte segundos de espera: para cuando se llega
+// acá ya aterrizó, y entonces "no lo veo" es cierto por el motivo equivocado.
+// Venía pasando de casualidad —alcanzaba con que cualquier otra prueba tuviera
+// un guacamayo en vuelo justo en ese momento— y dejó de alcanzar apenas se
+// movieron unos segundos las de más arriba. Uno propio, acá, y la pregunta
+// vuelve a ser sobre el interruptor y no sobre el reloj.
+//
+// Con reintentos, igual que unas líneas más arriba y por lo mismo: la foto del
+// mundo se comparte tres segundos, y soltar un ave no la invalida —sí lo hace
+// tocar el interruptor, que es una decisión de privacidad y no espera nada—.
+// Así que recién soltado el guacamayo puede no estar todavía en la foto que
+// contesta. Las dos afirmaciones de abajo no necesitan esto: las dos vienen
+// después de un cambio de interruptor, que tira la foto vieja.
+await ana.llamar("/api/loros", { para: idBeto, ave: "guacamayo", texto: "a ver si me ven" });
+let enElAireDeAna = false;
+for (let i = 0; i < 8 && !enElAireDeAna; i++) {
+  enElAireDeAna = await veElDeAna();
+  if (!enElAireDeAna) await new Promise((r) => setTimeout(r, 700));
+}
+chequear(enElAireDeAna, "hay un guacamayo de Ana en el aire para preguntar por él");
 
 await ana.llamar("/api/nido", { nombre: "Ana", publico: false });
 chequear(!(await veElDeAna()), "apagando «Del resto» los vuelos de Ana desaparecen");
