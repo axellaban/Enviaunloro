@@ -228,6 +228,43 @@ mudás de ciudad —y mudás el nido a propósito—, quien te tenga agregado ve
 te moviste (a una zona equivocada, pero se nota el movimiento). Para un MVP
 donde solo te ve gente a la que le diste tu código, es el canje razonable.
 
+## La primera pantalla
+
+Es la que decide si alguien se queda, y la única forma de arreglarla es
+**mirarla**: `npm run recorrida` ([`scripts/recorrida.mjs`](scripts/recorrida.mjs))
+arma un nido desde cero en un iPhone simulado y saca una foto en cada paso.
+
+La primera vez que se corrió encontró cuatro cosas de una sola pasada, y ninguna
+se veía leyendo el código:
+
+- **La pantalla de alguien recién llegado decía «nada» tres veces** —la chapa
+  del mapa, el cartel del vacío y el titular de la tarjeta— y su llamado
+  principal era *«Doña Cotorra es de mentira. Traé a alguien que esté lejos»*.
+  O sea: a alguien que nunca vio volar un pájaro se le contaba que lo único que
+  tiene a mano es falso, y se le pedía salir a reclutar un amigo. Encima competía
+  con el botón de abajo, así que la primera pantalla tenía dos llamados y ninguno
+  era el bueno.
+
+  Lo que hace que alguien se enamore de esto es **ver un bicho cruzar el mapa**,
+  y está a un toque: Doña Cotorra vive a dos kilómetros y un perico tarda un
+  minuto y medio. Ahora la tarjeta tiene tres estados y el primero es *«Probalo
+  ahora»*, que abre el compositor con ella puesta. Invitar viene después —cuando
+  hay algo en el aire, que es el mejor momento que existe: entendiste la mecánica
+  y estás esperando— y *«Doña Cotorra es de mentira»* aparece recién cuando ya
+  mandaste uno, que es cuando esa frase se gana el derecho a existir.
+- **El nido mostraba `-34.761, -58.401`** cuando el geocodificador fallaba.
+  Salida de desarrollador en el segundo renglón de la app, justo cuando la
+  persona menos culpa tiene. Ahora, sin nombre de lugar, no hay renglón.
+- **«Ya tengo un nido» competía con «Seguir»**: dos botones a lo ancho, uno
+  arriba del otro, en el momento en que el 99% viene a armar uno. Pasó a ser un
+  renglón subrayado. Quien viene a recuperar su nido lo busca; quien viene a
+  armarlo no tiene que tropezárselo.
+- **El subtítulo de la portada** decía *«una experiencia de comunicación
+  verdaderamente única»*, que es la frase que pone cualquier app en el renglón
+  más caro de su página y no dice nada. Ahora dice el dato que engancha: que un
+  perico a la vuelta llega en minutos y un guacamayo al otro lado del Atlántico
+  tarda dieciséis días.
+
 ## Cómo se usa
 
 1. **Armá tu nido**: nombre, ubicación y ave preferida. No hay registro ni

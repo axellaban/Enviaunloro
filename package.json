@@ -12,7 +12,8 @@
     "vapid": "node scripts/vapid.mjs",
     "prueba:caducidad": "node scripts/caducidad.mjs",
     "prueba:navegador": "node scripts/navegador.mjs",
-    "prueba:avisos": "node scripts/avisos.mjs"
+    "prueba:avisos": "node scripts/avisos.mjs",
+    "recorrida": "node scripts/recorrida.mjs"
   },
   "dependencies": {
     "leaflet": "1.9.4",

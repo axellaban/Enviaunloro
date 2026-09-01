@@ -48,9 +48,14 @@ export function Portada() {
               color: "var(--suave)",
             }}
           >
-            La aplicación de mensajería donde tu Lorito viaja en tiempo real
-            según la distancia. Una experiencia de comunicación verdaderamente
-            única.
+            {/* Concreto, no publicitario. Decía "una experiencia de
+                comunicación verdaderamente única", que es la frase que pone
+                cualquier app en el renglón más caro de su página y no dice
+                nada. Lo que engancha acá es el dato: que la distancia tarda. */}
+            Escribís, elegís un ave y la soltás. Cruza el mapa en tiempo real y
+            tarda lo que tarda: un perico a la vuelta llega en minutos, un
+            guacamayo al otro lado del Atlántico tarda dieciséis días. La
+            distancia vuelve a existir.
           </p>
 
           <div style={{ marginTop: 34 }}>

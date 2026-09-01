@@ -170,13 +170,30 @@ export function Onboarding({
                   Acá se pega la llave y listo. Acepta el link entero o solo el
                   token, porque nadie va a recortar una URL a mano. */}
               {!conLlave ? (
-                <button
-                  className="boton fantasma chico"
-                  style={{ width: "100%", marginTop: 10 }}
-                  onClick={() => setConLlave(true)}
-                >
-                  Ya tengo un nido
-                </button>
+                /* Un renglón, no una pastilla. Estaba como botón fantasma a lo
+                   ancho, abajo del principal, y con ese peso le hablaba al 1%
+                   de la gente en el momento más importante para el otro 99%:
+                   dos botones grandes, uno arriba del otro, y hay que decidir.
+                   Quien viene a recuperar su nido lo BUSCA y lo encuentra igual;
+                   quien viene a armar uno no tiene que tropezárselo. */
+                <p style={{ textAlign: "center", marginTop: 14 }}>
+                  <button
+                    onClick={() => setConLlave(true)}
+                    style={{
+                      background: "none",
+                      border: 0,
+                      padding: "6px 10px",
+                      font: "inherit",
+                      fontSize: 13,
+                      color: "var(--tenue)",
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Ya tengo un nido
+                  </button>
+                </p>
               ) : (
                 <div style={{ marginTop: 14 }}>
                   <p style={{ color: "var(--suave)", fontSize: 13.5, lineHeight: 1.6 }}>

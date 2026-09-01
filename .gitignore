@@ -12,3 +12,4 @@ CLAUDE.md
 
 # El directorio temporal que crea scripts/miniatura.mjs para compilar las aves.
 .aves-*
+.recorrida/

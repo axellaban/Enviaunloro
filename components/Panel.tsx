@@ -247,7 +247,17 @@ export function Panel(p: Props) {
                 permita. Va después de los avisos a propósito: primero que
                 pueda avisar, después dónde vive el ícono. */}
             <Instalar />
-            {soloLaVecina && <TraeAAlguien codigo={p.codigo} hayVuelo={enVuelo.length > 0} />}
+            {soloLaVecina && (
+              <TraeAAlguien
+                codigo={p.codigo}
+                hayVuelo={enVuelo.length > 0}
+                // "Nunca mandó nada" es el buzón vacío del todo, no "nada en el
+                // aire": alguien que ya mandó uno y aterrizó entendió la
+                // mecánica, y a ese sí le corresponde el pedido de invitar.
+                mandóAlguna={p.loros.length > 0}
+                alProbar={() => p.alEscribir(p.amigos.find((a) => a.bot)?.id)}
+              />
+            )}
             {p.convites.map((c) => (
               <TarjetaConvite
                 key={c.id}
@@ -257,7 +267,13 @@ export function Panel(p: Props) {
                 refrescar={p.refrescar}
               />
             ))}
-            {enVuelo.length + volviendo.length + p.convites.length === 0 ? (
+            {/* El vacío NO se dibuja si arriba está la tarjeta de "probalo
+                ahora": esa tarjeta ya es el estado vacío, y ya dice qué hacer.
+                Con las dos, la primera pantalla de alguien que recién entra
+                decía "nada" dos veces —la chapa del mapa y este cartel— y el
+                mensaje dominante de la app era que no hay nada. */}
+            {enVuelo.length + volviendo.length + p.convites.length === 0 &&
+            !(soloLaVecina && p.loros.length === 0) ? (
               <Vacio
                 titulo="No hay nada en el aire"
                 texto="Cuando sueltes un ave la vas a ver acá, cruzando el mapa en tiempo real."
@@ -335,7 +351,12 @@ function Cabecera({ yo }: { yo: NidoVista }) {
             whiteSpace: "nowrap",
           }}
         >
-          {yo.lugar || `${yo.lat.toFixed(3)}, ${yo.lng.toFixed(3)}`}
+          {/* Sin nombre de lugar NO se muestran las coordenadas. Un
+              "-34.761, -58.401" abajo del nombre propio es salida de
+              desarrollador puesta en el segundo renglón de la app, y encima
+              justo cuando el geocodificador falló, o sea cuando la persona
+              menos culpa tiene. Mejor una línea menos. */}
+          {yo.lugar || ""}
         </p>
       </div>
     </div>
@@ -343,16 +364,66 @@ function Cabecera({ yo }: { yo: NidoVista }) {
 }
 
 /**
- * “Traé a alguien de verdad.”
+ * La tarjeta de quien todavía está solo con la vecina de práctica.
  *
- * Es el arreglo del agujero más grande que tenía el producto: la app entretenía
- * bien y no invitaba nunca. Mandás tu primer loro —a un bot— y te quedabas tres
- * minutos mirando una barra de progreso, con el botón de compartir escondido a
- * dos toques en la cuarta pestaña. Esa espera es el mejor momento de invitación
- * que hay: acabás de entender la mecánica y no tenés nada que hacer.
+ * TIENE TRES ESTADOS Y ANTES TENÍA DOS, y el que faltaba era el primero — el
+ * de alguien que acaba de entrar y nunca vio volar nada.
+ *
+ * A esa persona la app le decía, como primera frase: «Doña Cotorra es de
+ * mentira», y le pedía que saliera a reclutar a un amigo. O sea: le contaba que
+ * lo único que tiene a mano es falso, antes de dejarla sentir por qué la app es
+ * linda. Y competía con el botón grande de abajo —«Soltar un loro»— así que la
+ * primera pantalla tenía dos llamados distintos y ninguno era el bueno.
+ *
+ * Lo que hace que alguien se enamore de esto es VER UN BICHO CRUZAR EL MAPA, y
+ * eso está a un toque: Doña Cotorra vive a dos kilómetros y un perico tarda un
+ * minuto y medio. Primero eso. Invitar viene después, y viene solo.
+ *
+ *   sin haber mandado nunca   → «Probalo ahora», y abre el compositor.
+ *   con algo en el aire       → «Mientras tanto…», e invita. Es el mejor momento
+ *                               que hay: entendiste la mecánica y estás esperando.
+ *   ya mandó, nada en el aire → «Doña Cotorra es de mentira», e invita. Recién
+ *                               ACÁ esa frase se gana el derecho a existir.
  */
-function TraeAAlguien({ codigo, hayVuelo }: { codigo: string; hayVuelo: boolean }) {
+function TraeAAlguien({
+  codigo,
+  hayVuelo,
+  mandóAlguna,
+  alProbar,
+}: {
+  codigo: string;
+  hayVuelo: boolean;
+  mandóAlguna: boolean;
+  alProbar: () => void;
+}) {
   const [listo, setListo] = useState(false);
+
+  if (!mandóAlguna) {
+    return (
+      <div
+        className="tarjeta"
+        style={{
+          padding: "var(--aire-3)",
+          marginBottom: 12,
+          borderColor: "var(--esmeralda)",
+          background: "rgba(16,185,129,.07)",
+        }}
+      >
+        <p style={{ fontSize: 15, fontWeight: 750, marginBottom: 5 }}>
+          Probalo ahora, tarda un minuto
+        </p>
+        <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--suave)" }}>
+          Doña Cotorra vive acá cerca y te contesta sola. Soltale un lorito y
+          miralo cruzar el mapa — así vas a entender de qué se trata esto mejor
+          que con cualquier explicación.
+        </p>
+        <button className="boton" style={{ width: "100%", marginTop: 12 }} onClick={alProbar}>
+          🦜 Mandarle uno a Doña Cotorra
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       className="tarjeta"
