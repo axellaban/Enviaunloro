@@ -1198,7 +1198,7 @@ chequear(
 // mínimo y no solo un máximo.
 const RADIO_MUNDO_KM = Number(process.env.LOROS_RADIO_MUNDO_KM) > 0
   ? Number(process.env.LOROS_RADIO_MUNDO_KM)
-  : 3;
+  : 1;
 const PISO_MUNDO_KM = Math.min(1, RADIO_MUNDO_KM / 3);
 const lejos = metros(REAL_ANA, mio.origen);
 console.log(`  la punta del vuelo se ve a ${(lejos / 1000).toFixed(2)} km de donde salió`);

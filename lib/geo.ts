@@ -89,8 +89,29 @@ export function rumbo(a: Punto, b: Punto): number {
  * para que las rutas se curven más o menos.
  *
  * Con esto en 0 vuelve a ser todo recto, sin sacar una línea de código.
+ *
+ * ERA 0,06 y se subió mirando el mapa. Con un 6%, un vuelo de 171 km se
+ * despegaba 10 km de la recta: sobre una línea de setecientos píxeles eso son
+ * veinte, o sea nada. Las rutas se leían como reglas tiradas sobre el mapa, y
+ * se notaba sobre todo en «Del resto», que es donde se ven los vuelos largos de
+ * otra gente.
+ *
+ * NO SE SUBIÓ MÁS, y el techo lo puso una prueba que ya existía: el camino
+ * dibujado no puede ser mucho más largo que la distancia real, porque el ave lo
+ * recorre en el tiempo que promete su tarjeta y si el dibujo se estira, el
+ * bicho cruza la pantalla más rápido que los km/h que dice tener. Medido:
+ *
+ *     curva   el dibujo se alarga
+ *     0,06                  0,91%   ← antes
+ *     0,10                  2,42%   ← ahora
+ *     0,11                  2,92%
+ *     0,12                  3,46%   ← se pasa del 3% que la prueba permite
+ *     0,15                  5,34%
+ *
+ * 0,10 casi duplica la panza y deja margen. Ir más arriba era elegir que el
+ * dibujo fuera lindo antes que cierto, que en esta app es al revés.
  */
-export const CURVA = 0.06;
+export const CURVA = 0.1;
 
 /**
  * Pero con techo, porque los vuelos largos YA se curvan solos: el círculo
@@ -98,8 +119,13 @@ export const CURVA = 0.06;
  * panza de mil kilómetros arriba de eso lo deja pareciendo un rulo. En un vuelo
  * de barrio el arco es todo lo que hay; en uno que cruza el Atlántico es un
  * detalle arriba de una curva que ya existe.
+ *
+ * Subió de 120 a 220 junto con la curva: con 120, el techo entraba a los 2.000
+ * km y a partir de ahí la panza se iba achicando en proporción, así que un
+ * vuelo de 4.000 km salía MÁS recto que uno de 1.000. Con 220 el techo entra
+ * recién a los 2.200 km, que es donde el círculo máximo ya aporta su curva.
  */
-export const CURVA_TECHO_KM = 120;
+export const CURVA_TECHO_KM = 220;
 
 /** Cuánto se despega el arco de la recta en su punto más alto, en km. */
 export function flechaKm(km: number, curva = CURVA): number {

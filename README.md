@@ -194,13 +194,13 @@ distintas: **la app sabe dónde estás; tus contactos, no.**
 - **El punto del mundo nunca cae sobre la casa de nadie.** El corrimiento
   reparte con raíz cuadrada sobre el área del círculo, así que una parte de los
   nidos caía cerquísima del centro. Con radio 25 daba igual —el 0,01% quedaba a
-  menos de 300 m—, pero al bajar a 3 pasaba a ser el **1%**: uno de cada cien
-  nidos se mostraba a los desconocidos **más preciso que a su propia bandada**,
-  justo al revés de lo que promete esta sección. Ahora el mundo reparte sobre una
-  rosca de 1 a 3 km y nunca sobre el centro. Verificado sobre 20.000 nidos: el
-  más cercano cae a 1,000 km y ninguno baja de 300 m. La zona de la bandada
-  sigue sin piso, que ahí 300 m es el barrio y caer a cincuenta metros está
-  bien.
+  menos de 300 m—, pero al bajar el radio pasa a ser mucho más: uno de cada cien
+  nidos se mostraría a los desconocidos **más preciso que a su propia bandada**,
+  justo al revés de lo que promete esta sección. Por eso el mundo reparte sobre
+  una **rosca** y nunca sobre el centro: el piso es un tercio del radio con tope
+  de 1 km, así que a radio 1 va de 333 m a 1 km — nunca sobre el punto real y
+  siempre más lejos que los 300 m de la bandada. La zona de la bandada sigue sin
+  piso, que ahí 300 m es el barrio y caer a cincuenta metros está bien.
 - Tu propio nido lo ves exacto. Es tu dato.
 
 ### El nido no sigue al teléfono
@@ -1032,6 +1032,35 @@ no.
 
 ## El mapa
 
+### La panza de los arcos
+
+Las rutas no son rectas: se dibujan con una panza, y cuánta lo decide `CURVA` en
+[`lib/geo.ts`](lib/geo.ts). **Era el 6% de la distancia y ahora es el 10%.** Con
+6%, un vuelo de 171 km se despegaba 10 km de la recta — sobre una línea de
+setecientos píxeles, veinte. Las rutas se leían como reglas tiradas encima del
+mapa, y se notaba sobre todo en «Del resto», que es donde se ven los vuelos
+largos de otra gente.
+
+**No se subió más, y el techo lo puso una prueba que ya existía:** el camino
+dibujado no puede ser mucho más largo que la distancia real, porque el ave lo
+recorre en el tiempo que promete su tarjeta — si el dibujo se estira, el bicho
+cruza la pantalla más rápido que los km/h que dice tener. Medido:
+
+| Curva | Cuánto se alarga el dibujo |
+|---|---|
+| 0,06 | 0,91% ← antes |
+| **0,10** | **2,42%** ← ahora |
+| 0,11 | 2,92% |
+| 0,12 | 3,46% ← se pasa del 3% que la prueba permite |
+| 0,15 | 5,34% |
+
+Ir más arriba era elegir que el dibujo fuera lindo antes que cierto, y en esta
+app es al revés.
+
+Los vuelos muy largos **ya se curvan solos** —el círculo máximo de Buenos Aires
+a Madrid se va al norte por su cuenta— así que la panza tiene techo
+(`CURVA_TECHO_KM`) y ahí deja de crecer.
+
 Leaflet, con mosaicos de CARTO sobre OpenStreetMap (sin API key) o de Mapbox si
 hay token.
 
@@ -1132,7 +1161,7 @@ bandada no alcanzan y hay otras:
 | | Bandada | Del resto |
 |---|---|---|
 | Quién te ve | quien tiene tu código, se lo diste vos | cualquiera con nido |
-| Tu ubicación | corrida hasta **300 m** | corrida entre **1 y 3 km** |
+| Tu ubicación | corrida hasta **300 m** | corrida entre **333 m y 1 km** |
 | Tu nombre | sí | **no** |
 | El id de tu nido | sí | **no** |
 | El mensaje | solo al aterrizar, y solo a quien va dirigido | **nunca** |
@@ -1150,11 +1179,11 @@ Tres detalles que no son obvios:
   que las dos vistas se crucen: con la misma, restar una de la otra daría el
   rumbo exacto hacia el punto real.
 
-  El radio del mundo **era 25 km y hoy es 3**. Con 25 el mismo vuelo aparecía a
+  El radio del mundo **era 25 km y hoy es 1**. Con 25 el mismo vuelo aparecía a
   22 km de donde de verdad salió —otro partido del conurbano— y en un mapa de
-  ciudad eso se lee como un error, no como privacidad. 3 km sigue diciendo "sale
-  de esta zona" sin decir de qué casa. Se mueve con `LOROS_RADIO_MUNDO_KM`, sin
-  tocar código, porque es una decisión de producto y no una constante técnica.
+  ciudad eso se lee como un error, no como privacidad. 1 km dice el barrio y no
+  la casa. Se mueve con `LOROS_RADIO_MUNDO_KM`, sin tocar código, porque es una
+  decisión de producto y no una constante técnica.
 
   Como en pantalla no había nada que lo dijera, la primera vez que alguien entra
   a «Del resto» se lo explica un cartelito, una vez en la vida
@@ -1527,7 +1556,7 @@ instancia:
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | No | Solo si querés mosaicos de Mapbox en vez de los de OpenStreetMap. También necesita redeploy. |
 | `LOROS_PROB_EXTRAVIO` | No | Pisa el 0,2% de loros perdidos. Dejala sin cargar salvo que quieras probar. |
 | `LOROS_ESCALA_TIEMPO` | No | Acelera TODOS los vuelos. No la cargues en producción. |
-| `LOROS_RADIO_MUNDO_KM` | No | Cuánto se corren los puntos en «Del resto». Por defecto 3. Subirlo protege más y hace que las dos vistas se parezcan menos; bajarlo, al revés. Es un canje, no un ajuste. El piso —nunca sobre la casa— se calcula solo a un tercio del radio, con tope de 1 km. |
+| `LOROS_RADIO_MUNDO_KM` | No | Cuánto se corren los puntos en «Del resto». Por defecto 1. Subirlo protege más y hace que las dos vistas se parezcan menos; bajarlo, al revés. Es un canje, no un ajuste. El piso —nunca sobre la casa— se calcula solo a un tercio del radio, con tope de 1 km. |
 
 ### La base: Upstash o Supabase
 

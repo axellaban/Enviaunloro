@@ -47,13 +47,13 @@ export const RADIO_ZONA_KM = 0.3;
  *
  * SE PUEDE MOVER sin tocar código, con `LOROS_RADIO_MUNDO_KM`, y es un canje
  * directo: cuanto más chico, más se parecen las dos vistas y más fino puede
- * ubicarte un desconocido. 25 km decían "sale de Buenos Aires"; 3 km dicen
- * "sale de esta zona del conurbano". Es la decisión que tomó Axel después de
- * ver el mapa con las dos vistas al lado, y el canje está dicho arriba.
+ * ubicarte un desconocido. 25 km decían "sale de Buenos Aires"; 3 km, "sale de
+ * esta zona"; 1 km es el barrio. Es la decisión que tomó Axel mirando el mapa
+ * con las dos cuentas al lado, y el canje está dicho arriba.
  */
 export const RADIO_MUNDO_KM = (() => {
   const puesto = Number(process.env.LOROS_RADIO_MUNDO_KM);
-  return Number.isFinite(puesto) && puesto > 0 ? puesto : 3;
+  return Number.isFinite(puesto) && puesto > 0 ? puesto : 1;
 })();
 
 /**
@@ -67,8 +67,12 @@ export const RADIO_MUNDO_KM = (() => {
  * esta sección.
  *
  * Con el piso, el punto del mundo nunca cae sobre la casa de nadie. A cambio se
- * sabe que el nido NO está en el kilómetro de alrededor del punto mostrado, que
- * es un dato mucho más barato que el que se estaba regalando.
+ * sabe que el nido NO está en ese anillo de alrededor del punto mostrado, que es
+ * un dato mucho más barato que el que se estaba regalando.
+ *
+ * Es un tercio del radio con tope de 1 km, así que a radio 1 el reparto va de
+ * 333 m a 1 km: nunca sobre el punto real, y siempre más lejos que el corrimiento
+ * de la bandada, que es de hasta 300 m.
  */
 const PISO_MUNDO_KM = Math.min(1, RADIO_MUNDO_KM / 3);
 
