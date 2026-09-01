@@ -980,10 +980,19 @@ Se arregló por los dos lados:
   URL a mano — y menos alguien que acaba de perder su nido. Navega a `/entrar`
   en vez de resolverlo por fetch: esa ruta contesta un 303 con la cookie puesta
   y el mapa aparece dibujado de una, sin que se vea el onboarding primero.
-- **La llave, ANTES de mandar a instalar.** El cartel ahora ofrece guardarla como
+- **La llave, ANTES de mandar a instalar.** El cartel ofrece guardarla como
   primer paso, con `navigator.share` —que en iPhone es lo que deja mandársela a
   uno mismo por WhatsApp o guardarla en Notas, que es lo que de verdad sobrevive
   a cerrar Safari— y el portapapeles como red.
+
+**Y el cartel dice una cosa por vez.** La primera versión eran tres pasos
+numerados más un párrafo explicando por qué el tercero es raro: todo cierto y
+todo ilegible. Ciento veinte palabras en un cartel que apareció sin que nadie lo
+pidiera. Un cartel no explica, **secuencia**: ahora tiene dos estados de veinte
+palabras cada uno —guardá la llave; ahora agregala y pegala— y el segundo no
+existe hasta que el primero está hecho. El "por qué" se fue entero: quien está
+por instalar necesita saber qué tocar, no cómo funcionan los almacenamientos de
+Safari.
 
 Verificado de punta a punta contra el servidor: nido con un loro y dos amigos en
 Safari, cliente nuevo sin cookie —"sin nido"—, llave pegada, y del otro lado el

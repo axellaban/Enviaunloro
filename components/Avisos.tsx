@@ -76,33 +76,33 @@ export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
         <span style={{ fontSize: 19 }}>{instalar ? "📲" : "🔔"}</span>
         <p style={{ flex: 1, fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>
-          {instalar ? "Para que te avise, agregala a tu pantalla" : "¿Te aviso cuando aterrice?"}
+          {!instalar
+            ? "¿Te aviso cuando aterrice?"
+            : copiada
+              ? "Listo. Ahora agregala a tu pantalla"
+              : "Para que te avise, agregala a tu pantalla"}
         </p>
       </div>
 
       <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--suave)", marginBottom: 12 }}>
+        {/* UNA COSA POR VEZ, y antes eran tres pasos numerados más un párrafo
+            explicando por qué. Todo cierto y todo ilegible: nadie lee cinco
+            renglones en un cartel que le apareció sin pedirlo. Un cartel no
+            explica, secuencia. Primero se guarda la llave; recién cuando está
+            guardada aparece qué hacer con ella. */}
         {instalar ? (
-          <>
-            En iPhone los avisos solo funcionan con la app agregada a la
-            pantalla de inicio. Son tres pasos y el primero importa:
-            <br />
-            <br />
-            <strong>1.</strong> Guardá tu llave con el botón de acá abajo.
-            Mandátela por WhatsApp o guardala en Notas.
-            <br />
-            <strong>2.</strong> Tocá <strong>Compartir</strong> y después{" "}
-            <strong>Agregar a inicio</strong>.
-            <br />
-            <strong>3.</strong> Abrí la app desde tu pantalla. Va a pedirte que
-            armes un nido: no lo armes. Tocá{" "}
-            <strong>«Ya tengo un nido»</strong> y pegá la llave.
-            <br />
-            <br />
-            El paso 3 es raro y tiene motivo: para el iPhone, la app agregada es{" "}
-            <em>otro navegador</em>. Arranca vacía y no comparte nada con
-            Safari. La llave es lo que le dice cuál es tu nido — sin ella,
-            armarías uno nuevo y tus loritos quedarían del otro lado.
-          </>
+          copiada ? (
+            <>
+              Tocá <strong>Compartir</strong> → <strong>Agregar a inicio</strong>
+              . Al abrirla desde tu pantalla, tocá{" "}
+              <strong>«Ya tengo un nido»</strong> y pegá la llave.
+            </>
+          ) : (
+            <>
+              La app agregada arranca vacía, así que primero guardá tu llave:
+              es lo que te devuelve este mismo nido.
+            </>
+          )
         ) : (
           <>
             Hay algo en el aire y puede tardar horas. Te aviso cuando aterrice,
@@ -115,7 +115,7 @@ export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
           que se entiende para qué sirve, y el único en que todavía se puede
           sacar: después de agregarla a la pantalla, del otro lado no hay
           barra de direcciones ni cookie ni forma de volver. */}
-      {instalar && (
+      {instalar && !copiada && (
         <button
           className="boton chico"
           style={{ width: "100%", marginBottom: 12 }}
@@ -141,7 +141,7 @@ export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
             }
           }}
         >
-          {copiando ? "Un segundo…" : copiada ? "✓ Llave guardada" : "🔑 Paso 1: guardar mi llave"}
+          {copiando ? "Un segundo…" : "🔑 Guardar mi llave"}
         </button>
       )}
 
@@ -164,10 +164,13 @@ export function Avisos({ hayVuelo }: { hayVuelo: boolean }) {
           y con menos aire se pisan. */}
       <button
         className="boton chico fantasma"
-        style={{ width: "100%", marginTop: instalar ? 0 : 12 }}
+        style={{ width: "100%", marginTop: instalar && !copiada ? 0 : 12 }}
         onClick={ahoraNo}
       >
-        {instalar ? "Entendido" : "Ahora no"}
+        {/* Guardada la llave, lo único que queda es irse: "Ahora no" ahí sería
+            raro —ya hizo lo que se le pidió— y "Entendido" sin haber guardado
+            nada suena a que el cartel se dio por vencido. */}
+        {!instalar ? "Ahora no" : copiada ? "Listo, la agrego" : "Ahora no"}
       </button>
 
       {!instalar && (
