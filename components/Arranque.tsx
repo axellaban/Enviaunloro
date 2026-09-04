@@ -23,15 +23,27 @@ import { Ave } from "./Ave";
  */
 const PALABRAS = ["Loring", "Cotorring"];
 
-/** Cuánto dura cada una. Más lento que esto y solo se ve la primera. */
-const CADA = 1200;
+/** Cuántos puntos suspensivos crecen atrás de la palabra: uno, dos, tres. */
+const PUNTOS = 3;
+
+/** Cuánto tarda en aparecer cada punto. */
+const CADA_PUNTO = 400;
 
 export function Arranque() {
-  const [cual, setCual] = useState(0);
+  // Un solo reloj para los dos ritmos, y no dos corriendo en paralelo. Los
+  // puntos laten cada 400 ms y la palabra cambia cada tres puntos, así que
+  // cada palabra entra siempre con UN punto y se va con tres. Con dos
+  // intervalos sueltos eso se desfasaría a los pocos segundos y habría
+  // palabras que aparecen ya con dos puntos.
+  const [pulso, setPulso] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setCual((n) => n + 1), CADA);
+    const t = setInterval(() => setPulso((n) => n + 1), CADA_PUNTO);
     return () => clearInterval(t);
   }, []);
+
+  const cual = Math.floor(pulso / PUNTOS);
+  const palabra = PALABRAS[cual % PALABRAS.length];
+  const puntos = ".".repeat((pulso % PUNTOS) + 1);
 
   return (
     <div className="arranque" role="status" aria-label="Cargando">
@@ -43,15 +55,23 @@ export function Arranque() {
             misma celda de la grilla —las que no tocan, invisibles— así que el
             ancho es siempre el de la más larga y lo único que cambia es la
             palabra. Sin números mágicos: si mañana hay una más larga, la grilla
-            se entera sola. */}
+            se entera sola.
+
+            Las invisibles llevan los tres puntos puestos, que es la forma más
+            ANCHA que puede tomar cada una: sin eso la celda crecería al llegar
+            al tercer punto y volvería a encogerse, y el renglón entero —punto
+            incluido— haría el mismo temblor tres veces por segundo. */}
         <span className="arranque-palabras">
           {PALABRAS.map((p) => (
             <span key={p} className="arranque-fantasma">
-              {p}
+              {p + ".".repeat(PUNTOS)}
             </span>
           ))}
+          {/* La clave es la PALABRA y no el pulso: así la entrada se anima
+              cuando cambia la palabra y no cada vez que aparece un punto. */}
           <span key={cual} className="arranque-palabra">
-            {PALABRAS[cual % PALABRAS.length]}
+            {palabra}
+            {puntos}
           </span>
         </span>
       </p>

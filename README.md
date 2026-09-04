@@ -909,10 +909,17 @@ Ahí estaba desafinada: el ícono dibuja un **perico** y la pantalla aleteaba un
 **Y debajo dice qué está haciendo**, con la forma que usa Claude mientras
 trabaja: un punto, una palabra en gerundio y un brillo que la cruza por dentro
 de la letra. Lo que cambia es el idioma del chiste — acá los gerundios son de
-pájaro, **Loring** y **Cotorring**, y se turnan cada 1,2 s
+pájaro, **Loring** y **Cotorring**
 ([`components/Arranque.tsx`](components/Arranque.tsx)). Eso es lo que convierte
 un spinner en una pantalla de arranque: un bicho aleteando solo no dice si la
 app está cargando o si se colgó.
+
+Atrás crecen los tres puntos de toda la vida —`Loring.`, `Loring..`,
+`Loring...`— y de ahí sale el compás de la pantalla: **un solo reloj** late cada
+400 ms y la palabra cambia cada tres latidos, así que cada una entra con un
+punto y se va con tres. Con dos intervalos sueltos —uno para los puntos y otro
+para las palabras— eso se desfasa a los pocos segundos y empiezan a aparecer
+palabras que arrancan ya con dos puntos.
 
 Tres cosas que se resolvieron mirándola, y que son bugs si se hacen distinto:
 
@@ -920,8 +927,13 @@ Tres cosas que se resolvieron mirándola, y que son bugs si se hacen distinto:
   centrado, así que al cambiar la más corta por la más larga el punto saltaba de
   lugar cada 1,2 s. Todas se apilan en la misma celda de una grilla —las que no
   tocan, invisibles pero ocupando lugar—, así que la celda mide siempre lo que
-  la más larga. Sin número mágico: si mañana se agrega una más larga, la grilla
-  se entera sola. Medido: el punto se queda en x=140 con las dos.
+  la más larga. Y las invisibles llevan **los tres puntos puestos**, que es la
+  forma más ancha que cada una puede tomar: sin eso la celda crecería al llegar
+  al tercer punto y volvería a encogerse, y el renglón entero temblaría tres
+  veces por segundo. Sin número mágico: si mañana se agrega una palabra más
+  larga, la grilla se entera sola. Medido en los seis estados —dos palabras por
+  tres puntos—: el punto se queda en x=130,6 y el renglón mide 128,9 px en
+  todos.
 - **El destello se aleja del fondo en los dos temas.** Sobre el casi negro va
   más claro que el verde (`#f4ffdd`); en el tema claro va más **oscuro**
   (`#1a2e05`). Un destello lima sobre blanco deja el texto en 1,9:1 y la palabra
