@@ -904,9 +904,40 @@ Son cosas distintas y la app las mezcla en un solo lugar a propósito: la
 pantalla de arranque, que es lo primero que se ve después de tocar el ícono.
 
 Ahí estaba desafinada: el ícono dibuja un **perico** y la pantalla aleteaba un
-**loro**. Tocabas un bicho y se abría otro. Ahora es el mismo, con el nombre
-debajo — que es lo que la convierte en una pantalla de arranque y no en un
-spinner con un pájaro.
+**loro**. Tocabas un bicho y se abría otro. Ahora es el mismo.
+
+**Y debajo dice qué está haciendo**, con la forma que usa Claude mientras
+trabaja: un punto, una palabra en gerundio y un brillo que la cruza por dentro
+de la letra. Lo que cambia es el idioma del chiste — acá los gerundios son de
+pájaro, **Loring** y **Cotorring**, y se turnan cada 1,2 s
+([`components/Arranque.tsx`](components/Arranque.tsx)). Eso es lo que convierte
+un spinner en una pantalla de arranque: un bicho aleteando solo no dice si la
+app está cargando o si se colgó.
+
+Tres cosas que se resolvieron mirándola, y que son bugs si se hacen distinto:
+
+- **El punto no se mueve.** Las palabras miden distinto y el renglón está
+  centrado, así que al cambiar la más corta por la más larga el punto saltaba de
+  lugar cada 1,2 s. Todas se apilan en la misma celda de una grilla —las que no
+  tocan, invisibles pero ocupando lugar—, así que la celda mide siempre lo que
+  la más larga. Sin número mágico: si mañana se agrega una más larga, la grilla
+  se entera sola. Medido: el punto se queda en x=140 con las dos.
+- **El destello se aleja del fondo en los dos temas.** Sobre el casi negro va
+  más claro que el verde (`#f4ffdd`); en el tema claro va más **oscuro**
+  (`#1a2e05`). Un destello lima sobre blanco deja el texto en 1,9:1 y la palabra
+  desaparece justo cuando el brillo la cruza.
+- **Con movimiento reducido la letra no puede quedar transparente.** El color
+  vive en el degradado y la letra es un recorte de ese degradado
+  (`background-clip: text`); apagando la animación sin más, el barrido queda
+  congelado donde caiga. Con `prefers-reduced-motion` no hay degradado: la
+  palabra es verde perico, entera, y se sigue turnando — que es lo que cuenta
+  que la app está viva.
+
+La pantalla vive en un archivo aparte y no adentro de `app/nido/page.tsx` porque
+tiene reloj propio, y un hook no puede colgar de un `return` que depende de una
+condición. Adentro habría que subir ese estado hasta arriba de todo, y quedaría
+un intervalo corriendo toda la vida de la app para una pantalla que dura un
+segundo.
 
 Lo que **no** se hizo: pegar el ícono entero ahí. Un cuadrado redondeado con su
 propio fondo, parado sobre el fondo de la app, se lee como una calcomanía; y el

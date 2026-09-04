@@ -29,6 +29,7 @@ import {
 import { VistaMapa, type Vista } from "../../components/VistaMapa";
 import { esCodigo, normalizarCodigo } from "../../lib/codigo";
 import { Ave } from "../../components/Ave";
+import { Arranque } from "../../components/Arranque";
 import { Cta } from "../../components/Cta";
 import {
   avisar,
@@ -466,36 +467,14 @@ export default function Nido() {
   // ave sale del nido, siempre. Es un dato que se da una vez, a propósito, y no
   // uno que se toma de fondo.
 
-  // La pantalla de arranque: lo primero que se ve después de tocar el ícono.
+  // La pantalla de arranque, en components/Arranque.tsx.
   //
-  // Es el ÚNICO momento de marca que hay adentro de la app, y hasta recién
-  // estaba desafinado: el ícono dibuja un PERICO y acá aleteaba un loro. Tocabas
-  // un bicho y se abría otro.
-  //
-  // No se pega acá el ícono entero. Un cuadrado redondeado con su propio fondo,
-  // parado sobre el fondo de la app, se lee como una calcomanía; y el dibujo del
-  // ícono tendría que vivir en dos archivos, que es justo lo que el resto del
-  // proyecto evita. Con el ave que ya existe alcanza: es la misma especie, se
-  // mueve —que es lo que dice "esperá, está cargando"— y sale del mismo
-  // componente que dibuja todo lo demás.
-  //
-  // Sin nombre debajo: el bicho solo. La pantalla dura un segundo y el nombre
-  // ya está en la portada, en el ícono y en la barra del navegador; repetirlo
-  // acá lo único que hace es dar algo para leer justo cuando no hay tiempo.
-  if (est.cargando && !est.yo) {
-    return (
-      <div
-        style={{
-          minHeight: "100dvh",
-          display: "grid",
-          placeItems: "center",
-          alignContent: "center",
-        }}
-      >
-        <Ave especie="perico" size={62} aletea />
-      </div>
-    );
-  }
+  // Está afuera y no acá adentro porque tiene reloj propio —las palabras que
+  // dicen qué está haciendo se turnan— y un hook no puede colgar de un return
+  // que depende de una condición. Adentro de este archivo habría que subir ese
+  // estado hasta arriba de todo, y quedaría un intervalo corriendo durante toda
+  // la vida de la app para una pantalla que dura un segundo.
+  if (est.cargando && !est.yo) return <Arranque />;
 
   if (!est.yo) {
     return (

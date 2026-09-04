@@ -28,6 +28,13 @@
   --loro: #10b981;
   --guacamayo: #fbbf24;
 
+  /* El brillo que cruza la palabra de la pantalla de arranque. Sobre el fondo
+     casi negro va MÁS CLARO que el verde; en el tema claro va más OSCURO, y no
+     es capricho: un destello lima sobre blanco baja el texto a 1,9:1 y la
+     palabra desaparece justo cuando el brillo la cruza. En los dos temas el
+     destello se aleja del fondo, no se acerca. */
+  --destello: #f4ffdd;
+
   --radio: 16px;
   --radio-chico: 10px;
 
@@ -87,6 +94,7 @@
   --cotorra: #0e7490;
   --loro: #047857;
   --guacamayo: #b45309;
+  --destello: #1a2e05;
 
   --sombra: 0 4px 16px -6px rgba(0, 0, 0, 0.18);
   color-scheme: light;
@@ -742,6 +750,72 @@ textarea.campo { resize: none; line-height: 1.55; font-family: var(--fuente); }
   border-radius: 99px;
 }
 .scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- la pantalla de arranque ----------
+
+   El perico aleteando y, debajo, lo que la app dice que está haciendo. La forma
+   es la que usa Claude mientras trabaja —un punto, una palabra en gerundio y un
+   brillo que la cruza—; lo que cambia es que acá los gerundios son de pájaro.
+
+   Que haya algo escrito NO es "dar algo para leer cuando no hay tiempo": es lo
+   que convierte un spinner en una pantalla de arranque. Un bicho aleteando solo
+   no dice si la app está cargando o si se colgó. */
+.arranque {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+}
+.arranque-linea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.arranque-punto { color: var(--tenue); }
+
+/* Todas las palabras van apiladas en la MISMA celda de la grilla: la celda mide
+   lo que la más larga, así que el punto no salta de lugar cuando cambia. Las
+   que no toca se quedan ocupando lugar y sin verse. */
+.arranque-palabras { display: grid; justify-items: start; }
+.arranque-palabras > * { grid-area: 1 / 1; }
+.arranque-fantasma { visibility: hidden; }
+
+/* El brillo va POR DENTRO de la letra (background-clip: text) y no como una
+   sombra alrededor: lo que tiene que barrer es la palabra. */
+.arranque-palabra {
+  background: linear-gradient(
+    100deg,
+    var(--perico) 0 38%,
+    var(--destello) 50%,
+    var(--perico) 62% 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: arranque-brillo 2.6s linear infinite, arranque-entra 0.26s ease-out;
+}
+@keyframes arranque-brillo {
+  from { background-position: 140% 0; }
+  to { background-position: -40% 0; }
+}
+@keyframes arranque-entra {
+  from { opacity: 0; transform: translateY(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Sin barrido: la palabra queda del verde del perico, entera. Se sigue
+     turnando, que es lo que cuenta que la app está viva. */
+  .arranque-palabra {
+    animation: none;
+    background: none;
+    color: var(--perico);
+  }
+}
 
 /* ---------- estructura de la app ---------- */
 
